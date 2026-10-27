@@ -20,6 +20,7 @@ sourceSets.main.resources {
 }
 
 repositories {
+    mavenCentral()
     // Create, Ponder, Flywheel
     maven { url = 'https://maven.createmod.net' }
     // Registrate
@@ -45,8 +46,18 @@ repositories {
     }
 }
 
-// -Pfloor_run=true swaps the dev runtime for the oldest supported stack (Create 6.0.0, no Sable)
-def floorRun = providers.gradleProperty('floor_run').map { it.toBoolean() }.getOrElse(false)
+// Dev runtime profile, set with -Prun_profile=<name>:
+//   latest (default) newest Create, Sable, Veil, LambDynamicLights and jars in ./libs
+//   lite             newest Create only; boots faster when vehicles and dynamic light are not involved
+//   floor            oldest supported stack: NeoForge 21.1.125 and Create 6.0.0, no Sable
+def runProfile = providers.gradleProperty('run_profile').getOrElse('latest')
+if (!(runProfile in ['latest', 'lite', 'floor'])) {
+    throw new GradleException("Unknown run_profile '${runProfile}'; use latest, lite or floor")
+}
+def floorRun = runProfile == 'floor'
+// Each profile keeps its own game directory, so worlds never load with mods they were not made with
+def runDir = runProfile == 'latest' ? 'run' : "run-${runProfile}"
+def quickPlayWorld = providers.gradleProperty('quickplay_world').getOrElse('lightworks-test')
 
 neoForge {
     version = floorRun ? project.neo_floor_version : project.neo_version
@@ -59,6 +70,11 @@ neoForge {
     runs {
         client {
             client()
+            jvmArgument '-Xmx4G'
+            // Join the test world straight from launch once it exists in this profile's saves
+            if (file("${runDir}/saves/${quickPlayWorld}").exists()) {
+                programArguments.addAll '--quickPlaySingleplayer', quickPlayWorld
+            }
         }
         server {
             server()
@@ -76,8 +92,8 @@ neoForge {
                     '--existing', file('src/main/resources/').getAbsolutePath()
         }
         configureEach {
-            systemProperty 'forge.logging.markers', 'REGISTRIES'
-            logLevel = org.slf4j.event.Level.DEBUG
+            gameDirectory = file(runDir)
+            logLevel = org.slf4j.event.Level.INFO
         }
     }
 
@@ -129,7 +145,9 @@ dependencies {
         localRuntime "dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}"
         localRuntime "com.tterrag.registrate:Registrate:${registrate_version}"
         localRuntime "dev.ryanhcode.sable-companion:sable-companion-common-${minecraft_version}:${sable_companion_version}"
+    }
 
+    if (runProfile == 'latest') {
         // Non-transitive: Sable's POM pulls the full Create jar, which would load Create twice
         localRuntime("dev.ryanhcode.sable:sable-neoforge-${minecraft_version}:${sable_version}") { transitive = false }
         localRuntime "dev.ryanhcode.sable:sable-sable_rapier-${minecraft_version}:${sable_version}"
@@ -141,6 +159,32 @@ dependencies {
 
         // Release jars dropped into ./libs (for example Create Aeronautics) load in dev runs
         localRuntime fileTree(dir: 'libs', include: '*.jar')
+    }
+
+    // Pure-logic unit tests: no game boot
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}
+
+// Gradle-launched runs use JetBrains Runtime, which can hot-swap class changes including new methods
+// and fields. Hot-swap loop: `./gradlew runClient --debug-jvm`, attach IntelliJ's debugger to port 5005,
+// edit, then Build > Recompile (or Ctrl+Shift+F9) and accept "Reload changed classes".
+// -Pdev_hotswap=false falls back to the normal toolchain JDK.
+// (Class Data Sharing archives were tried and made boots 6-9x slower under NeoForge's class loaders.)
+def devHotswap = providers.gradleProperty('dev_hotswap').map { it.toBoolean() }.getOrElse(true)
+def jbrLauncher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(21)
+    vendor = JvmVendorSpec.JETBRAINS
+}
+tasks.withType(JavaExec).configureEach {
+    if (devHotswap && name.startsWith('run')) {
+        javaLauncher = jbrLauncher
+        jvmArgs '-XX:+AllowEnhancedClassRedefinition'
     }
 }
 

@@ -13,7 +13,7 @@ bin/
 
 # Dev runs
 run/
-run-data/
+run-*/
 repo/
 
 # Local test jars (Aeronautics etc.)
