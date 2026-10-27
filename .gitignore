@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+out/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+bin/
+
+# Dev runs
+run/
+run-data/
+repo/
+
+# Local test jars (Aeronautics etc.)
+libs/*.jar
+
+# Datagen cache
+src/generated/**/.cache

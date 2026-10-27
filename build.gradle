@@ -1,0 +1,177 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+    id 'idea'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+sourceSets.main.resources {
+    srcDir('src/generated/resources')
+    exclude('**/*.bbmodel')
+    exclude('src/generated/**/.cache')
+}
+
+repositories {
+    // Create, Ponder, Flywheel
+    maven { url = 'https://maven.createmod.net' }
+    // Registrate
+    maven { url = 'https://maven.ithundxr.dev/snapshots' }
+    // LambDynamicLights
+    maven { url = 'https://maven.gegy.dev' }
+    // Veil (Sable's rendering library), dev runs only
+    exclusiveContent {
+        forRepository { maven { url = 'https://maven.blamejared.com' } }
+        filter {
+            includeGroup 'foundry.veil'
+            includeGroup 'gg.moonflower'
+            includeGroup 'io.github.ocelot'
+        }
+    }
+    // Sable and Sable Companion
+    exclusiveContent {
+        forRepository { maven { url = 'https://maven.ryanhcode.dev/releases' } }
+        filter {
+            includeGroup 'dev.ryanhcode.sable'
+            includeGroup 'dev.ryanhcode.sable-companion'
+        }
+    }
+}
+
+// -Pfloor_run=true swaps the dev runtime for the oldest supported stack (Create 6.0.0, no Sable)
+def floorRun = providers.gradleProperty('floor_run').map { it.toBoolean() }.getOrElse(false)
+
+neoForge {
+    version = floorRun ? project.neo_floor_version : project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+        // Headless load check: boots every mod, runs game tests, exits
+        gameTestServer {
+            type = 'gameTestServer'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+        data {
+            data()
+            programArguments.addAll '--mod', project.mod_id, '--all',
+                    '--output', file('src/generated/resources/').getAbsolutePath(),
+                    '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+// Present in dev runs, never published as a dependency
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+def mappingsAttribute = Attribute.of('net.minecraft.mappings', String)
+
+dependencies {
+    attributesSchema {
+        attribute(mappingsAttribute)
+    }
+
+    // Compile against the oldest versions we support, so newer-only API calls fail the build
+    compileOnly("com.simibubi.create:create-${minecraft_version}:${create_floor_version}") { transitive = false }
+    compileOnly "net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}"
+    compileOnly "dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_floor_version}"
+    compileOnly "com.tterrag.registrate:Registrate:${registrate_floor_version}"
+    compileOnly "dev.ryanhcode.sable-companion:sable-companion-common-${minecraft_version}:${sable_companion_floor_version}"
+    compileOnly "dev.ryanhcode.sable:sable-common-${minecraft_version}:${sable_version}"
+    compileOnly("dev.lambdaurora.lambdynamiclights:lambdynamiclights-api:${ldl_version}") {
+        attributes { attribute(mappingsAttribute, 'mojmap') }
+    }
+
+    // Sable Companion: bundled with an open range; returns safe defaults when Sable is absent
+    jarJar("dev.ryanhcode.sable-companion:sable-companion-common-${minecraft_version}") {
+        version {
+            strictly "[${sable_companion_floor_version},)"
+            prefer sable_companion_floor_version
+        }
+    }
+
+    if (floorRun) {
+        // Create 6.0.0's full jar bundles its own Ponder, Flywheel and Registrate
+        localRuntime("com.simibubi.create:create-${minecraft_version}:${create_floor_version}") { transitive = false }
+        localRuntime "dev.ryanhcode.sable-companion:sable-companion-common-${minecraft_version}:${sable_companion_floor_version}"
+    } else {
+        localRuntime("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
+        localRuntime "net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}"
+        localRuntime "dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}"
+        localRuntime "com.tterrag.registrate:Registrate:${registrate_version}"
+        localRuntime "dev.ryanhcode.sable-companion:sable-companion-common-${minecraft_version}:${sable_companion_version}"
+
+        // Non-transitive: Sable's POM pulls the full Create jar, which would load Create twice
+        localRuntime("dev.ryanhcode.sable:sable-neoforge-${minecraft_version}:${sable_version}") { transitive = false }
+        localRuntime "dev.ryanhcode.sable:sable-sable_rapier-${minecraft_version}:${sable_version}"
+        localRuntime "foundry.veil:veil-neoforge-${minecraft_version}:${veil_version}"
+
+        localRuntime("dev.lambdaurora.lambdynamiclights:lambdynamiclights-runtime:${ldl_version}") {
+            attributes { attribute(mappingsAttribute, 'mojmap') }
+        }
+
+        // Release jars dropped into ./libs (for example Create Aeronautics) load in dev runs
+        localRuntime fileTree(dir: 'libs', include: '*.jar')
+    }
+}
+
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version_range      : neo_version_range,
+            loader_version_range   : loader_version_range,
+            create_version_range   : create_version_range,
+            sable_version_range    : sable_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}

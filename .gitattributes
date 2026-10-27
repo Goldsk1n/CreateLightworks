@@ -1,0 +1,15 @@
+# Normalise text files to LF in the repository
+* text=auto
+
+# Shell scripts must keep LF to run on Linux and CI
+gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# Generated files are always written with LF; stop them showing as changed
+src/generated/**/.cache/* text eol=lf
+src/generated/**/*.json text eol=lf
+
+*.jar binary
+*.png binary
+*.nbt binary
