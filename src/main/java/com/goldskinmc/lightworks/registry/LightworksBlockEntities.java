@@ -2,6 +2,7 @@ package com.goldskinmc.lightworks.registry;
 
 import static com.goldskinmc.lightworks.Lightworks.REGISTRATE;
 
+import com.goldskinmc.lightworks.content.searchlight.HeadlightBlockEntity;
 import com.goldskinmc.lightworks.content.searchlight.SearchlightBlockEntity;
 import com.goldskinmc.lightworks.content.searchlight.SearchlightRenderer;
 import com.goldskinmc.lightworks.light.BeamLightBlockEntity;
@@ -11,6 +12,12 @@ public final class LightworksBlockEntities {
     public static final BlockEntityEntry<SearchlightBlockEntity> SEARCHLIGHT = REGISTRATE
             .blockEntity("searchlight", SearchlightBlockEntity::new)
             .validBlocks(LightworksBlocks.SEARCHLIGHT)
+            .renderer(() -> SearchlightRenderer::new)
+            .register();
+
+    public static final BlockEntityEntry<HeadlightBlockEntity> HEADLIGHT = REGISTRATE
+            .blockEntity("headlight", HeadlightBlockEntity::new)
+            .validBlocks(LightworksBlocks.HEADLIGHT)
             .renderer(() -> SearchlightRenderer::new)
             .register();
 

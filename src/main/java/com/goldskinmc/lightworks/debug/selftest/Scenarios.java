@@ -4,10 +4,15 @@ import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.content.searchlight.SearchlightBlock;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.simibubi.create.AllBlocks;
+import com.simibubi.create.content.contraptions.IControlContraption.MovementMode;
 import com.simibubi.create.content.contraptions.glue.SuperGlueEntity;
+import com.simibubi.create.content.contraptions.piston.MechanicalPistonBlock;
+import com.simibubi.create.content.contraptions.piston.MechanicalPistonBlock.PistonState;
+import com.simibubi.create.content.kinetics.base.DirectionalAxisKineticBlock;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.motor.CreativeMotorBlock;
 import com.simibubi.create.content.kinetics.motor.CreativeMotorBlockEntity;
+import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -18,6 +23,7 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.ModList;
@@ -26,12 +32,15 @@ import net.neoforged.fml.ModList;
 final class Scenarios {
     static final Map<String, Supplier<Script>> ALL = new LinkedHashMap<>();
     /** What {@code -Pselftest=true} runs. */
-    static final String DEFAULT = "fixed,vehicle,bearing";
+    static final String DEFAULT = "fixed,vehicle,bearing,piston,vehicle-fast";
 
     static {
         ALL.put("fixed", Scenarios::fixed);
-        ALL.put("vehicle", Scenarios::vehicle);
+        ALL.put("vehicle", () -> vehicle("vehicle", 0.1, 100, true));
+        // Create's default train top speed, 28 blocks a second: how far the spot trails at train speeds
+        ALL.put("vehicle-fast", () -> vehicle("vehicle-fast", 1.4, 40, false));
         ALL.put("bearing", Scenarios::bearing);
+        ALL.put("piston", Scenarios::piston);
     }
 
     private Scenarios() {
@@ -39,6 +48,10 @@ final class Scenarios {
 
     static BlockState searchlight(Direction facing) {
         return LightworksBlocks.SEARCHLIGHT.getDefaultState().setValue(SearchlightBlock.FACING, facing);
+    }
+
+    static BlockState headlight(Direction facing) {
+        return LightworksBlocks.HEADLIGHT.getDefaultState().setValue(SearchlightBlock.FACING, facing);
     }
 
     /**
@@ -95,26 +108,26 @@ final class Scenarios {
 
     /**
      * S4 and S5, Sable vehicle: a deck with a Searchlight hanging under it, made into a vehicle with
-     * Sable's own commands and flown 10 blocks east at 2 blocks a second, filmed from the side.
+     * Sable's own commands and flown east at {@code speed} blocks per tick. {@code film}: photograph and
+     * film it from the side (only useful while it stays in view).
      */
-    static Script vehicle() {
-        Script script = new Script("vehicle");
+    static Script vehicle(String name, double speed, int flightTicks, boolean film) {
+        Script script = new Script(name);
         if (!ModList.get().isLoaded("sable")) {
-            return script.run(stage -> stage.log("vehicle: skipped, Sable is not installed"));
+            return script.run(stage -> stage.log("%s: skipped, Sable is not installed", name));
         }
         BlockPos[] deck = new BlockPos[1];
-        double speed = 0.1;
-        int flightTicks = 100;
-        return script
-                .run(stage -> {
+        script.run(stage -> {
                     stage.night();
                     stage.stand(5, -9);
                     deck[0] = stage.at(0, 8, 6);
                     SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(5, 3, 6)).add(0.5, 0, 0.5);
                 })
-                .waitTicks(40)
-                .shot("vehicle-0-dark")
-                .run(stage -> {
+                .waitTicks(40);
+        if (film) {
+            script.shot(name + "-0-dark");
+        }
+        script.run(stage -> {
                     for (int x = -1; x <= 1; x++) {
                         for (int z = -1; z <= 1; z++) {
                             stage.set(deck[0].offset(x, 0, z), Blocks.OAK_PLANKS.defaultBlockState());
@@ -127,23 +140,27 @@ final class Scenarios {
                     stage.run("sable paused true");
                     stage.run("sable assemble area " + from.getX() + " " + from.getY() + " " + from.getZ() + " "
                             + to.getX() + " " + to.getY() + " " + to.getZ());
-                    stage.log("vehicle: assembled deck at %s, ground at y=%d", deck[0], stage.origin.getY() - 1);
+                    stage.log("%s: assembled deck at %s, ground at y=%d", name, deck[0], stage.origin.getY() - 1);
                 })
-                .waitTicks(40)
-                .shot("vehicle-1-hovering")
-                .run(stage -> {
+                .waitTicks(40);
+        if (film) {
+            script.shot(name + "-1-hovering");
+        }
+        script.run(stage -> {
                     SelfTestBridge.probeGroundY = stage.origin.getY();
-                    SelfTestBridge.probe = "vehicle";
-                    SelfTestBridge.recording = "vehicle-flight";
+                    SelfTestBridge.probe = name;
+                    SelfTestBridge.recording = film ? name + "-flight" : null;
                 })
                 .repeat(flightTicks, (stage, i) -> stage.run("sable physics translation @l add " + speed + " 0 0 global"))
                 .run(stage -> {
                     SelfTestBridge.recording = null;
                     SelfTestBridge.probe = null;
                 })
-                .waitTicks(20)
-                .shot("vehicle-2-landed-east")
-                .run(stage -> {
+                .waitTicks(20);
+        if (film) {
+            script.shot(name + "-2-landed-east");
+        }
+        return script.run(stage -> {
                     stage.run("sable remove @l");
                     stage.run("sable paused false");
                     SelfTestBridge.focus = null;
@@ -206,6 +223,86 @@ final class Scenarios {
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
                     stage.level.getEntitiesOfClass(SuperGlueEntity.class, new AABB(motor[0]).inflate(6))
+                            .forEach(Entity::discard);
+                });
+    }
+
+    /**
+     * S3 stand-in for a train: a Mechanical Piston pushes a cart 6 blocks east and pulls it back, with a
+     * Headlight at each end. The east one should light on the way out, the west one on the way back,
+     * and the east one's spot lands on a wall ahead. Trains run the same contraption code.
+     */
+    static Script piston() {
+        int rpm = 128;
+        BlockPos[] at = new BlockPos[2];
+        int[] sign = {1};
+        return new Script("piston")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(5, -6);
+                    BlockPos piston = stage.at(0, 1, 6);
+                    BlockPos cart = piston.east();
+                    at[0] = piston;
+                    at[1] = piston.above();
+                    stage.reserve(piston.offset(-7, -1, -2), piston.offset(16, 3, 2));
+                    for (int i = 1; i <= 6; i++) {
+                        stage.set(piston.west(i), AllBlocks.PISTON_EXTENSION_POLE.getDefaultState()
+                                .setValue(BlockStateProperties.FACING, Direction.EAST));
+                    }
+                    stage.set(cart, Blocks.OAK_PLANKS.defaultBlockState());
+                    stage.set(cart.east(), headlight(Direction.EAST));
+                    stage.set(cart.below(), headlight(Direction.WEST));
+                    stage.level.addFreshEntity(new SuperGlueEntity(stage.level,
+                            AABB.encapsulatingFullBlocks(cart.below(), cart.east())));
+                    for (int y = 0; y <= 3; y++) {
+                        for (int z = 5; z <= 7; z++) {
+                            stage.set(stage.at(16, y, z), Blocks.STONE.defaultBlockState());
+                        }
+                    }
+                    stage.set(piston, AllBlocks.MECHANICAL_PISTON.getDefaultState()
+                            .setValue(BlockStateProperties.FACING, Direction.EAST)
+                            .setValue(DirectionalAxisKineticBlock.AXIS_ALONG_FIRST_COORDINATE, true));
+                    // Stay assembled at the end of travel and reverse in place, like a train
+                    if (stage.level.getBlockEntity(piston) instanceof SmartBlockEntity actuator) {
+                        ScrollValueBehaviour mode = actuator.getBehaviour(ScrollValueBehaviour.TYPE);
+                        if (mode != null) {
+                            mode.setValue(MovementMode.MOVE_NEVER_PLACE.ordinal());
+                        }
+                    }
+                    SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(7, 1, 6)).add(0.5, 0, 0.5);
+                })
+                .waitTicks(40)
+                .shot("piston-0-still")
+                .run(stage -> {
+                    stage.set(at[1], AllBlocks.CREATIVE_MOTOR.getDefaultState()
+                            .setValue(CreativeMotorBlock.FACING, Direction.DOWN));
+                    setMotorSpeed(stage, at[1], rpm);
+                    SelfTestBridge.probeGroundY = stage.origin.getY();
+                    SelfTestBridge.probe = "piston";
+                    SelfTestBridge.recording = "piston-run";
+                })
+                .waitTicks(10)
+                .run(stage -> {
+                    // Which way a speed sign pushes depends on the piston's axis: if it did not move, flip it
+                    if (stage.level.getBlockState(at[0]).getValue(MechanicalPistonBlock.STATE) == PistonState.RETRACTED) {
+                        sign[0] = -1;
+                        setMotorSpeed(stage, at[1], -rpm);
+                    }
+                })
+                .waitTicks(40)
+                .run(stage -> setMotorSpeed(stage, at[1], -sign[0] * rpm))
+                .waitTicks(45)
+                .run(stage -> {
+                    SelfTestBridge.recording = null;
+                    SelfTestBridge.probe = null;
+                    setMotorSpeed(stage, at[1], 0);
+                })
+                .waitTicks(20)
+                .shot("piston-1-back")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                    stage.level.getEntitiesOfClass(SuperGlueEntity.class, new AABB(at[0]).inflate(18))
                             .forEach(Entity::discard);
                 });
     }

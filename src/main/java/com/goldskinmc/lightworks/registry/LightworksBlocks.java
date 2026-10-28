@@ -2,7 +2,9 @@ package com.goldskinmc.lightworks.registry;
 
 import static com.goldskinmc.lightworks.Lightworks.REGISTRATE;
 
+import com.goldskinmc.lightworks.content.searchlight.HeadlightBlock;
 import com.goldskinmc.lightworks.content.searchlight.SearchlightBlock;
+import com.goldskinmc.lightworks.content.searchlight.SearchlightBlockEntity;
 import com.goldskinmc.lightworks.content.searchlight.SearchlightMovement;
 import com.goldskinmc.lightworks.light.BeamLightBlock;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
@@ -22,9 +24,24 @@ public final class LightworksBlocks {
             .blockstate((c, p) -> p.directionalBlock(c.get(), p.models().orientableVertical(c.getName(),
                     p.modLoc("block/searchlight_side"),
                     p.modLoc("block/searchlight_front"))))
-            .onRegister(MovementBehaviour.movementBehaviour(new SearchlightMovement()))
+            .onRegister(MovementBehaviour.movementBehaviour(
+                    new SearchlightMovement(SearchlightBlockEntity.BEAM, false)))
             .tag(BlockTags.MINEABLE_WITH_PICKAXE)
             .lang("Searchlight")
+            .simpleItem()
+            .register();
+
+    public static final BlockEntry<HeadlightBlock> HEADLIGHT = REGISTRATE
+            .block("headlight", HeadlightBlock::new)
+            .initialProperties(() -> Blocks.IRON_BLOCK)
+            .properties(p -> p.strength(2.0f).sound(SoundType.COPPER).noOcclusion())
+            .blockstate((c, p) -> p.directionalBlock(c.get(), p.models().orientableVertical(c.getName(),
+                    p.modLoc("block/headlight_side"),
+                    p.modLoc("block/headlight_front"))))
+            .onRegister(MovementBehaviour.movementBehaviour(
+                    new SearchlightMovement(SearchlightBlockEntity.HEADLIGHT_BEAM, true)))
+            .tag(BlockTags.MINEABLE_WITH_PICKAXE)
+            .lang("Headlight")
             .simpleItem()
             .register();
 

@@ -11,6 +11,10 @@ import com.mojang.blaze3d.platform.NativeImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import net.minecraft.Util;
@@ -155,10 +159,11 @@ public final class SelfTestClient {
         if (probe == null) {
             probe = new SpotProbe(name, SelfTestBridge.probeGroundY);
         }
+        probe.ticks++;
         for (BeamSource light : ClientBeams.snapshot()) {
             BeamPose beam = light.tickBeam();
             if (beam.moving()) {
-                probe.tick(beam, light.lastSpot());
+                probe.tick(light, beam);
             }
         }
     }
@@ -235,12 +240,19 @@ public final class SelfTestClient {
     }
 
     /**
-     * Measures a moving light pointing straight down: its spot belongs directly below it, half a block
-     * above the ground. Per tick that is the logical pose; per frame, the render pose (see onRenderLevel).
+     * Measures moving lights. A light pointing straight down should have its spot directly below it,
+     * half a block above the ground: per tick with the logical pose, per frame with the render pose (see
+     * onRenderLevel). Every light is also watched for front/rear swaps: the ticks between the light
+     * reversing along its beam and switching on or off.
      */
     private static final class SpotProbe {
+        /** Blocks per tick along the beam that count as moving, like the headlight's own threshold. */
+        private static final double MIN_MOTION = 0.005;
+
         final String name;
         final double groundY;
+        final Map<BeamSource, Swaps> swaps = new IdentityHashMap<>();
+        int ticks;
         int samples;
         int noSpot;
         double maxHorizontalGap;
@@ -256,7 +268,12 @@ public final class SelfTestClient {
             this.groundY = groundY;
         }
 
-        void tick(BeamPose beam, @Nullable BeamSpot spot) {
+        void tick(BeamSource light, BeamPose beam) {
+            swaps.computeIfAbsent(light, l -> new Swaps()).tick(ticks, beam, light.beam().length() > 0);
+            if (beam.direction().y > -0.99) {
+                return;
+            }
+            BeamSpot spot = light.lastSpot();
             samples++;
             if (spot == null) {
                 noSpot++;
@@ -279,11 +296,57 @@ public final class SelfTestClient {
 
         void report() {
             Lightworks.LOGGER.info(String.format(
-                    "[selftest] probe %s: %d ticks, %d without a spot, spot moved %.2f blocks east, "
+                    "[selftest] probe %s: %d ticks, %d down-facing samples, %d without a spot, spot moved %.2f blocks east, "
                             + "max horizontal gap to the light %.3f, max height error vs ground %.3f; "
                             + "%d frames, spot behind the drawn beam by %.3f on average, %.3f at most; %s",
-                    name, samples, noSpot, lastSpotX - firstSpotX, maxHorizontalGap, maxGroundError,
+                    name, ticks, samples, noSpot, lastSpotX - firstSpotX, maxHorizontalGap, maxGroundError,
                     frames, frames == 0 ? 0 : sumFrameGap / frames, maxFrameGap, DynamicLights.status()));
+            int n = 0;
+            for (Swaps s : swaps.values()) {
+                Lightworks.LOGGER.info("[selftest] probe {} light {}: {} reversals, {} switches, ticks from reversal to "
+                        + "switch {}, lit {} of {} ticks", name, ++n, s.reversals, s.switches, s.delays, s.litTicks, s.seen);
+            }
+        }
+
+        /** One light's front/rear behaviour. */
+        private static final class Swaps {
+            @Nullable
+            Vec3 lastOrigin;
+            int lastSign;
+            int reversedAt = -1;
+            boolean lit;
+            int seen;
+            int litTicks;
+            int reversals;
+            int switches;
+            final List<Integer> delays = new ArrayList<>();
+
+            void tick(int tick, BeamPose beam, boolean litNow) {
+                seen++;
+                if (litNow) {
+                    litTicks++;
+                }
+                if (lastOrigin != null) {
+                    double along = beam.origin().subtract(lastOrigin).dot(beam.direction());
+                    int sign = Math.abs(along) > MIN_MOTION ? (int) Math.signum(along) : 0;
+                    if (sign != 0) {
+                        if (lastSign != 0 && sign != lastSign) {
+                            reversals++;
+                            reversedAt = tick;
+                        }
+                        lastSign = sign;
+                    }
+                    if (litNow != lit) {
+                        switches++;
+                        if (reversedAt >= 0) {
+                            delays.add(tick - reversedAt);
+                            reversedAt = -1;
+                        }
+                    }
+                }
+                lit = litNow;
+                lastOrigin = beam.origin();
+            }
         }
     }
 }

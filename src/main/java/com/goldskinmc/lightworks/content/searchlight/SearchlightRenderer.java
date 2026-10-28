@@ -8,7 +8,7 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-/** Draws a placed Searchlight's cosmetic beam. On a Sable vehicle, Sable applies the vehicle's pose. */
+/** Draws a placed Searchlight's or Headlight's cosmetic beam. On a Sable vehicle, Sable applies the vehicle's pose. */
 public class SearchlightRenderer implements BlockEntityRenderer<SearchlightBlockEntity> {
     public SearchlightRenderer(BlockEntityRendererProvider.Context context) {
     }
@@ -23,8 +23,9 @@ public class SearchlightRenderer implements BlockEntityRenderer<SearchlightBlock
     @Override
     public AABB getRenderBoundingBox(SearchlightBlockEntity light) {
         Vec3 lens = light.beamOrigin();
-        return new AABB(light.getBlockPos()).minmax(new AABB(lens, lens.add(light.beamDirection()
-                .scale(SearchlightBlockEntity.BEAM.range())))).inflate(SearchlightBlockEntity.BEAM.range() * 0.2);
+        double range = light.beam().shape().range();
+        return new AABB(light.getBlockPos()).minmax(new AABB(lens, lens.add(light.beamDirection().scale(range))))
+                .inflate(range * 0.2);
     }
 
     @Override
