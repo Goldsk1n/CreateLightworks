@@ -2,6 +2,7 @@ package com.goldskinmc.lightworks.debug.selftest;
 
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.LightworksConfig;
+import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
@@ -62,6 +63,11 @@ final class Stage {
      */
     void reserve(BlockPos from, BlockPos to) {
         BlockPos.betweenClosed(from, to).forEach(pos -> savedBlocks.putIfAbsent(pos.immutable(), level.getBlockState(pos)));
+    }
+
+    /** The directional light block entity at {@code pos}. */
+    DirectionalLightBlockEntity lightAt(BlockPos pos) {
+        return (DirectionalLightBlockEntity) level.getBlockEntity(pos);
     }
 
     void run(String command) {

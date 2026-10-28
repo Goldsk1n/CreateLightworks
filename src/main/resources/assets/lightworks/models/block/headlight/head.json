@@ -1,0 +1,147 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "iron": "lightworks:block/light_iron",
+    "metal": "lightworks:block/light_metal",
+    "rim": "lightworks:block/rim_top",
+    "particle": "lightworks:block/light_metal"
+  },
+  "elements": [
+    {
+      "from": [
+        4.5,
+        4.5,
+        4.5
+      ],
+      "to": [
+        11.5,
+        11,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4.5,
+            5,
+            11.5,
+            11.5
+          ],
+          "texture": "#metal"
+        },
+        "south": {
+          "uv": [
+            4.5,
+            5,
+            11.5,
+            11.5
+          ],
+          "texture": "#metal"
+        },
+        "east": {
+          "uv": [
+            4.5,
+            5,
+            11.5,
+            11.5
+          ],
+          "texture": "#metal"
+        },
+        "west": {
+          "uv": [
+            4.5,
+            5,
+            11.5,
+            11.5
+          ],
+          "texture": "#metal"
+        },
+        "up": {
+          "uv": [
+            4.5,
+            4.5,
+            11.5,
+            11.5
+          ],
+          "texture": "#metal"
+        },
+        "down": {
+          "uv": [
+            4.5,
+            4.5,
+            11.5,
+            11.5
+          ],
+          "texture": "#metal"
+        }
+      }
+    },
+    {
+      "from": [
+        4,
+        11,
+        4
+      ],
+      "to": [
+        12,
+        12.5,
+        12
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            3.5,
+            12,
+            5
+          ],
+          "texture": "#iron"
+        },
+        "south": {
+          "uv": [
+            4,
+            3.5,
+            12,
+            5
+          ],
+          "texture": "#iron"
+        },
+        "east": {
+          "uv": [
+            4,
+            3.5,
+            12,
+            5
+          ],
+          "texture": "#iron"
+        },
+        "west": {
+          "uv": [
+            4,
+            3.5,
+            12,
+            5
+          ],
+          "texture": "#iron"
+        },
+        "up": {
+          "uv": [
+            4,
+            4,
+            12,
+            12
+          ],
+          "texture": "#rim"
+        },
+        "down": {
+          "uv": [
+            4,
+            4,
+            12,
+            12
+          ],
+          "texture": "#iron"
+        }
+      }
+    }
+  ]
+}

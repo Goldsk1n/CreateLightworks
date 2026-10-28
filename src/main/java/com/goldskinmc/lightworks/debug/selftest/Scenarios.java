@@ -3,6 +3,13 @@ package com.goldskinmc.lightworks.debug.selftest;
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
+import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
+import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlock;
+import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
+import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
+import com.goldskinmc.lightworks.content.signal.WarningPattern;
+import com.goldskinmc.lightworks.host.BeamPose;
+import com.goldskinmc.lightworks.light.BeamTrace;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.simibubi.create.AllBlocks;
@@ -22,6 +29,11 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.block.WeightedPressurePlateBlock;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.entity.Entity;
@@ -35,10 +47,15 @@ import net.neoforged.fml.ModList;
 final class Scenarios {
     static final Map<String, Supplier<Script>> ALL = new LinkedHashMap<>();
     /** What {@code -Pselftest=true} runs. */
-    static final String DEFAULT = "fixed,vehicle,bearing,piston,vehicle-fast";
+    static final String DEFAULT = "fixed,aim,floodlight,pantilt,beacon,warning,vehicle,bearing,piston,vehicle-fast";
 
     static {
         ALL.put("fixed", Scenarios::fixed);
+        ALL.put("aim", Scenarios::aim);
+        ALL.put("floodlight", Scenarios::floodlight);
+        ALL.put("pantilt", Scenarios::panTilt);
+        ALL.put("beacon", Scenarios::beacon);
+        ALL.put("warning", Scenarios::warning);
         ALL.put("vehicle", () -> vehicle("vehicle", 0.1, 100, true));
         // Create's default train top speed, 28 blocks a second: how far the spot trails at train speeds
         ALL.put("vehicle-fast", () -> vehicle("vehicle-fast", 1.4, 40, false));
@@ -110,6 +127,287 @@ final class Scenarios {
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
                 });
+    }
+
+    /**
+     * Wrench aim: a Searchlight on the floor aimed by a Wrench click at a point high on a wall 12 blocks
+     * away. The beam should land within a block of that point and light it.
+     */
+    static Script aim() {
+        BlockPos[] light = new BlockPos[1];
+        Vec3[] target = new Vec3[1];
+        return new Script("aim")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(-3, 2);
+                    light[0] = stage.at(0, 0, 8);
+                    for (int y = 0; y <= 6; y++) {
+                        for (int z = 5; z <= 11; z++) {
+                            stage.set(stage.at(12, y, z), Blocks.STONE.defaultBlockState());
+                        }
+                    }
+                    stage.set(light[0], searchlight(Direction.UP));
+                    // West face of the wall, four blocks up and two to the side
+                    target[0] = Vec3.atLowerCornerOf(stage.at(12, 4, 10)).add(0, 0.5, 0.5);
+                    SelfTestBridge.focus = target[0];
+                })
+                .waitTicks(10)
+                .run(stage -> {
+                    wrenchAim(stage, light[0], target[0]);
+                    stage.log("aim: wrenched to %s", stage.lightAt(light[0]).aim());
+                })
+                .waitTicks(30)
+                .run(stage -> {
+                    DirectionalLightBlockEntity searchlight = stage.lightAt(light[0]);
+                    BeamPose beam = searchlight.tickBeam();
+                    BeamTrace.Hit hit = BeamTrace.trace(stage.level, beam.origin(), beam.direction(), 48);
+                    BlockPos air = BlockPos.containing(hit.end().subtract(beam.direction().scale(0.5)));
+                    stage.log("aim: beam hits %s at %.2f blocks, %.2f from the aimed point; block light there %d",
+                            hit.block(), hit.distance(), hit.end().distanceTo(target[0]),
+                            stage.level.getBrightness(LightLayer.BLOCK, air));
+                })
+                .shot("aim-0-wall")
+                .run(stage -> {
+                    SelfTestBridge.focus = Vec3.atCenterOf(light[0]);
+                    stage.stand(-1, 6);
+                })
+                .waitTicks(5)
+                .shot("aim-1-head")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * A Floodlight on the side of a pillar, wrenched to light the ground in front of it: a wide lit patch.
+     * (On top of the pillar it could not point down: aim stays in the half-space in front of the mount.)
+     */
+    static Script floodlight() {
+        BlockPos[] light = new BlockPos[1];
+        Vec3[] target = new Vec3[1];
+        return new Script("floodlight")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(0, -4);
+                    for (int y = 0; y <= 4; y++) {
+                        stage.set(stage.at(-7, y, 6), Blocks.STONE.defaultBlockState());
+                    }
+                    light[0] = stage.at(-6, 4, 6);
+                    stage.set(light[0], LightworksBlocks.FLOODLIGHT.getDefaultState()
+                            .setValue(DirectionalLightBlock.FACING, Direction.EAST));
+                    // Top of the ground 6 blocks east of the pillar
+                    target[0] = Vec3.atLowerCornerOf(stage.at(0, 0, 6)).add(0.5, 0, 0.5);
+                    SelfTestBridge.focus = target[0];
+                })
+                .waitTicks(10)
+                .run(stage -> wrenchAim(stage, light[0], target[0]))
+                .waitTicks(40)
+                .run(stage -> {
+                    StringBuilder levels = new StringBuilder();
+                    for (int dx = -6; dx <= 6; dx += 2) {
+                        levels.append(' ').append(stage.level.getBrightness(LightLayer.BLOCK, stage.at(dx, 0, 6)));
+                    }
+                    stage.log("floodlight: aim %s, block light along the ground from x-6 to x+6:%s",
+                            stage.lightAt(light[0]).aim(), levels);
+                })
+                .shot("floodlight-0-ground")
+                .run(stage -> {
+                    SelfTestBridge.focus = Vec3.atCenterOf(light[0]);
+                    stage.stand(-4, 2);
+                })
+                .waitTicks(5)
+                .shot("floodlight-1-head")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * A Searchlight hanging under a Pan-Tilt Head on a Creative Motor at 16 RPM, tilted 60 degrees down by
+     * a signal of 10: the spot should circle the ground below about 4.3 blocks from the axis, sweeping
+     * 4.8 degrees a tick. When the motor stops, the light becomes a fixed light and lights its spot through
+     * a server light block.
+     */
+    static Script panTilt() {
+        int rpm = 16;
+        BlockPos[] at = new BlockPos[3];
+        return new Script("pantilt")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(0, -4);
+                    BlockPos motor = stage.at(0, 9, 8);
+                    at[0] = motor;
+                    at[1] = motor.below();
+                    at[2] = motor.below(2);
+                    stage.set(at[1], LightworksBlocks.PAN_TILT_HEAD.getDefaultState()
+                            .setValue(PanTiltHeadBlock.FACING, Direction.DOWN));
+                    stage.set(at[2], searchlight(Direction.DOWN));
+                    // A pressure plate holding signal 10 beside the head: tilt 60 degrees. It stands on glass,
+                    // which does not carry its signal on to the light below the head
+                    stage.set(at[1].east().below(), Blocks.GLASS.defaultBlockState());
+                    stage.set(at[1].east(), Blocks.LIGHT_WEIGHTED_PRESSURE_PLATE.defaultBlockState()
+                            .setValue(WeightedPressurePlateBlock.POWER, 10));
+                    stage.set(motor, AllBlocks.CREATIVE_MOTOR.getDefaultState()
+                            .setValue(CreativeMotorBlock.FACING, Direction.DOWN));
+                    setMotorSpeed(stage, motor, rpm);
+                    SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 0, 8)).add(0.5, 0, 0.5);
+                })
+                .waitTicks(40)
+                .shot("pantilt-0-turning")
+                .run(stage -> {
+                    SelfTestBridge.probeGroundY = stage.origin.getY();
+                    SelfTestBridge.probeAxis = Vec3.atCenterOf(at[2]);
+                    SelfTestBridge.probe = "pantilt";
+                    SelfTestBridge.recording = "pantilt-sweep";
+                })
+                .waitTicks(80)
+                .run(stage -> {
+                    SelfTestBridge.recording = null;
+                    SelfTestBridge.probe = null;
+                    SelfTestBridge.probeAxis = null;
+                    setMotorSpeed(stage, at[0], 0);
+                })
+                .waitTicks(40)
+                .run(stage -> {
+                    DirectionalLightBlockEntity light = stage.lightAt(at[2]);
+                    BeamPose beam = light.tickBeam();
+                    BeamTrace.Hit hit = BeamTrace.trace(stage.level, beam.origin(), beam.direction(), 48);
+                    BlockPos air = BlockPos.containing(hit.end().subtract(beam.direction().scale(0.5)));
+                    stage.log("pantilt: stopped, moving %s, beam hits %s, block light at the spot %d (%s)",
+                            beam.moving(), hit.block(), stage.level.getBrightness(LightLayer.BLOCK, air),
+                            stage.level.getBlockState(air).getBlock().getDescriptionId());
+                })
+                .shot("pantilt-1-stopped")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * A Rotating Beacon on a Creative Motor at 8 RPM inside a ring of walls 6 blocks out: each beam's spot
+     * should go round the walls at 2.4 degrees a tick, half a turn apart. Stopped, both beams light their
+     * walls through server light blocks.
+     */
+    static Script beacon() {
+        int rpm = 8;
+        BlockPos[] at = new BlockPos[2];
+        return new Script("beacon")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(0, 0);
+                    at[0] = stage.at(0, 0, 10);
+                    at[1] = at[0].above();
+                    for (int dx = -6; dx <= 6; dx++) {
+                        for (int dz = -6; dz <= 6; dz++) {
+                            if (Math.max(Math.abs(dx), Math.abs(dz)) == 6 && !(dz == -6 && Math.abs(dx) <= 1)) {
+                                for (int y = 0; y <= 3; y++) {
+                                    stage.set(at[0].offset(dx, y, dz), Blocks.STONE.defaultBlockState());
+                                }
+                            }
+                        }
+                    }
+                    stage.set(at[1], LightworksBlocks.ROTATING_BEACON.getDefaultState()
+                            .setValue(RotatingBeaconBlock.FACING, Direction.UP));
+                    stage.set(at[0], AllBlocks.CREATIVE_MOTOR.getDefaultState()
+                            .setValue(CreativeMotorBlock.FACING, Direction.UP));
+                    setMotorSpeed(stage, at[0], rpm);
+                    SelfTestBridge.focus = Vec3.atCenterOf(at[1]);
+                })
+                .waitTicks(40)
+                .shot("beacon-0-turning")
+                .run(stage -> {
+                    SelfTestBridge.probeGroundY = stage.origin.getY();
+                    SelfTestBridge.probeAxis = Vec3.atCenterOf(at[1]);
+                    SelfTestBridge.probe = "beacon";
+                    SelfTestBridge.recording = "beacon-sweep";
+                })
+                .waitTicks(80)
+                .run(stage -> {
+                    SelfTestBridge.recording = null;
+                    SelfTestBridge.probe = null;
+                    SelfTestBridge.probeAxis = null;
+                    setMotorSpeed(stage, at[0], 0);
+                })
+                .waitTicks(40)
+                .run(stage -> {
+                    int lit = 0;
+                    for (BlockPos pos : BlockPos.betweenClosed(at[0].offset(-6, 0, -6), at[0].offset(6, 3, 6))) {
+                        if (stage.level.getBlockState(pos).is(LightworksBlocks.BEAM_LIGHT.get())) {
+                            lit++;
+                        }
+                    }
+                    stage.log("beacon: stopped, %d server light blocks inside the ring", lit);
+                })
+                .shot("beacon-1-stopped")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.discardContraptions(at[0], 8);
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * Four Warning Lights in a row, one per pattern (steady, blink, pulse, flash), filmed for two seconds.
+     * Logs the block light beside each (steady whatever the pattern) and each pattern's lens over 30 ticks.
+     */
+    static Script warning() {
+        BlockPos[] lamps = new BlockPos[4];
+        return new Script("warning")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(0, 0);
+                    for (int i = 0; i < 4; i++) {
+                        lamps[i] = stage.at(-3 + 2 * i, 0, 4);
+                        stage.set(lamps[i], LightworksBlocks.WARNING_LIGHT.getDefaultState()
+                                .setValue(SignalLampBlock.FACING, Direction.UP));
+                        if (stage.level.getBlockEntity(lamps[i]) instanceof SmartBlockEntity lamp) {
+                            ScrollValueBehaviour pattern = lamp.getBehaviour(ScrollValueBehaviour.TYPE);
+                            if (pattern != null) {
+                                pattern.setValue(i);
+                            }
+                        }
+                    }
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 0, 4));
+                })
+                .waitTicks(30)
+                .run(stage -> {
+                    StringBuilder light = new StringBuilder();
+                    for (BlockPos lamp : lamps) {
+                        light.append(' ').append(stage.level.getBrightness(LightLayer.BLOCK, lamp.south()));
+                    }
+                    stage.log("warning: block light beside each lamp:%s", light);
+                    long t = stage.level.getGameTime();
+                    for (WarningPattern pattern : WarningPattern.values()) {
+                        StringBuilder lens = new StringBuilder();
+                        for (int i = 0; i < 30; i++) {
+                            lens.append(String.format(" %.1f", pattern.at(t + i, 0)));
+                        }
+                        stage.log("warning: %s lens over 30 ticks:%s", pattern, lens);
+                    }
+                    SelfTestBridge.recording = "warning-patterns";
+                })
+                .waitTicks(40)
+                .run(stage -> SelfTestBridge.recording = null)
+                .shot("warning-0")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /** Aims a light the way a player does: looking along {@code target - light centre} and clicking it with a Wrench. */
+    private static void wrenchAim(Stage stage, BlockPos light, Vec3 target) {
+        Vec3 d = target.subtract(Vec3.atCenterOf(light)).normalize();
+        stage.player.setYRot((float) (Mth.atan2(-d.x, d.z) * Mth.RAD_TO_DEG));
+        stage.player.setXRot((float) (-Math.asin(d.y) * Mth.RAD_TO_DEG));
+        BlockState state = stage.level.getBlockState(light);
+        if (state.getBlock() instanceof DirectionalLightBlock block) {
+            block.onWrenched(state, new UseOnContext(stage.player, InteractionHand.MAIN_HAND,
+                    new BlockHitResult(Vec3.atCenterOf(light), Direction.UP, light, false)));
+        }
     }
 
     /**

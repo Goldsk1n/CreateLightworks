@@ -1,0 +1,77 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "lens": "lightworks:block/lens",
+    "particle": "lightworks:block/lens"
+  },
+  "elements": [
+    {
+      "from": [
+        5,
+        12.5,
+        5
+      ],
+      "to": [
+        11,
+        12.8,
+        11
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            5,
+            3.2,
+            11,
+            3.5
+          ],
+          "texture": "#lens"
+        },
+        "south": {
+          "uv": [
+            5,
+            3.2,
+            11,
+            3.5
+          ],
+          "texture": "#lens"
+        },
+        "east": {
+          "uv": [
+            5,
+            3.2,
+            11,
+            3.5
+          ],
+          "texture": "#lens"
+        },
+        "west": {
+          "uv": [
+            5,
+            3.2,
+            11,
+            3.5
+          ],
+          "texture": "#lens"
+        },
+        "up": {
+          "uv": [
+            5,
+            5,
+            11,
+            11
+          ],
+          "texture": "#lens"
+        },
+        "down": {
+          "uv": [
+            5,
+            5,
+            11,
+            11
+          ],
+          "texture": "#lens"
+        }
+      }
+    }
+  ]
+}

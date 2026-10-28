@@ -213,7 +213,7 @@ public final class SelfTestClient {
             return;
         }
         if (probe == null) {
-            probe = new SpotProbe(name, SelfTestBridge.probeGroundY);
+            probe = new SpotProbe(name, SelfTestBridge.probeGroundY, SelfTestBridge.probeAxis);
         }
         probe.ticks++;
         for (BeamSource light : ClientBeams.snapshot()) {
@@ -360,7 +360,10 @@ public final class SelfTestClient {
 
         final String name;
         final double groundY;
+        @Nullable
+        final Vec3 axis;
         final Map<BeamSource, Swaps> swaps = new IdentityHashMap<>();
+        final Map<BeamSource, Circle> circles = new IdentityHashMap<>();
         int ticks;
         int samples;
         int noSpot;
@@ -372,13 +375,17 @@ public final class SelfTestClient {
         double maxFrameGap;
         double sumFrameGap;
 
-        SpotProbe(String name, double groundY) {
+        SpotProbe(String name, double groundY, @Nullable Vec3 axis) {
             this.name = name;
             this.groundY = groundY;
+            this.axis = axis;
         }
 
         void tick(BeamSource light, BeamPose beam) {
             swaps.computeIfAbsent(light, l -> new Swaps()).tick(ticks, beam, light.beam().length() > 0);
+            if (axis != null && light.lastSpot() != null) {
+                circles.computeIfAbsent(light, l -> new Circle()).add(light.lastSpot(), axis);
+            }
             if (beam.direction().y > -0.99) {
                 return;
             }
@@ -416,10 +423,39 @@ public final class SelfTestClient {
                             + "%d frames, spot behind the drawn beam by %.3f on average, %.3f at most; %s",
                     name, ticks, samples, noSpot, lastSpotX - firstSpotX, maxHorizontalGap, maxGroundError,
                     frames, frames == 0 ? 0 : sumFrameGap / frames, maxFrameGap, DynamicLights.status()));
+            int c = 0;
+            for (Circle circle : circles.values()) {
+                Lightworks.LOGGER.info(String.format("[selftest] probe %s light %d circle: %d samples, spot %.2f to "
+                                + "%.2f blocks from the axis, went %.0f degrees round (%.2f a tick)", name, ++c,
+                        circle.samples, circle.minRadius, circle.maxRadius, circle.swept, circle.swept / ticks));
+            }
             int n = 0;
             for (Swaps s : swaps.values()) {
                 Lightworks.LOGGER.info("[selftest] probe {} light {}: {} reversals, {} switches, ticks from reversal to "
                         + "switch {}, lit {} of {} ticks", name, ++n, s.reversals, s.switches, s.delays, s.litTicks, s.seen);
+            }
+        }
+
+        /** How far one light's spot is from the probe axis, and the angle it has gone round it in total. */
+        private static final class Circle {
+            int samples;
+            double minRadius = Double.MAX_VALUE;
+            double maxRadius;
+            double swept;
+            double lastAngle = Double.NaN;
+
+            void add(BeamSpot spot, Vec3 axis) {
+                double dx = spot.spotX() - axis.x;
+                double dz = spot.spotZ() - axis.z;
+                double radius = Math.hypot(dx, dz);
+                samples++;
+                minRadius = Math.min(minRadius, radius);
+                maxRadius = Math.max(maxRadius, radius);
+                double angle = Math.toDegrees(Math.atan2(dz, dx));
+                if (!Double.isNaN(lastAngle)) {
+                    swept += Math.abs(Mth.wrapDegrees(angle - lastAngle));
+                }
+                lastAngle = angle;
             }
         }
 

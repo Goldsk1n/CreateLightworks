@@ -1,0 +1,69 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "turntable": "lightworks:block/turntable",
+    "turntable_side": "lightworks:block/turntable_side",
+    "particle": "lightworks:block/turntable_side"
+  },
+  "elements": [
+    {
+      "from": [
+        1,
+        13,
+        1
+      ],
+      "to": [
+        15,
+        16,
+        15
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            1,
+            0,
+            15,
+            3
+          ],
+          "texture": "#turntable_side"
+        },
+        "south": {
+          "uv": [
+            1,
+            0,
+            15,
+            3
+          ],
+          "texture": "#turntable_side"
+        },
+        "east": {
+          "uv": [
+            1,
+            0,
+            15,
+            3
+          ],
+          "texture": "#turntable_side"
+        },
+        "west": {
+          "uv": [
+            1,
+            0,
+            15,
+            3
+          ],
+          "texture": "#turntable_side"
+        },
+        "up": {
+          "uv": [
+            1,
+            1,
+            15,
+            15
+          ],
+          "texture": "#turntable"
+        }
+      }
+    }
+  ]
+}

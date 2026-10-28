@@ -1,6 +1,22 @@
 {
   "block.lightworks.beam_light": "ʇɥbıꞀ ɯɐǝᗺ",
+  "block.lightworks.floodlight": "ʇɥbıןpooןℲ",
   "block.lightworks.headlight": "ʇɥbıןpɐǝH",
+  "block.lightworks.navigation_light": "ʇɥbıꞀ uoıʇɐbıʌɐN",
+  "block.lightworks.pan_tilt_head": "pɐǝH ʇןı⟘-uɐԀ",
+  "block.lightworks.rotating_beacon": "uoɔɐǝᗺ buıʇɐʇoᴚ",
   "block.lightworks.searchlight": "ʇɥbıןɥɔɹɐǝS",
-  "lightworks.configuration.serverLightBlocks": "sʞɔoןq ʇɥbıן ɹǝʌɹǝS"
+  "block.lightworks.tail_light": "ʇɥbıꞀ ǝʞɐɹᗺ puɐ ןıɐ⟘",
+  "block.lightworks.warning_light": "ʇɥbıꞀ buıuɹɐM",
+  "create.lightworks.warning_pattern.blink": "ʞuıןᗺ",
+  "create.lightworks.warning_pattern.flash": "ɥsɐןℲ",
+  "create.lightworks.warning_pattern.pulse": "ǝsןnԀ",
+  "create.lightworks.warning_pattern.steady": "ʎpɐǝʇS",
+  "lightworks.configuration.beamVisual": "ɯɐǝq ǝןqısıΛ",
+  "lightworks.configuration.beamVisualWithShaders": "sɹǝpɐɥs ɥʇıʍ ɯɐǝq ǝןqısıΛ",
+  "lightworks.configuration.debugOverlay": ")ƐℲ( ʎɐןɹǝʌo bnqǝᗡ",
+  "lightworks.configuration.invertRedstone": "ǝuoʇspǝɹ ʇɹǝʌuI",
+  "lightworks.configuration.maxBeamRange": "ɯɐǝq ʇsǝbuoꞀ",
+  "lightworks.configuration.serverLightBlocks": "sʞɔoןq ʇɥbıן ɹǝʌɹǝS",
+  "lightworks.warning_light.pattern": "uɹǝʇʇɐԀ"
 }

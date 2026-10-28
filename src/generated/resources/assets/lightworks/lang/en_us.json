@@ -1,6 +1,22 @@
 {
   "block.lightworks.beam_light": "Beam Light",
+  "block.lightworks.floodlight": "Floodlight",
   "block.lightworks.headlight": "Headlight",
+  "block.lightworks.navigation_light": "Navigation Light",
+  "block.lightworks.pan_tilt_head": "Pan-Tilt Head",
+  "block.lightworks.rotating_beacon": "Rotating Beacon",
   "block.lightworks.searchlight": "Searchlight",
-  "lightworks.configuration.serverLightBlocks": "Server light blocks"
+  "block.lightworks.tail_light": "Tail and Brake Light",
+  "block.lightworks.warning_light": "Warning Light",
+  "create.lightworks.warning_pattern.blink": "Blink",
+  "create.lightworks.warning_pattern.flash": "Flash",
+  "create.lightworks.warning_pattern.pulse": "Pulse",
+  "create.lightworks.warning_pattern.steady": "Steady",
+  "lightworks.configuration.beamVisual": "Visible beam",
+  "lightworks.configuration.beamVisualWithShaders": "Visible beam with shaders",
+  "lightworks.configuration.debugOverlay": "Debug overlay (F3)",
+  "lightworks.configuration.invertRedstone": "Invert redstone",
+  "lightworks.configuration.maxBeamRange": "Longest beam",
+  "lightworks.configuration.serverLightBlocks": "Server light blocks",
+  "lightworks.warning_light.pattern": "Pattern"
 }

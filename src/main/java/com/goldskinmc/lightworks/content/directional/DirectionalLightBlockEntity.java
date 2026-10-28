@@ -5,6 +5,7 @@ import com.goldskinmc.lightworks.beam.Aim;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
+import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlockEntity;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.host.SableHost;
@@ -36,10 +37,14 @@ import org.jetbrains.annotations.Nullable;
  * is in plot coordinates and {@link SableHost} maps the beam to the world). A fixed light re-traces its
  * beam when re-aimed, dimmed, or every few ticks to notice blocks placed in its path, and lights the hit
  * through a server light block and the client dynamic light. On a vehicle it re-traces every tick on the
- * client only.
+ * client only. On a turning Pan-Tilt Head it is a moving light too, aimed by the head instead of by its
+ * own aim.
  */
 public class DirectionalLightBlockEntity extends SmartBlockEntity
         implements BeamLightOwner, BeamSource, TransformableBlockEntity {
+    /** Head angles written for contraption copies, which cannot see the head. */
+    static final String HEAD_YAW = "HeadYaw";
+    static final String HEAD_ELEVATION = "HeadElevation";
     /** How often the beam is re-traced to notice blocks placed or removed in its path. */
     private static final int RETRACE_INTERVAL_TICKS = 5;
     /** The lens sits this far from the block's centre, along the beam. */
@@ -54,7 +59,14 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
     @Nullable
     private Vec3 tracedDirection;
     private int tracedBrightness = -1;
+    private boolean tracedMoving;
     private boolean retraceDue = true;
+    /**
+     * The head's angles as of the last tick, or null when not on a head. Saving reads this rather than the
+     * head: a chunk can be saved while its neighbours unload, and looking at them then waits forever.
+     */
+    @Nullable
+    private float[] headAngles;
 
     public DirectionalLightBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState blockState) {
         super(type, pos, blockState);
@@ -104,9 +116,45 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         return setAim(Aim.fromDirection(facing.getStepX(), facing.getStepY(), facing.getStepZ(), look.x, look.y, look.z));
     }
 
+    /** The Pan-Tilt Head this light is mounted on, or null. */
+    public @Nullable PanTiltHeadBlockEntity head() {
+        if (level == null) {
+            return null;
+        }
+        Direction facing = mountFacing();
+        BlockPos below = worldPosition.relative(facing.getOpposite());
+        if (!level.isLoaded(below)) {
+            return null;
+        }
+        return level.getBlockEntity(below) instanceof PanTiltHeadBlockEntity head && head.facing() == facing ? head : null;
+    }
+
+    /** True while a Pan-Tilt Head turns this light: then it is a moving light. */
+    public boolean turnedByHead() {
+        PanTiltHeadBlockEntity head = head();
+        return head != null && head.turning();
+    }
+
+    /**
+     * {yaw, elevation} in degrees that the beam points at, {@code partialTick} into the current tick:
+     * from the Pan-Tilt Head under the light, or the light's own aim.
+     */
+    public float[] aimAngles(float partialTick) {
+        PanTiltHeadBlockEntity head = head();
+        if (head != null) {
+            return new float[] {head.yaw(partialTick), head.elevation(partialTick)};
+        }
+        return new float[] {state.aim().yaw(), state.aim().elevation()};
+    }
+
     /** Unit vector the beam points along, in the same coordinates as {@link #beamOrigin()}. */
     public Vec3 beamDirection() {
-        return direction(mountFacing(), state.aim());
+        return beamDirection(0);
+    }
+
+    public Vec3 beamDirection(float partialTick) {
+        float[] angles = aimAngles(partialTick);
+        return direction(mountFacing(), angles[0], angles[1]);
     }
 
     /**
@@ -114,11 +162,19 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
      * coordinates, not world coordinates.
      */
     public Vec3 beamOrigin() {
-        return Vec3.atCenterOf(worldPosition).add(beamDirection().scale(LENS_RADIUS));
+        return beamOrigin(0);
+    }
+
+    public Vec3 beamOrigin(float partialTick) {
+        return Vec3.atCenterOf(worldPosition).add(beamDirection(partialTick).scale(LENS_RADIUS));
     }
 
     static Vec3 direction(Direction facing, Aim aim) {
-        double[] d = aim.direction(facing.getStepX(), facing.getStepY(), facing.getStepZ());
+        return direction(facing, aim.yaw(), aim.elevation());
+    }
+
+    static Vec3 direction(Direction facing, double yaw, double elevation) {
+        double[] d = Aim.direction(facing.getStepX(), facing.getStepY(), facing.getStepZ(), yaw, elevation);
         return new Vec3(d[0], d[1], d[2]);
     }
 
@@ -138,12 +194,17 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
     /** The beam in world coordinates, following the vehicle when this light is on one. */
     @Override
     public BeamPose tickBeam() {
-        return SableHost.toWorld(level, worldPosition, beamOrigin(), beamDirection());
+        return movingWithHead(SableHost.toWorld(level, worldPosition, beamOrigin(), beamDirection()));
     }
 
     @Override
     public BeamPose renderBeam(float partialTick) {
-        return SableHost.toWorldForRender(worldPosition, beamOrigin(), beamDirection(), partialTick);
+        return movingWithHead(SableHost.toWorldForRender(worldPosition, beamOrigin(partialTick),
+                beamDirection(partialTick), partialTick));
+    }
+
+    private BeamPose movingWithHead(BeamPose pose) {
+        return pose.moving() || !turnedByHead() ? pose : new BeamPose(pose.origin(), pose.direction(), true);
     }
 
     @Override
@@ -171,6 +232,7 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
             return;
         }
         long start = Timer.start();
+        headAngles = head() == null ? null : aimAngles(0);
         updateBeam();
         (level.isClientSide ? Timer.CLIENT_BLOCK : Timer.SERVER_BLOCK).stop(start);
     }
@@ -178,7 +240,8 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
     private void updateBeam() {
         BeamPose beam = tickBeam();
         int brightness = brightness();
-        boolean changed = !beam.direction().equals(tracedDirection) || brightness != tracedBrightness;
+        boolean changed = !beam.direction().equals(tracedDirection) || brightness != tracedBrightness
+                || beam.moving() != tracedMoving;
         // On a vehicle the beam moves every tick; a fixed one is re-traced when it changes or periodically
         if (!beam.moving() && !retraceDue && !changed) {
             return;
@@ -194,6 +257,7 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         }
         tracedDirection = beam.direction();
         tracedBrightness = brightness;
+        tracedMoving = beam.moving();
         retraceDue = false;
     }
 
@@ -285,6 +349,10 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         state.write(tag);
         if (!clientPacket) {
             serverLight.save(tag);
+            if (headAngles != null) {
+                tag.putFloat(HEAD_YAW, headAngles[0]);
+                tag.putFloat(HEAD_ELEVATION, headAngles[1]);
+            }
         }
     }
 

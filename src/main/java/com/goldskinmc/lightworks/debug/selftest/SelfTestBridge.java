@@ -39,6 +39,9 @@ final class SelfTestBridge {
     @Nullable
     static volatile String probe;
     static volatile double probeGroundY;
+    /** While set, the probe also measures how far each spot is from this vertical axis and how far round it goes. */
+    @Nullable
+    static volatile Vec3 probeAxis;
 
     private SelfTestBridge() {
     }
@@ -56,5 +59,6 @@ final class SelfTestBridge {
         frameStats = null;
         recording = null;
         probe = null;
+        probeAxis = null;
     }
 }

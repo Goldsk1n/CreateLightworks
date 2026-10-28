@@ -27,6 +27,11 @@ public final class Lightworks {
         modBus.addListener(Lightworks::addToCreativeTabs);
         container.registerConfig(ModConfig.Type.SERVER, LightworksConfig.SPEC);
         REGISTRATE.addRawLang("lightworks.configuration.serverLightBlocks", "Server light blocks");
+        REGISTRATE.addRawLang("lightworks.warning_light.pattern", "Pattern");
+        REGISTRATE.addRawLang("create.lightworks.warning_pattern.steady", "Steady");
+        REGISTRATE.addRawLang("create.lightworks.warning_pattern.blink", "Blink");
+        REGISTRATE.addRawLang("create.lightworks.warning_pattern.pulse", "Pulse");
+        REGISTRATE.addRawLang("create.lightworks.warning_pattern.flash", "Flash");
         REGISTRATE.addRawLang("lightworks.configuration.invertRedstone", "Invert redstone");
         REGISTRATE.addRawLang("lightworks.configuration.maxBeamRange", "Longest beam");
         REGISTRATE.addRawLang("lightworks.configuration.beamVisual", "Visible beam");
@@ -37,7 +42,13 @@ public final class Lightworks {
     private static void addToCreativeTabs(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(LightworksBlocks.SEARCHLIGHT);
+            event.accept(LightworksBlocks.FLOODLIGHT);
+            event.accept(LightworksBlocks.PAN_TILT_HEAD);
+            event.accept(LightworksBlocks.ROTATING_BEACON);
+            event.accept(LightworksBlocks.WARNING_LIGHT);
             event.accept(LightworksBlocks.HEADLIGHT);
+            event.accept(LightworksBlocks.TAIL_LIGHT);
+            event.accept(LightworksBlocks.NAVIGATION_LIGHT);
         }
     }
 

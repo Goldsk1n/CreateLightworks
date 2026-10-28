@@ -1,0 +1,214 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "lens": "lightworks:block/lens",
+    "metal": "lightworks:block/light_metal",
+    "particle": "lightworks:block/light_metal"
+  },
+  "elements": [
+    {
+      "from": [
+        5,
+        0,
+        5
+      ],
+      "to": [
+        11,
+        1.5,
+        11
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            5,
+            14.5,
+            11,
+            16
+          ],
+          "texture": "#metal"
+        },
+        "south": {
+          "uv": [
+            5,
+            14.5,
+            11,
+            16
+          ],
+          "texture": "#metal"
+        },
+        "east": {
+          "uv": [
+            5,
+            14.5,
+            11,
+            16
+          ],
+          "texture": "#metal"
+        },
+        "west": {
+          "uv": [
+            5,
+            14.5,
+            11,
+            16
+          ],
+          "texture": "#metal"
+        },
+        "up": {
+          "uv": [
+            5,
+            5,
+            11,
+            11
+          ],
+          "texture": "#metal"
+        },
+        "down": {
+          "uv": [
+            5,
+            5,
+            11,
+            11
+          ],
+          "texture": "#metal"
+        }
+      }
+    },
+    {
+      "from": [
+        5.5,
+        1.5,
+        5.5
+      ],
+      "to": [
+        10.5,
+        5.5,
+        10.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            5.5,
+            10.5,
+            10.5,
+            14.5
+          ],
+          "texture": "#lens"
+        },
+        "south": {
+          "uv": [
+            5.5,
+            10.5,
+            10.5,
+            14.5
+          ],
+          "texture": "#lens"
+        },
+        "east": {
+          "uv": [
+            5.5,
+            10.5,
+            10.5,
+            14.5
+          ],
+          "texture": "#lens"
+        },
+        "west": {
+          "uv": [
+            5.5,
+            10.5,
+            10.5,
+            14.5
+          ],
+          "texture": "#lens"
+        },
+        "up": {
+          "uv": [
+            5.5,
+            5.5,
+            10.5,
+            10.5
+          ],
+          "texture": "#lens"
+        },
+        "down": {
+          "uv": [
+            5.5,
+            5.5,
+            10.5,
+            10.5
+          ],
+          "texture": "#lens"
+        }
+      }
+    },
+    {
+      "from": [
+        6.5,
+        5.5,
+        6.5
+      ],
+      "to": [
+        9.5,
+        6,
+        9.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            6.5,
+            10,
+            9.5,
+            10.5
+          ],
+          "texture": "#lens"
+        },
+        "south": {
+          "uv": [
+            6.5,
+            10,
+            9.5,
+            10.5
+          ],
+          "texture": "#lens"
+        },
+        "east": {
+          "uv": [
+            6.5,
+            10,
+            9.5,
+            10.5
+          ],
+          "texture": "#lens"
+        },
+        "west": {
+          "uv": [
+            6.5,
+            10,
+            9.5,
+            10.5
+          ],
+          "texture": "#lens"
+        },
+        "up": {
+          "uv": [
+            6.5,
+            6.5,
+            9.5,
+            9.5
+          ],
+          "texture": "#lens"
+        },
+        "down": {
+          "uv": [
+            6.5,
+            6.5,
+            9.5,
+            9.5
+          ],
+          "texture": "#lens"
+        }
+      }
+    }
+  ]
+}

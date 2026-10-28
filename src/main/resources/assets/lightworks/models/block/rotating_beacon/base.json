@@ -1,0 +1,79 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "beacon_casing": "lightworks:block/beacon_casing",
+    "casing_plain": "lightworks:block/casing_plain",
+    "shaft": "lightworks:block/shaft_input",
+    "particle": "lightworks:block/beacon_casing"
+  },
+  "elements": [
+    {
+      "from": [
+        1,
+        0,
+        1
+      ],
+      "to": [
+        15,
+        4,
+        15
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            1,
+            12,
+            15,
+            16
+          ],
+          "texture": "#beacon_casing"
+        },
+        "south": {
+          "uv": [
+            1,
+            12,
+            15,
+            16
+          ],
+          "texture": "#beacon_casing"
+        },
+        "east": {
+          "uv": [
+            1,
+            12,
+            15,
+            16
+          ],
+          "texture": "#beacon_casing"
+        },
+        "west": {
+          "uv": [
+            1,
+            12,
+            15,
+            16
+          ],
+          "texture": "#beacon_casing"
+        },
+        "up": {
+          "uv": [
+            1,
+            1,
+            15,
+            15
+          ],
+          "texture": "#casing_plain"
+        },
+        "down": {
+          "uv": [
+            1,
+            1,
+            15,
+            15
+          ],
+          "texture": "#shaft"
+        }
+      }
+    }
+  ]
+}
