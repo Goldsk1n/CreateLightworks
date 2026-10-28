@@ -5,6 +5,7 @@ import com.goldskinmc.lightworks.beam.Aim;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
+import com.goldskinmc.lightworks.content.MovingBeam;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlockEntity;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.host.BeamPose;
@@ -67,6 +68,8 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
      */
     @Nullable
     private float[] headAngles;
+    /** Headlight on a Sable vehicle, client only: last seen moving the way it points. */
+    private boolean leading = true;
 
     public DirectionalLightBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState blockState) {
         super(type, pos, blockState);
@@ -178,9 +181,29 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         return new Vec3(d[0], d[1], d[2]);
     }
 
-    /** Brightness the light shows now, 0 (off) to 15. */
+    /**
+     * Brightness the light shows now, 0 (off) to 15. A Headlight without a redstone signal on a Sable
+     * vehicle is dark while it trails (any signal overrides that, like on contraptions).
+     */
     public int brightness() {
-        return state.brightness();
+        return leading ? state.brightness() : 0;
+    }
+
+    /** Client: watches the vehicle's motion along the beam, like a Headlight on a contraption. */
+    private void followMotion() {
+        if (!type.followsMotion() || state.signal() != 0) {
+            leading = true;
+            return;
+        }
+        Vec3 velocity = SableHost.velocity(level, worldPosition);
+        if (velocity == null) {
+            leading = true;
+            return;
+        }
+        double along = velocity.dot(tickBeam().direction());
+        if (Math.abs(along) > MovingBeam.MIN_MOTION) {
+            leading = along > 0;
+        }
     }
 
     /** Light level the beam leaves where it lands, from the beam shape, the distance and the brightness. */
@@ -233,6 +256,9 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         }
         long start = Timer.start();
         headAngles = head() == null ? null : aimAngles(0);
+        if (level.isClientSide) {
+            followMotion();
+        }
         updateBeam();
         (level.isClientSide ? Timer.CLIENT_BLOCK : Timer.SERVER_BLOCK).stop(start);
     }

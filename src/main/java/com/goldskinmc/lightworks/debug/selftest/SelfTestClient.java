@@ -3,6 +3,10 @@ package com.goldskinmc.lightworks.debug.selftest;
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.beam.BeamSpot;
 import com.goldskinmc.lightworks.compat.DynamicLights;
+import com.goldskinmc.lightworks.content.signal.SignalLampMovement;
+import com.goldskinmc.lightworks.registry.LightworksBlocks;
+import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
+import com.simibubi.create.content.contraptions.behaviour.MovementContext;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.light.BeamSource;
@@ -24,7 +28,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.phys.Vec3;
+import org.apache.commons.lang3.tuple.MutablePair;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -216,6 +222,15 @@ public final class SelfTestClient {
             probe = new SpotProbe(name, SelfTestBridge.probeGroundY, SelfTestBridge.probeAxis);
         }
         probe.ticks++;
+        for (AbstractContraptionEntity entity : player.level().getEntitiesOfClass(AbstractContraptionEntity.class,
+                player.getBoundingBox().inflate(48))) {
+            for (MutablePair<StructureTemplate.StructureBlockInfo, MovementContext> actor
+                    : entity.getContraption().getActors()) {
+                if (actor.right.state.is(LightworksBlocks.TAIL_LIGHT.get())) {
+                    probe.brake(actor.right);
+                }
+            }
+        }
         for (BeamSource light : ClientBeams.snapshot()) {
             BeamPose beam = light.tickBeam();
             if (beam.moving()) {
@@ -364,6 +379,10 @@ public final class SelfTestClient {
         final Vec3 axis;
         final Map<BeamSource, Swaps> swaps = new IdentityHashMap<>();
         final Map<BeamSource, Circle> circles = new IdentityHashMap<>();
+        /** Per tail light: the ticks it showed the brake light, and the ticks its contraption slowed or stopped. */
+        final Map<MovementContext, List<String>> brakes = new IdentityHashMap<>();
+        final Map<MovementContext, Double> lastSpeed = new IdentityHashMap<>();
+        final Map<MovementContext, Boolean> lastBraking = new IdentityHashMap<>();
         int ticks;
         int samples;
         int noSpot;
@@ -423,6 +442,9 @@ public final class SelfTestClient {
                             + "%d frames, spot behind the drawn beam by %.3f on average, %.3f at most; %s",
                     name, ticks, samples, noSpot, lastSpotX - firstSpotX, maxHorizontalGap, maxGroundError,
                     frames, frames == 0 ? 0 : sumFrameGap / frames, maxFrameGap, DynamicLights.status()));
+            for (List<String> events : brakes.values()) {
+                Lightworks.LOGGER.info("[selftest] probe {} tail light: {}", name, events);
+            }
             int c = 0;
             for (Circle circle : circles.values()) {
                 Lightworks.LOGGER.info(String.format("[selftest] probe %s light %d circle: %d samples, spot %.2f to "
@@ -434,6 +456,21 @@ public final class SelfTestClient {
                 Lightworks.LOGGER.info("[selftest] probe {} light {}: {} reversals, {} switches, ticks from reversal to "
                         + "switch {}, lit {} of {} ticks", name, ++n, s.reversals, s.switches, s.delays, s.litTicks, s.seen);
             }
+        }
+
+        void brake(MovementContext context) {
+            double speed = context.motion == null ? 0 : context.motion.length();
+            double before = lastSpeed.getOrDefault(context, 0.0);
+            boolean braking = SignalLampMovement.braking(context);
+            List<String> events = brakes.computeIfAbsent(context, c -> new ArrayList<>());
+            if (before > 0.01 && speed < before - 0.004) {
+                events.add(ticks + ":slows");
+            }
+            if (braking != lastBraking.getOrDefault(context, false)) {
+                events.add(ticks + (braking ? ":brake on" : ":brake off"));
+            }
+            lastSpeed.put(context, speed);
+            lastBraking.put(context, braking);
         }
 
         /** How far one light's spot is from the probe axis, and the angle it has gone round it in total. */

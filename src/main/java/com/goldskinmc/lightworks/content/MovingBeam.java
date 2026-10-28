@@ -20,7 +20,7 @@ import org.joml.Vector3f;
  */
 public final class MovingBeam implements BeamSource {
     /** Blocks per tick along the beam below which a headlight keeps its current front/rear state. */
-    private static final double MIN_MOTION = 0.005;
+    public static final double MIN_MOTION = 0.005;
     /** The lens sits this far from the block's centre, along the beam. */
     private static final double LENS_RADIUS = 0.5;
 
@@ -61,7 +61,8 @@ public final class MovingBeam implements BeamSource {
     private void update() {
         BeamPose pose = ContraptionHost.toWorld(context, localDirection);
         lastPose = pose;
-        if (type.followsMotion() && context.motion != null) {
+        // A redstone signal at assembly overrides the automatic swap: then it is lit both ways
+        if (type.followsMotion() && state.signal() == 0 && context.motion != null) {
             // Create sets motion to this tick's change in world position, on the client too
             double along = context.motion.dot(pose.direction());
             if (Math.abs(along) > MIN_MOTION) {

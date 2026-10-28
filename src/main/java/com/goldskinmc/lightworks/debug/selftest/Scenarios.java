@@ -6,6 +6,7 @@ import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlock;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
+import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
 import com.goldskinmc.lightworks.content.signal.WarningPattern;
 import com.goldskinmc.lightworks.host.BeamPose;
@@ -31,6 +32,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.block.WeightedPressurePlateBlock;
 import net.minecraft.world.phys.BlockHitResult;
@@ -47,7 +50,8 @@ import net.neoforged.fml.ModList;
 final class Scenarios {
     static final Map<String, Supplier<Script>> ALL = new LinkedHashMap<>();
     /** What {@code -Pselftest=true} runs. */
-    static final String DEFAULT = "fixed,aim,floodlight,pantilt,beacon,warning,vehicle,bearing,piston,vehicle-fast";
+    static final String DEFAULT =
+            "fixed,aim,floodlight,pantilt,beacon,warning,navigation,vehicle,bearing,piston,vehicle-fast";
 
     static {
         ALL.put("fixed", Scenarios::fixed);
@@ -56,6 +60,7 @@ final class Scenarios {
         ALL.put("pantilt", Scenarios::panTilt);
         ALL.put("beacon", Scenarios::beacon);
         ALL.put("warning", Scenarios::warning);
+        ALL.put("navigation", Scenarios::navigation);
         ALL.put("vehicle", () -> vehicle("vehicle", 0.1, 100, true));
         // Create's default train top speed, 28 blocks a second: how far the spot trails at train speeds
         ALL.put("vehicle-fast", () -> vehicle("vehicle-fast", 1.4, 40, false));
@@ -398,6 +403,42 @@ final class Scenarios {
                 });
     }
 
+    /**
+     * Three Navigation Lights placed the way a player does, looking north: on the west face of a block
+     * (port, red), the east face (starboard, green) and the south face (stern, white).
+     */
+    static Script navigation() {
+        BlockPos[] post = new BlockPos[1];
+        return new Script("navigation")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(0, 0);
+                    post[0] = stage.at(0, 1, -5);
+                    stage.set(post[0].below(), Blocks.STONE.defaultBlockState());
+                    stage.set(post[0], Blocks.STONE.defaultBlockState());
+                    stage.player.setYRot(180);
+                    StringBuilder colours = new StringBuilder();
+                    for (Direction face : new Direction[] {Direction.WEST, Direction.EAST, Direction.SOUTH}) {
+                        BlockPos pos = post[0].relative(face);
+                        BlockPlaceContext place = new BlockPlaceContext(stage.player, InteractionHand.MAIN_HAND,
+                                new ItemStack(LightworksBlocks.NAVIGATION_LIGHT.get()),
+                                new BlockHitResult(Vec3.atCenterOf(post[0]).relative(face, 0.5), face, post[0], false));
+                        BlockState state = LightworksBlocks.NAVIGATION_LIGHT.get().getStateForPlacement(place);
+                        stage.set(pos, state);
+                        colours.append(' ').append(face.getSerializedName()).append('=')
+                                .append(state.getValue(NavigationLightBlock.COLOUR).getSerializedName());
+                    }
+                    stage.log("navigation: placed looking north:%s", colours);
+                    SelfTestBridge.focus = Vec3.atCenterOf(post[0]);
+                })
+                .waitTicks(30)
+                .shot("navigation-0")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
     /** Aims a light the way a player does: looking along {@code target - light centre} and clicking it with a Wrench. */
     private static void wrenchAim(Stage stage, BlockPos light, Vec3 target) {
         Vec3 d = target.subtract(Vec3.atCenterOf(light)).normalize();
@@ -438,8 +479,10 @@ final class Scenarios {
                         }
                     }
                     stage.set(deck[0].below(), searchlight(Direction.DOWN));
-                    BlockPos from = deck[0].offset(-1, -1, -1);
-                    BlockPos to = deck[0].offset(1, 0, 1);
+                    stage.set(deck[0].offset(2, 0, 0), headlight(Direction.EAST));
+                    stage.set(deck[0].offset(-2, 0, 0), headlight(Direction.WEST));
+                    BlockPos from = deck[0].offset(-2, -1, -1);
+                    BlockPos to = deck[0].offset(2, 0, 1);
                     // Freeze physics so the vehicle hangs still and moves only when we move it
                     stage.run("sable paused true");
                     stage.run("sable assemble area " + from.getX() + " " + from.getY() + " " + from.getZ() + " "
@@ -556,8 +599,11 @@ final class Scenarios {
                     stage.set(cart, Blocks.OAK_PLANKS.defaultBlockState());
                     stage.set(cart.east(), headlight(Direction.EAST));
                     stage.set(cart.below(), headlight(Direction.WEST));
+                    // Tail lights on top of the cart, one facing each way
+                    stage.set(cart.above(), LightworksBlocks.TAIL_LIGHT.getDefaultState()
+                            .setValue(SignalLampBlock.FACING, Direction.UP));
                     stage.level.addFreshEntity(new SuperGlueEntity(stage.level,
-                            AABB.encapsulatingFullBlocks(cart.below(), cart.east())));
+                            AABB.encapsulatingFullBlocks(cart.below(), cart.east().above())));
                     for (int y = 0; y <= 3; y++) {
                         for (int z = 5; z <= 7; z++) {
                             stage.set(stage.at(16, y, z), Blocks.STONE.defaultBlockState());
