@@ -6,9 +6,12 @@ license = "${mod_license}"
 modId = "${mod_id}"
 version = "${mod_version}"
 displayName = "${mod_name}"
+logoFile = "logo.png"
 authors = "GoldskinMC"
 description = '''
-Functional lighting for Create: searchlights, beacons and vehicle lights that keep working on contraptions, trains and Sable vehicles.
+Functional lighting for Create: searchlights, floodlights, rotating beacons, warning lights and vehicle lights (headlights, tail and brake lights, navigation lights) that keep landing where they point on contraptions, trains and Sable vehicles.
+
+Optional: LambDynamicLights (moving lights light the world), Sable with Create Aeronautics.
 '''
 
 [modproperties."${mod_id}"."yumi:entrypoints"]
