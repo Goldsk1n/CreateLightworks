@@ -50,6 +50,9 @@ public final class SelfTestClient {
     /** Ticks between the end of the test and quitting, so the last screenshots finish saving. */
     private static final int QUIT_DELAY_TICKS = 60;
     private static int ticksSinceFinished;
+    /** Multiplayer: how often to log what the client sees, since no script runs in this process. */
+    private static final int MULTIPLAYER_LOG_INTERVAL = 200;
+    private static boolean wasInWorld;
 
     private static int ticksInWorld;
     private static boolean wasActive;
@@ -76,7 +79,27 @@ public final class SelfTestClient {
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
-        if (!SelfTest.ENABLED || mc.level == null || mc.player == null) {
+        if (!SelfTest.ENABLED) {
+            return;
+        }
+        if (mc.level == null || mc.player == null) {
+            // On a dedicated server the script ends by stopping the server; leave once disconnected
+            if (wasInWorld && QUIT_WHEN_DONE) {
+                Lightworks.LOGGER.info("[selftest] client: disconnected, quitting");
+                mc.stop();
+            }
+            return;
+        }
+        wasInWorld = true;
+        if (!mc.isLocalServer() && ++ticksInWorld % MULTIPLAYER_LOG_INTERVAL == 0) {
+            long moving = ClientBeams.snapshot().stream().filter(b -> b.tickBeam().moving()).count();
+            long drawn = ClientBeams.snapshot().stream().filter(b -> b.beam().length() > 0).count();
+            Lightworks.LOGGER.info("[selftest] client on {}: beams {} ({} moving, {} drawn), {}",
+                    mc.getCurrentServer() == null ? "?" : mc.getCurrentServer().ip, ClientBeams.count(), moving, drawn,
+                    DynamicLights.status());
+            return;
+        }
+        if (!mc.isLocalServer()) {
             return;
         }
         if (++ticksInWorld == READY_AFTER_TICKS) {

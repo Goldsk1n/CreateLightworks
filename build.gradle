@@ -63,8 +63,16 @@ def floorRun = runProfile == 'floor'
 // Each profile keeps its own game directory, so worlds never load with mods they were not made with
 def runDir = runProfile == 'latest' ? 'run' : "run-${runProfile}"
 def quickPlayWorld = providers.gradleProperty('quickplay_world').getOrElse('lightworks-test')
+// -Pquickplay_server=localhost joins that server instead of the test world (dedicated-server checks)
+def quickPlayServer = providers.gradleProperty('quickplay_server').getOrNull()
 // -Pdev_perf=true adds Sodium, Iris and spark for the shader and performance scenarios
 def devPerf = providers.gradleProperty('dev_perf').map { it.toBoolean() }.getOrElse(false)
+// -Pdev_ldl=false leaves LambDynamicLights out of `latest` runs: a player without the optional client mod
+def devLdl = providers.gradleProperty('dev_ldl').map { it.toBoolean() }.getOrElse(true)
+// -Pdev_conflicts=contraption-lights,create-train-lights,create-dynamic-lights adds other lighting mods
+// (with what they require) to `latest` runs for the S9 conflict test. create-dynamic-lights needs -Pdev_perf
+// and -Pdev_ldl=false: LambDynamicLights refuses to load next to Sodium Dynamic Lights, which it requires.
+def devConflicts = providers.gradleProperty('dev_conflicts').map { it.split(',')*.trim() as Set }.getOrElse([] as Set)
 
 neoForge {
     version = floorRun ? project.neo_floor_version : project.neo_version
@@ -83,13 +91,18 @@ neoForge {
             // -Pselftest_quit=true closes the game once the self-test is done (unattended runs)
             systemProperty 'lightworks.selftest.quit', providers.gradleProperty('selftest_quit').getOrElse('false')
             // Join the test world straight from launch once it exists in this profile's saves
-            if (file("${runDir}/saves/${quickPlayWorld}").exists()) {
+            if (quickPlayServer != null) {
+                programArguments.addAll '--quickPlayMultiplayer', quickPlayServer
+            } else if (file("${runDir}/saves/${quickPlayWorld}").exists()) {
                 programArguments.addAll '--quickPlaySingleplayer', quickPlayWorld
             }
         }
         server {
             server()
             programArgument '--nogui'
+            systemProperty 'lightworks.selftest', providers.gradleProperty('selftest').getOrElse('false')
+            // With the self-test, -Pselftest_quit=true stops the server once it is done
+            systemProperty 'lightworks.selftest.quit', providers.gradleProperty('selftest_quit').getOrElse('false')
         }
         // Headless load check: boots every mod, runs game tests, exits
         gameTestServer {
@@ -103,7 +116,8 @@ neoForge {
                     '--existing', file('src/main/resources/').getAbsolutePath()
         }
         configureEach {
-            gameDirectory = file(runDir)
+            // The dedicated server gets its own folder, so its log and world never clash with a client's
+            gameDirectory = file(name == 'server' ? "${runDir}-server" : runDir)
             logLevel = org.slf4j.event.Level.INFO
         }
     }
@@ -164,8 +178,10 @@ dependencies {
         localRuntime "dev.ryanhcode.sable:sable-sable_rapier-${minecraft_version}:${sable_version}"
         localRuntime "foundry.veil:veil-neoforge-${minecraft_version}:${veil_version}"
 
-        localRuntime("dev.lambdaurora.lambdynamiclights:lambdynamiclights-runtime:${ldl_version}") {
-            attributes { attribute(mappingsAttribute, 'mojmap') }
+        if (devLdl) {
+            localRuntime("dev.lambdaurora.lambdynamiclights:lambdynamiclights-runtime:${ldl_version}") {
+                attributes { attribute(mappingsAttribute, 'mojmap') }
+            }
         }
 
         // Release jars dropped into ./libs (for example Create Aeronautics) load in dev runs
@@ -175,6 +191,28 @@ dependencies {
     if (devPerf && !floorRun) {
         localRuntime("maven.modrinth:iris:${iris_version}") { transitive = false }
         localRuntime("maven.modrinth:spark:${spark_version}") { transitive = false }
+    }
+
+    if (runProfile == 'latest') {
+        def conflictMods = [
+                'contraption-lights'   : ["maven.modrinth:contraption-lights:${contraption_lights_version}"],
+                'create-train-lights'  : ["maven.modrinth:create-train-lights:${create_train_lights_version}",
+                                          "maven.modrinth:architectury-api:${architectury_version}"],
+                'create-dynamic-lights': ["maven.modrinth:create-dynamic-lights:${create_dynamic_lights_version}",
+                                          "maven.modrinth:sodium-dynamic-lights:${sodium_dynamic_lights_version}",
+                                          "maven.modrinth:sodium-options-api:${sodium_options_api_version}",
+                                          "maven.modrinth:reeses-sodium-options:${reeses_sodium_options_version}"],
+        ]
+        if ('create-dynamic-lights' in devConflicts && (devLdl || !devPerf)) {
+            throw new GradleException('create-dynamic-lights needs -Pdev_perf=true (Sodium) and -Pdev_ldl=false '
+                    + '(LambDynamicLights refuses to load next to Sodium Dynamic Lights)')
+        }
+        devConflicts.each { name ->
+            if (!conflictMods.containsKey(name)) {
+                throw new GradleException("Unknown dev_conflicts mod '${name}'; use ${conflictMods.keySet().join(', ')}")
+            }
+            conflictMods[name].each { localRuntime(it) { transitive = false } }
+        }
     }
 
     // Pure-logic and architecture tests: no game boot

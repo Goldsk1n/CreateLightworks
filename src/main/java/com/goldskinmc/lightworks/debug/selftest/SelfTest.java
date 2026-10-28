@@ -4,6 +4,7 @@ import com.goldskinmc.lightworks.Lightworks;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.Supplier;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -68,7 +69,11 @@ public final class SelfTest {
             SelfTestBridge.reset();
             SelfTestBridge.finished = true;
             stage.log("done");
+            MinecraftServer server = stage.level.getServer();
             stage = null;
+            if (server.isDedicatedServer() && Boolean.getBoolean("lightworks.selftest.quit")) {
+                server.halt(false);
+            }
             return;
         }
         if (current.tick(stage)) {

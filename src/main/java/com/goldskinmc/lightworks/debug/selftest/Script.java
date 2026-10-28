@@ -69,6 +69,10 @@ final class Script {
         int[] id = new int[1];
         steps.add((stage, t) -> {
             if (t == 0) {
+                // A dedicated server's client runs in another process and never sees the request
+                if (stage.level.getServer().isDedicatedServer()) {
+                    return true;
+                }
                 id[0] = SelfTestBridge.requestShot(shotName);
                 return false;
             }
