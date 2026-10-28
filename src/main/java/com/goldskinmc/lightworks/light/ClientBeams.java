@@ -19,6 +19,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 @EventBusSubscriber(modid = Lightworks.MOD_ID, value = Dist.CLIENT)
 public final class ClientBeams {
     private static final Set<BeamSource> SOURCES = new LinkedHashSet<>();
+    private static boolean enabled = true;
 
     private ClientBeams() {
     }
@@ -40,6 +41,15 @@ public final class ClientBeams {
 
     public static int count() {
         return SOURCES.size();
+    }
+
+    /** Debug switch for load comparisons: while off, every beam stays dark and draws nothing. */
+    public static void setEnabled(boolean on) {
+        enabled = on;
+    }
+
+    public static boolean enabled() {
+        return enabled;
     }
 
     @SubscribeEvent

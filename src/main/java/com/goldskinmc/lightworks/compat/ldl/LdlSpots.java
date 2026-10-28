@@ -2,13 +2,14 @@ package com.goldskinmc.lightworks.compat.ldl;
 
 import com.goldskinmc.lightworks.beam.BeamSpot;
 import com.goldskinmc.lightworks.compat.DynamicSpot;
+import com.goldskinmc.lightworks.debug.Timer;
 import dev.lambdaurora.lambdynlights.api.behavior.DynamicLightBehavior;
 import dev.lambdaurora.lambdynlights.api.behavior.DynamicLightBehaviorManager;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 import net.minecraft.core.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,7 +22,8 @@ public final class LdlSpots {
     /** LambDynamicLights never lights further than 7.75 blocks from a source. */
     private static final double MAX_RADIUS = 7.75;
     private static final AtomicInteger ACTIVE = new AtomicInteger();
-    private static final AtomicLong CALLS = new AtomicLong();
+    /** Called from every chunk-meshing thread at once: a LongAdder does not contend like an AtomicLong. */
+    private static final LongAdder CALLS = new LongAdder();
     private static final Set<SpotBehavior> LIVE = ConcurrentHashMap.newKeySet();
     private static volatile double maxReturned;
     private static volatile boolean suppressed;
@@ -52,7 +54,7 @@ public final class LdlSpots {
             return "LambDynamicLights present but not initialised";
         }
         return String.format("LambDynamicLights spots %d, lightAtPos calls %d, max %.1f",
-                ACTIVE.get(), CALLS.get(), maxReturned);
+                ACTIVE.get(), CALLS.sum(), maxReturned);
     }
 
     private static final class SpotBehavior implements DynamicLightBehavior, DynamicSpot {
@@ -82,15 +84,15 @@ public final class LdlSpots {
 
         @Override
         public double lightAtPos(BlockPos pos, double falloffRatio) {
-            CALLS.incrementAndGet();
+            long start = Timer.start();
+            CALLS.increment();
             BeamSpot current = spot;
-            if (current == null || suppressed) {
-                return 0;
-            }
-            double light = current.lightAt(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, falloffRatio);
+            double light = current == null || suppressed
+                    ? 0 : current.lightAt(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, falloffRatio);
             if (light > maxReturned) {
                 maxReturned = light;
             }
+            Timer.LDL_LIGHT_AT_POS.stop(start);
             return light;
         }
 

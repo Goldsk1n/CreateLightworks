@@ -13,6 +13,15 @@ import org.jetbrains.annotations.Nullable;
  * beam's length for the cosmetic beam. Client thread only.
  */
 public final class ClientBeam {
+    /**
+     * Each spot change makes LambDynamicLights rebuild every chunk section the spot touches, so a spot is
+     * only moved once it is this far (in blocks) from where it was last published.
+     */
+    private static final double MIN_SPOT_MOVE = 0.25;
+    private static final double MIN_PEAK_CHANGE = 0.5;
+    /** About 1 degree. */
+    private static final double MIN_DIRECTION_DOT = 0.99985;
+
     private final ConeFalloff shape;
     @Nullable
     private DynamicSpot spot;
@@ -28,14 +37,38 @@ public final class ClientBeam {
         return shape;
     }
 
-    public void update(Level level, BeamPose beam) {
+    /**
+     * @param beam  the beam as of this tick
+     * @param drawn for a moving light, where its host will draw it halfway to the next tick. The dynamic
+     *              light changes 20 times a second while the beam is drawn every frame, so the spot is
+     *              placed where the beam will be on average until the next update. Hosts interpolate
+     *              differently (Sable vehicles lag a tick behind, bearings extrapolate ahead), so this
+     *              comes from the host's own render pose.
+     */
+    public void update(Level level, BeamPose beam, BeamPose drawn) {
+        if (!ClientBeams.enabled()) {
+            off();
+            return;
+        }
         if (spot == null) {
             spot = DynamicLights.createSpot();
         }
-        BeamTrace.Hit hit = BeamTrace.trace(level, beam.origin(), beam.direction(), shape.range());
-        lastSpot = BeamTrace.spotFor(hit, beam.direction(), shape.onAxis(hit.distance()));
+        BeamPose at = beam.moving() ? drawn : beam;
+        BeamTrace.Hit hit = BeamTrace.trace(level, at.origin(), at.direction(), shape.range());
+        BeamSpot next = BeamTrace.spotFor(hit, at.direction(), shape.onAxis(hit.distance()));
+        // The cosmetic beam follows every tick; the lit spot only when it has moved enough to show
         length = hit.distance();
-        spot.set(lastSpot);
+        if (worthPublishing(lastSpot, next)) {
+            lastSpot = next;
+            spot.set(next);
+        }
+    }
+
+    private static boolean worthPublishing(@Nullable BeamSpot current, @Nullable BeamSpot next) {
+        if (current == null || next == null) {
+            return current != next;
+        }
+        return next.differsFrom(current, MIN_SPOT_MOVE, MIN_PEAK_CHANGE, MIN_DIRECTION_DOT);
     }
 
     /** Light switched off (disabled by Contraption Controls, say): no spot and no beam until the next update. */
@@ -57,6 +90,7 @@ public final class ClientBeam {
         length = 0;
     }
 
+    /** The spot as last handed to the dynamic light: within {@link #MIN_SPOT_MOVE} of the traced one. */
     public @Nullable BeamSpot lastSpot() {
         return lastSpot;
     }

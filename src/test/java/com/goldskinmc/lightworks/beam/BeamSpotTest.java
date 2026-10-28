@@ -2,6 +2,8 @@ package com.goldskinmc.lightworks.beam;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -46,5 +48,23 @@ class BeamSpotTest {
     @Test
     void boundsCoverTheLitBlocks() {
         assertArrayEquals(new int[] {1, 56, -8, 17, 72, 8}, spot.bounds(LDL_RATIO, 8));
+    }
+
+    @Test
+    void smallMovesAreNotWorthShowing() {
+        BeamSpot nudged = new BeamSpot(9.5, 64.7, 0.5, 10, 64.7, 0.5, 1, 0, 0, 15);
+        assertFalse(nudged.differsFrom(spot, 0.25, 0.5, 0.99985));
+        BeamSpot moved = new BeamSpot(9.5, 64.8, 0.5, 10, 64.8, 0.5, 1, 0, 0, 15);
+        assertTrue(moved.differsFrom(spot, 0.25, 0.5, 0.99985));
+    }
+
+    @Test
+    void brightnessOrDirectionChangesAreWorthShowing() {
+        BeamSpot dimmer = new BeamSpot(9.5, 64.5, 0.5, 10, 64.5, 0.5, 1, 0, 0, 14);
+        assertTrue(dimmer.differsFrom(spot, 0.25, 0.5, 0.99985));
+        double c = Math.cos(Math.toRadians(2));
+        double s = Math.sin(Math.toRadians(2));
+        BeamSpot turned = new BeamSpot(9.5, 64.5, 0.5, 10, 64.5, 0.5, c, s, 0, 15);
+        assertTrue(turned.differsFrom(spot, 0.25, 0.5, 0.99985));
     }
 }

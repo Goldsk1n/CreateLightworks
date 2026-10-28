@@ -1,6 +1,7 @@
 package com.goldskinmc.lightworks.content.searchlight;
 
 import com.goldskinmc.lightworks.beam.ConeFalloff;
+import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.host.ContraptionHost;
 import com.goldskinmc.lightworks.light.BeamSource;
@@ -8,6 +9,7 @@ import com.goldskinmc.lightworks.light.ClientBeam;
 import com.goldskinmc.lightworks.light.ClientBeams;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;
 import net.minecraft.core.Direction;
+import net.minecraft.world.phys.Vec3;
 
 /** Client side of a light on a contraption, kept in the actor's {@code temporaryData}. */
 final class MovingSearchlight implements BeamSource {
@@ -44,6 +46,12 @@ final class MovingSearchlight implements BeamSource {
     }
 
     void tick() {
+        long start = Timer.start();
+        update();
+        Timer.CLIENT_CONTRAPTION.stop(start);
+    }
+
+    private void update() {
         BeamPose pose = ContraptionHost.toWorld(context, localFacing());
         lastPose = pose;
         if (followsMotion && context.motion != null) {
@@ -56,7 +64,10 @@ final class MovingSearchlight implements BeamSource {
         if (context.disabled || !leading) {
             beam.off();
         } else {
-            beam.update(context.world, pose);
+            // When an actor ticks, the bearing or piston has not moved the contraption for this tick yet,
+            // and frames then draw it ahead of this pose: lead the spot by half a tick of motion
+            Vec3 lead = context.motion == null ? Vec3.ZERO : context.motion.scale(0.5);
+            beam.update(context.world, pose, new BeamPose(pose.origin().add(lead), pose.direction(), true));
         }
     }
 

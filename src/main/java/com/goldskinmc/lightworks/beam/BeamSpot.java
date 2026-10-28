@@ -30,6 +30,20 @@ public record BeamSpot(double spotX, double spotY, double spotZ,
         return Math.max(0, peak - Math.sqrt(dx * dx + dy * dy + dz * dz) * falloffRatio);
     }
 
+    /**
+     * True when this spot differs enough from {@code previous} to be worth showing: its centre moved more
+     * than {@code minMove} blocks, its peak changed by more than {@code minPeakChange}, or its direction
+     * turned so that the dot product of the two directions fell below {@code minDirectionDot}.
+     */
+    public boolean differsFrom(BeamSpot previous, double minMove, double minPeakChange, double minDirectionDot) {
+        double dx = spotX - previous.spotX;
+        double dy = spotY - previous.spotY;
+        double dz = spotZ - previous.spotZ;
+        return dx * dx + dy * dy + dz * dz > minMove * minMove
+                || Math.abs(peak - previous.peak) > minPeakChange
+                || dirX * previous.dirX + dirY * previous.dirY + dirZ * previous.dirZ < minDirectionDot;
+    }
+
     /** Distance from the spot centre at which the light reaches zero, capped at {@code maxRadius}. */
     public double radius(double falloffRatio, double maxRadius) {
         return falloffRatio <= 0 ? maxRadius : Math.min(peak / falloffRatio, maxRadius);
