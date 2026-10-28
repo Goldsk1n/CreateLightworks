@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/orientable_vertical",
+  "textures": {
+    "front": "lightworks:block/headlight_front",
+    "side": "lightworks:block/headlight_side"
+  }
+}

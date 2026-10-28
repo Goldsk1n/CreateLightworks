@@ -26,18 +26,27 @@ import org.jetbrains.annotations.Nullable;
 public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLightOwner, BeamSource {
     /** Narrow beam: full brightness to 32 blocks, dark at 48. */
     public static final ConeFalloff BEAM = new ConeFalloff(6, 4, 32, 48, 15);
+    /** Headlight: wide and short, full brightness to 12 blocks, dark at 20. */
+    public static final ConeFalloff HEADLIGHT_BEAM = new ConeFalloff(18, 12, 12, 20, 15);
     /** How often the beam is re-traced to notice blocks placed or removed in its path. */
     private static final int RETRACE_INTERVAL_TICKS = 5;
 
+    private final ConeFalloff shape;
     private final ServerBeamLight serverLight = new ServerBeamLight();
     /** Client only: the dynamic light that follows this beam's spot. */
-    private final ClientBeam clientBeam = new ClientBeam(BEAM);
+    private final ClientBeam clientBeam;
     @Nullable
     private Direction tracedFacing;
     private boolean retraceDue = true;
 
     public SearchlightBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+        this(type, pos, state, BEAM);
+    }
+
+    protected SearchlightBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state, ConeFalloff shape) {
         super(type, pos, state);
+        this.shape = shape;
+        this.clientBeam = new ClientBeam(shape);
         setLazyTickRate(RETRACE_INTERVAL_TICKS);
     }
 
@@ -63,8 +72,8 @@ public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLigh
     }
 
     /** Light level the beam leaves where it lands, from the beam shape and the distance to the hit. */
-    public static int lightLevelAt(BeamTrace.Hit hit) {
-        return hit.hitBlock() ? Mth.clamp((int) Math.round(BEAM.onAxis(hit.distance())), 0, 15) : 0;
+    public int lightLevelAt(BeamTrace.Hit hit) {
+        return hit.hitBlock() ? Mth.clamp((int) Math.round(shape.onAxis(hit.distance())), 0, 15) : 0;
     }
 
     /** The beam in world coordinates, following the vehicle when this Searchlight is on one. */
@@ -102,7 +111,7 @@ public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLigh
         if (level.isClientSide) {
             clientBeam.update(level, beam);
         } else if (LightworksConfig.serverLightBlocks() && !beam.moving()) {
-            BeamTrace.Hit hit = BeamTrace.trace(level, beam.origin(), beam.direction(), BEAM.range());
+            BeamTrace.Hit hit = BeamTrace.trace(level, beam.origin(), beam.direction(), shape.range());
             serverLight.update(level, worldPosition, hit, beam.direction(), lightLevelAt(hit));
         } else {
             // Light blocks cannot keep up with a moving vehicle: vehicles rely on the client dynamic light

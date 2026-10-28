@@ -32,6 +32,7 @@ public final class Lightworks {
     private static void addToCreativeTabs(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(LightworksBlocks.SEARCHLIGHT);
+            event.accept(LightworksBlocks.HEADLIGHT);
         }
     }
 

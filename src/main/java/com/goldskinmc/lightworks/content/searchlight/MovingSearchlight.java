@@ -1,5 +1,6 @@
 package com.goldskinmc.lightworks.content.searchlight;
 
+import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.host.ContraptionHost;
 import com.goldskinmc.lightworks.light.BeamSource;
@@ -8,20 +9,31 @@ import com.goldskinmc.lightworks.light.ClientBeams;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;
 import net.minecraft.core.Direction;
 
-/** Client side of a Searchlight on a contraption, kept in the actor's {@code temporaryData}. */
+/** Client side of a light on a contraption, kept in the actor's {@code temporaryData}. */
 final class MovingSearchlight implements BeamSource {
-    private final MovementContext context;
-    private final ClientBeam beam = new ClientBeam(SearchlightBlockEntity.BEAM);
+    /** Blocks per tick along the beam below which a headlight keeps its current front/rear state. */
+    private static final double MIN_MOTION = 0.005;
 
-    private MovingSearchlight(MovementContext context) {
+    private final MovementContext context;
+    private final ClientBeam beam;
+    private final boolean followsMotion;
+    /** Headlight: last seen moving the way the light points. Lit until the first motion says otherwise. */
+    private boolean leading = true;
+    /** Pose at the last tick; Create clears the context's position when the contraption stops. */
+    private BeamPose lastPose;
+
+    private MovingSearchlight(MovementContext context, ConeFalloff shape, boolean followsMotion) {
         this.context = context;
+        this.beam = new ClientBeam(shape);
+        this.followsMotion = followsMotion;
+        this.lastPose = ContraptionHost.toWorld(context, localFacing());
     }
 
-    static MovingSearchlight of(MovementContext context) {
+    static MovingSearchlight of(MovementContext context, ConeFalloff shape, boolean followsMotion) {
         if (context.temporaryData instanceof MovingSearchlight light) {
             return light;
         }
-        MovingSearchlight light = new MovingSearchlight(context);
+        MovingSearchlight light = new MovingSearchlight(context, shape, followsMotion);
         context.temporaryData = light;
         ClientBeams.add(light);
         return light;
@@ -32,16 +44,25 @@ final class MovingSearchlight implements BeamSource {
     }
 
     void tick() {
-        if (context.disabled) {
+        BeamPose pose = ContraptionHost.toWorld(context, localFacing());
+        lastPose = pose;
+        if (followsMotion && context.motion != null) {
+            // Create sets motion to this tick's change in world position, on the client too
+            double along = context.motion.dot(pose.direction());
+            if (Math.abs(along) > MIN_MOTION) {
+                leading = along > 0;
+            }
+        }
+        if (context.disabled || !leading) {
             beam.off();
         } else {
-            beam.update(context.world, tickBeam());
+            beam.update(context.world, pose);
         }
     }
 
     @Override
     public BeamPose tickBeam() {
-        return ContraptionHost.toWorld(context, localFacing());
+        return lastPose;
     }
 
     @Override
