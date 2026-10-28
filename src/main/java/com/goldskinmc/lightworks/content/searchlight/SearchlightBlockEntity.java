@@ -1,6 +1,9 @@
 package com.goldskinmc.lightworks.content.searchlight;
 
+import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
+import com.goldskinmc.lightworks.compat.DynamicLights;
+import com.goldskinmc.lightworks.compat.DynamicSpot;
 import com.goldskinmc.lightworks.debug.TrackedLights;
 import com.goldskinmc.lightworks.light.BeamLightOwner;
 import com.goldskinmc.lightworks.light.BeamTrace;
@@ -25,6 +28,8 @@ public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLigh
     private static final int RETRACE_INTERVAL_TICKS = 5;
 
     private final ServerBeamLight serverLight = new ServerBeamLight();
+    /** Client only: the dynamic light that follows this beam's spot. */
+    private DynamicSpot dynamicSpot = DynamicSpot.NONE;
     @Nullable
     private Direction tracedFacing;
     private boolean retraceDue = true;
@@ -63,16 +68,23 @@ public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLigh
     @Override
     public void tick() {
         super.tick();
-        if (level == null || level.isClientSide) {
+        if (level == null) {
             return;
         }
         // Re-aiming is applied in the same tick; anything else waits for the periodic re-trace
-        if (retraceDue || getFacing() != tracedFacing) {
-            BeamTrace.Hit hit = BeamTrace.trace(level, beamOrigin(), beamDirection(), BEAM.range());
-            serverLight.update(level, worldPosition, hit, beamDirection(), lightLevelAt(hit));
-            tracedFacing = getFacing();
-            retraceDue = false;
+        if (!retraceDue && getFacing() == tracedFacing) {
+            return;
         }
+        BeamTrace.Hit hit = BeamTrace.trace(level, beamOrigin(), beamDirection(), BEAM.range());
+        if (level.isClientSide) {
+            dynamicSpot.set(BeamTrace.spotFor(hit, beamDirection(), BEAM.onAxis(hit.distance())));
+        } else if (LightworksConfig.serverLightBlocks()) {
+            serverLight.update(level, worldPosition, hit, beamDirection(), lightLevelAt(hit));
+        } else {
+            serverLight.clear(level);
+        }
+        tracedFacing = getFacing();
+        retraceDue = false;
     }
 
     @Override
@@ -100,6 +112,8 @@ public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLigh
         super.onLoad();
         if (level != null && level.isClientSide) {
             TrackedLights.add(this);
+            dynamicSpot = DynamicLights.createSpot();
+            retraceDue = true;
         }
     }
 
@@ -108,6 +122,8 @@ public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLigh
     public void invalidate() {
         super.invalidate();
         TrackedLights.remove(this);
+        dynamicSpot.remove();
+        dynamicSpot = DynamicSpot.NONE;
     }
 
     @Override

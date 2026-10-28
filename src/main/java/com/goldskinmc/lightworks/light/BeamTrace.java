@@ -1,5 +1,6 @@
 package com.goldskinmc.lightworks.light;
 
+import com.goldskinmc.lightworks.beam.BeamSpot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ClipContext;
@@ -29,6 +30,20 @@ public final class BeamTrace {
         public boolean hitBlock() {
             return block != null;
         }
+    }
+
+    /**
+     * The lit spot for a dynamic light, or null when the beam hit nothing or is too dim to show.
+     * The spot centre sits half a block in front of the lit surface, like the server light block.
+     */
+    public static @Nullable BeamSpot spotFor(Hit hit, Vec3 direction, double peak) {
+        if (!hit.hitBlock() || peak <= 0) {
+            return null;
+        }
+        Vec3 dir = direction.normalize();
+        Vec3 centre = hit.end().subtract(dir.scale(0.5));
+        return new BeamSpot(centre.x, centre.y, centre.z, hit.end().x, hit.end().y, hit.end().z,
+                dir.x, dir.y, dir.z, peak);
     }
 
     public static Hit trace(BlockGetter level, Vec3 origin, Vec3 direction, double range) {
