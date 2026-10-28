@@ -78,6 +78,8 @@ neoForge {
         client {
             client()
             jvmArgument '-Xmx4G'
+            // -Pselftest=true builds a test Searchlight on join and logs both light paths (debug/SelfTest)
+            systemProperty 'lightworks.selftest', providers.gradleProperty('selftest').getOrElse('false')
             // Join the test world straight from launch once it exists in this profile's saves
             if (file("${runDir}/saves/${quickPlayWorld}").exists()) {
                 programArguments.addAll '--quickPlaySingleplayer', quickPlayWorld

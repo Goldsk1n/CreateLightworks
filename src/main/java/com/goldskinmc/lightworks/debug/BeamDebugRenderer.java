@@ -1,6 +1,8 @@
 package com.goldskinmc.lightworks.debug;
 
 import com.goldskinmc.lightworks.Lightworks;
+import com.goldskinmc.lightworks.LightworksConfig;
+import com.goldskinmc.lightworks.compat.DynamicLights;
 import com.goldskinmc.lightworks.content.searchlight.SearchlightBlockEntity;
 import com.goldskinmc.lightworks.light.BeamTrace;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -73,6 +75,8 @@ public final class BeamDebugRenderer {
         }
         event.getRight().add("");
         event.getRight().add("[Lightworks] searchlights tracked: " + TrackedLights.snapshot().size());
+        event.getRight().add("Server light blocks: " + (LightworksConfig.serverLightBlocks() ? "on" : "off"));
+        event.getRight().add(DynamicLights.status());
         if (mc.hitResult instanceof BlockHitResult target && target.getType() == HitResult.Type.BLOCK) {
             BlockEntity be = mc.level.getBlockEntity(target.getBlockPos());
             if (be instanceof SearchlightBlockEntity light) {

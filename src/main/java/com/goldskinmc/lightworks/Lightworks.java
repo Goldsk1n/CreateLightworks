@@ -9,6 +9,7 @@ import net.minecraft.world.item.CreativeModeTabs;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import org.slf4j.Logger;
 
@@ -24,6 +25,8 @@ public final class Lightworks {
         LightworksBlocks.register();
         LightworksBlockEntities.register();
         modBus.addListener(Lightworks::addToCreativeTabs);
+        container.registerConfig(ModConfig.Type.SERVER, LightworksConfig.SPEC);
+        REGISTRATE.addRawLang("lightworks.configuration.serverLightBlocks", "Server light blocks");
     }
 
     private static void addToCreativeTabs(BuildCreativeModeTabContentsEvent event) {

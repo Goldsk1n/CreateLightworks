@@ -1,4 +1,5 @@
 {
   "block.lightworks.beam_light": "Beam Light",
-  "block.lightworks.searchlight": "Searchlight"
+  "block.lightworks.searchlight": "Searchlight",
+  "lightworks.configuration.serverLightBlocks": "Server light blocks"
 }
