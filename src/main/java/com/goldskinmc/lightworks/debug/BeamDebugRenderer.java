@@ -3,6 +3,8 @@ package com.goldskinmc.lightworks.debug;
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.compat.DynamicLights;
+import com.goldskinmc.lightworks.host.BeamPose;
+import com.goldskinmc.lightworks.host.SableHost;
 import com.goldskinmc.lightworks.content.searchlight.SearchlightBlockEntity;
 import com.goldskinmc.lightworks.light.BeamTrace;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -48,16 +50,21 @@ public final class BeamDebugRenderer {
         MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
         VertexConsumer lines = buffers.getBuffer(RenderType.lines());
 
+        float partialTick = event.getPartialTick().getGameTimeDeltaPartialTick(false);
         poseStack.pushPose();
         poseStack.translate(-camera.x, -camera.y, -camera.z);
         for (SearchlightBlockEntity light : TrackedLights.snapshot()) {
-            if (light.getLevel() != mc.level || light.isRemoved()
-                    || light.getBlockPos().distToCenterSqr(camera) > MAX_VIEW_DISTANCE_SQR) {
+            if (light.getLevel() != mc.level || light.isRemoved()) {
                 continue;
             }
-            Vec3 origin = light.beamOrigin();
-            BeamTrace.Hit hit = BeamTrace.trace(mc.level, origin, light.beamDirection(), RANGE);
-            line(poseStack, lines, origin, hit.end(), 1f, 0.85f, 0.2f);
+            // Render pose, so a beam on a moving vehicle is drawn where the vehicle is this frame
+            BeamPose beam = SableHost.toWorldForRender(light.getBlockPos(), light.beamOrigin(),
+                    light.beamDirection(), partialTick);
+            if (beam.origin().distanceToSqr(camera) > MAX_VIEW_DISTANCE_SQR) {
+                continue;
+            }
+            BeamTrace.Hit hit = BeamTrace.trace(mc.level, beam.origin(), beam.direction(), RANGE);
+            line(poseStack, lines, beam.origin(), hit.end(), 1f, 0.85f, 0.2f);
             if (hit.block() != null) {
                 LevelRenderer.renderLineBox(poseStack, lines, new AABB(hit.block()).inflate(0.002),
                         1f, 0.4f, 0.1f, 1f);
@@ -80,13 +87,14 @@ public final class BeamDebugRenderer {
         if (mc.hitResult instanceof BlockHitResult target && target.getType() == HitResult.Type.BLOCK) {
             BlockEntity be = mc.level.getBlockEntity(target.getBlockPos());
             if (be instanceof SearchlightBlockEntity light) {
-                Vec3 origin = light.beamOrigin();
-                BeamTrace.Hit hit = BeamTrace.trace(mc.level, origin, light.beamDirection(), RANGE);
-                event.getRight().add("Beam " + light.getFacing().getSerializedName() + " from " + format(origin));
+                BeamPose beam = light.worldBeam();
+                BeamTrace.Hit hit = BeamTrace.trace(mc.level, beam.origin(), beam.direction(), RANGE);
+                event.getRight().add("Beam " + light.getFacing().getSerializedName() + " from " + format(beam.origin())
+                        + (beam.onVehicle() ? " (on vehicle)" : ""));
                 event.getRight().add(hit.block() == null
                         ? String.format("No hit within %.0f blocks", RANGE)
                         : String.format("Hits %s at %.2f blocks, block light %d", shortPos(hit.block()),
-                                hit.distance(), lightInFrontOf(mc, hit, light.beamDirection())));
+                                hit.distance(), lightInFrontOf(mc, hit, beam.direction())));
             }
         }
     }
