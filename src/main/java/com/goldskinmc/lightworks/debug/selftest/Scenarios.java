@@ -2,6 +2,7 @@ package com.goldskinmc.lightworks.debug.selftest;
 
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.content.searchlight.SearchlightBlock;
+import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.contraptions.IControlContraption.MovementMode;
@@ -16,6 +17,7 @@ import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -41,6 +43,9 @@ final class Scenarios {
         ALL.put("vehicle-fast", () -> vehicle("vehicle-fast", 1.4, 40, false));
         ALL.put("bearing", Scenarios::bearing);
         ALL.put("piston", Scenarios::piston);
+        // Not in the default set: heavier, or one-off
+        ALL.put("load", Scenarios::load);
+        ALL.put("cleanup", Scenarios::cleanup);
     }
 
     private Scenarios() {
@@ -221,9 +226,9 @@ final class Scenarios {
                 .shot("bearing-1-stopped")
                 .run(stage -> {
                     SelfTestBridge.focus = null;
+                    stage.discardContraptions(motor[0], 6);
                     stage.restoreBlocks();
-                    stage.level.getEntitiesOfClass(SuperGlueEntity.class, new AABB(motor[0]).inflate(6))
-                            .forEach(Entity::discard);
+                    stage.discardContraptions(motor[0], 6);
                 });
     }
 
@@ -301,10 +306,101 @@ final class Scenarios {
                 .shot("piston-1-back")
                 .run(stage -> {
                     SelfTestBridge.focus = null;
+                    stage.discardContraptions(at[0], 18);
                     stage.restoreBlocks();
-                    stage.level.getEntitiesOfClass(SuperGlueEntity.class, new AABB(at[0]).inflate(18))
-                            .forEach(Entity::discard);
+                    stage.discardContraptions(at[0], 18);
                 });
+    }
+
+    /**
+     * S6 and S7, load: 50 Searchlights under a 10 by 5 deck, made into one Sable vehicle. Measured with
+     * every beam switched off (the baseline: the same vehicle and blocks), then on while hovering, then on
+     * while flying. Each phase logs our server and client time and the client's frame times.
+     */
+    static Script load() {
+        Script script = new Script("load");
+        if (!ModList.get().isLoaded("sable")) {
+            return script.run(stage -> stage.log("load: skipped, Sable is not installed"));
+        }
+        int phaseTicks = 100;
+        double speed = 0.1;
+        BlockPos[] deck = new BlockPos[1];
+        script.run(stage -> {
+                    stage.night();
+                    stage.stand(0, -10);
+                    deck[0] = stage.at(0, 8, 6);
+                    for (int x = -4; x <= 5; x++) {
+                        for (int z = -2; z <= 2; z++) {
+                            stage.set(deck[0].offset(x, 0, z), Blocks.OAK_PLANKS.defaultBlockState());
+                            stage.set(deck[0].offset(x, -1, z), searchlight(Direction.DOWN));
+                        }
+                    }
+                    BlockPos from = deck[0].offset(-4, -1, -2);
+                    BlockPos to = deck[0].offset(5, 0, 2);
+                    stage.run("sable paused true");
+                    stage.run("sable assemble area " + from.getX() + " " + from.getY() + " " + from.getZ() + " "
+                            + to.getX() + " " + to.getY() + " " + to.getZ());
+                    SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 3, 6)).add(0.5, 0, 0.5);
+                    SelfTestBridge.beamsOff = true;
+                })
+                .waitTicks(60);
+        measure(script, "load-off-flying", phaseTicks,
+                (stage, i) -> stage.run("sable physics translation @l add " + speed + " 0 0 global"));
+        script.run(stage -> SelfTestBridge.beamsOff = false).waitTicks(40);
+        measure(script, "load-on-hovering", phaseTicks, (stage, i) -> {
+        });
+        measure(script, "load-on-flying", phaseTicks,
+                (stage, i) -> stage.run("sable physics translation @l add " + -speed + " 0 0 global"));
+        return script.shot("load-on")
+                .run(stage -> {
+                    stage.run("sable remove @l");
+                    stage.run("sable paused false");
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /** Runs {@code each} for {@code ticks} ticks and logs what our block entities cost the server meanwhile. */
+    private static void measure(Script script, String phase, int ticks, BiConsumer<Stage, Integer> each) {
+        long[] start = new long[2];
+        script.run(stage -> {
+                    start[0] = Timer.SERVER_BLOCK.nanos();
+                    start[1] = Timer.SERVER_BLOCK.calls();
+                    SelfTestBridge.frameStats = phase;
+                })
+                .repeat(ticks, each)
+                .run(stage -> {
+                    SelfTestBridge.frameStats = null;
+                    long calls = Timer.SERVER_BLOCK.calls() - start[1];
+                    stage.log("%s server: our block entities %.1f us per tick (%d light ticks), "
+                                    + "server tick %.2f ms on average over the last 100 ticks",
+                            phase, (Timer.SERVER_BLOCK.nanos() - start[0]) / 1000.0 / ticks, calls,
+                            stage.level.getServer().getAverageTickTimeNanos() / 1e6);
+                });
+    }
+
+    /**
+     * One-off: removes Lightworks lights, contraptions and glue that earlier test runs left within 24
+     * blocks of where the player joined (before contraptions were discarded on restore).
+     */
+    static Script cleanup() {
+        return new Script("cleanup").run(stage -> {
+            stage.discardContraptions(stage.origin, 24);
+            int removed = 0;
+            for (BlockPos pos : BlockPos.betweenClosed(stage.at(-24, -1, -24), stage.at(24, 16, 24))) {
+                BlockState state = stage.level.getBlockState(pos);
+                if (state.is(LightworksBlocks.SEARCHLIGHT.get()) || state.is(LightworksBlocks.HEADLIGHT.get())) {
+                    stage.level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+                    removed++;
+                }
+            }
+            // The plank of the piston scenario's cart, left with its lights
+            if (stage.level.getBlockState(stage.at(1, 1, 6)).is(Blocks.OAK_PLANKS)) {
+                stage.level.setBlock(stage.at(1, 1, 6), Blocks.AIR.defaultBlockState(), 3);
+                removed++;
+            }
+            stage.log("cleanup: removed %d leftover blocks", removed);
+        });
     }
 
     /** Like turning the Creative Motor's value panel (its speed field is not public in Create 6.0.0). */

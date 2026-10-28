@@ -2,6 +2,7 @@ package com.goldskinmc.lightworks.content.searchlight;
 
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
+import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.host.SableHost;
 import com.goldskinmc.lightworks.light.BeamLightOwner;
@@ -103,13 +104,19 @@ public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLigh
         if (level == null) {
             return;
         }
+        long start = Timer.start();
+        updateBeam();
+        (level.isClientSide ? Timer.CLIENT_BLOCK : Timer.SERVER_BLOCK).stop(start);
+    }
+
+    private void updateBeam() {
         BeamPose beam = tickBeam();
         // On a vehicle the beam moves every tick; a fixed one is re-traced when re-aimed or periodically
         if (!beam.moving() && !retraceDue && getFacing() == tracedFacing) {
             return;
         }
         if (level.isClientSide) {
-            clientBeam.update(level, beam);
+            clientBeam.update(level, beam, beam.moving() ? renderBeam(0.5f) : beam);
         } else if (LightworksConfig.serverLightBlocks() && !beam.moving()) {
             BeamTrace.Hit hit = BeamTrace.trace(level, beam.origin(), beam.direction(), shape.range());
             serverLight.update(level, worldPosition, hit, beam.direction(), lightLevelAt(hit));

@@ -3,6 +3,7 @@ package com.goldskinmc.lightworks.debug.selftest;
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.beam.BeamSpot;
 import com.goldskinmc.lightworks.compat.DynamicLights;
+import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.light.BeamSource;
 import com.goldskinmc.lightworks.light.BeamTrace;
@@ -12,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +64,11 @@ public final class SelfTestClient {
     private static int recordedFrames;
     @Nullable
     private static SpotProbe probe;
+    @Nullable
+    private static FrameStats frameStats;
+    private static boolean beamsOff;
+    private static int savedFramerateLimit;
+    private static boolean savedVsync;
 
     private SelfTestClient() {
     }
@@ -86,10 +93,21 @@ public final class SelfTestClient {
                 mc.options.hideGui = true;
                 // A singleplayer game pauses when its window loses focus, which would stop the test
                 mc.options.pauseOnLostFocus = false;
+                // Uncapped, so frame times show the work done rather than the frame limit
+                savedFramerateLimit = mc.options.framerateLimit().get();
+                savedVsync = mc.options.enableVsync().get();
+                mc.options.framerateLimit().set(260);
+                mc.options.enableVsync().set(false);
             } else {
                 mc.options.hideGui = savedHideGui;
+                mc.options.framerateLimit().set(savedFramerateLimit);
+                mc.options.enableVsync().set(savedVsync);
             }
             wasActive = active;
+        }
+        if (SelfTestBridge.beamsOff != beamsOff) {
+            beamsOff = SelfTestBridge.beamsOff;
+            ClientBeams.setEnabled(!beamsOff);
         }
         if (SelfTestBridge.dynamicLightsOff != suppressing) {
             suppressing = SelfTestBridge.dynamicLightsOff;
@@ -107,6 +125,7 @@ public final class SelfTestClient {
     /** Keeps the camera on the focus point every frame, so moving the player never spoils a shot. */
     @SubscribeEvent
     public static void onRenderFrame(RenderFrameEvent.Pre event) {
+        recordFrameTime();
         Vec3 focus = SelfTestBridge.focus;
         LocalPlayer player = Minecraft.getInstance().player;
         if (!SelfTest.ENABLED || focus == null || player == null) {
@@ -144,6 +163,20 @@ public final class SelfTestClient {
                 current.frame(Math.sqrt(sq(drawn.spotX() - spot.spotX()) + sq(drawn.spotY() - spot.spotY())
                         + sq(drawn.spotZ() - spot.spotZ())));
             }
+        }
+    }
+
+    private static void recordFrameTime() {
+        String name = SelfTestBridge.frameStats;
+        if (frameStats != null && !frameStats.name.equals(name)) {
+            frameStats.report();
+            frameStats = null;
+        }
+        if (name != null) {
+            if (frameStats == null) {
+                frameStats = new FrameStats(name);
+            }
+            frameStats.frame();
         }
     }
 
@@ -239,6 +272,59 @@ public final class SelfTestClient {
         return v * v;
     }
 
+    /** Frame times over one load phase, and the cost of our client code and of LambDynamicLights calling us. */
+    private static final class FrameStats {
+        final String name;
+        final long[] timerStart = new long[Timer.values().length];
+        final long[] callsStart = new long[Timer.values().length];
+        final long startNanos = System.nanoTime();
+        long[] frames = new long[1024];
+        int count;
+        long lastFrame;
+
+        FrameStats(String name) {
+            this.name = name;
+            for (Timer timer : Timer.values()) {
+                timerStart[timer.ordinal()] = timer.nanos();
+                callsStart[timer.ordinal()] = timer.calls();
+            }
+        }
+
+        void frame() {
+            long now = System.nanoTime();
+            if (lastFrame != 0) {
+                if (count == frames.length) {
+                    frames = Arrays.copyOf(frames, count * 2);
+                }
+                frames[count++] = now - lastFrame;
+            }
+            lastFrame = now;
+        }
+
+        void report() {
+            if (count == 0) {
+                return;
+            }
+            long[] sorted = Arrays.copyOf(frames, count);
+            Arrays.sort(sorted);
+            double mean = Arrays.stream(sorted).average().orElse(0) / 1e6;
+            double seconds = (System.nanoTime() - startNanos) / 1e9;
+            StringBuilder work = new StringBuilder();
+            for (Timer timer : Timer.values()) {
+                if (timer == Timer.SERVER_BLOCK) {
+                    continue;
+                }
+                long calls = timer.calls() - callsStart[timer.ordinal()];
+                double ms = (timer.nanos() - timerStart[timer.ordinal()]) / 1e6;
+                work.append(String.format(", %s %d calls %.1f ms/s", timer.name().toLowerCase(), calls, ms / seconds));
+            }
+            Lightworks.LOGGER.info(String.format("[selftest] frames %s: %d frames, mean %.2f ms (%.0f FPS), "
+                            + "median %.2f, 95th %.2f, 99th %.2f ms%s",
+                    name, count, mean, 1000 / mean, sorted[count / 2] / 1e6, sorted[(int) (count * 0.95)] / 1e6,
+                    sorted[(int) (count * 0.99)] / 1e6, work));
+        }
+    }
+
     /**
      * Measures moving lights. A light pointing straight down should have its spot directly below it,
      * half a block above the ground: per tick with the logical pose, per frame with the render pose (see
@@ -281,7 +367,13 @@ public final class SelfTestClient {
             }
             maxHorizontalGap = Math.max(maxHorizontalGap, Math.hypot(spot.spotX() - beam.origin().x,
                     spot.spotZ() - beam.origin().z));
-            maxGroundError = Math.max(maxGroundError, Math.abs(spot.spotY() - (groundY + 0.5)));
+            double groundError = Math.abs(spot.spotY() - (groundY + 0.5));
+            if (groundError > 0.5 && maxGroundError <= 0.5) {
+                Lightworks.LOGGER.info(String.format("[selftest] probe %s tick %d: spot at %.2f %.2f %.2f, light at %.2f %.2f %.2f",
+                        name, ticks, spot.spotX(), spot.spotY(), spot.spotZ(), beam.origin().x, beam.origin().y,
+                        beam.origin().z));
+            }
+            maxGroundError = Math.max(maxGroundError, groundError);
             if (Double.isNaN(firstSpotX)) {
                 firstSpotX = spot.spotX();
             }

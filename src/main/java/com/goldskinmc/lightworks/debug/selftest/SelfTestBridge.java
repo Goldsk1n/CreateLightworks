@@ -20,6 +20,11 @@ final class SelfTestBridge {
     static volatile Vec3 focus;
     /** Darkens every dynamic spot, to compare the server light path alone. */
     static volatile boolean dynamicLightsOff;
+    /** Switches every client beam off (no dynamic light, no cosmetic beam): the baseline for load tests. */
+    static volatile boolean beamsOff;
+    /** While set, the client records frame times under this name and reports them when it changes. */
+    @Nullable
+    static volatile String frameStats;
 
     /** Screenshot requests: the client takes shot {@code shotRequested} and then sets {@code shotDone}. */
     static volatile int shotRequested;
@@ -47,6 +52,8 @@ final class SelfTestBridge {
         active = false;
         focus = null;
         dynamicLightsOff = false;
+        beamsOff = false;
+        frameStats = null;
         recording = null;
         probe = null;
     }

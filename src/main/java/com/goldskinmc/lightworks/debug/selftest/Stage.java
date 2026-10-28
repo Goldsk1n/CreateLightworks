@@ -8,8 +8,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
+import com.simibubi.create.content.contraptions.glue.SuperGlueEntity;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -79,6 +83,17 @@ final class Stage {
 
     void log(String format, Object... args) {
         Lightworks.LOGGER.info("[selftest] " + String.format(format, args));
+    }
+
+    /**
+     * Removes contraptions and glue near {@code pos} without placing their blocks. Call before
+     * {@link #restoreBlocks()}: a contraption still alive when its piston or bearing is removed would put
+     * its blocks back into the world after the restore.
+     */
+    void discardContraptions(BlockPos pos, int radius) {
+        AABB area = new AABB(pos).inflate(radius);
+        level.getEntitiesOfClass(AbstractContraptionEntity.class, area).forEach(Entity::discard);
+        level.getEntitiesOfClass(SuperGlueEntity.class, area).forEach(Entity::discard);
     }
 
     /** Puts back every block this stage changed so far. */
