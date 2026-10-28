@@ -3,10 +3,13 @@ package com.goldskinmc.lightworks.registry;
 import static com.goldskinmc.lightworks.Lightworks.REGISTRATE;
 
 import com.goldskinmc.lightworks.content.searchlight.SearchlightBlock;
+import com.goldskinmc.lightworks.light.BeamLightBlock;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.PushReaction;
 
 public final class LightworksBlocks {
     public static final BlockEntry<SearchlightBlock> SEARCHLIGHT = REGISTRATE
@@ -20,6 +23,20 @@ public final class LightworksBlocks {
             .tag(BlockTags.MINEABLE_WITH_PICKAXE)
             .lang("Searchlight")
             .simpleItem()
+            .register();
+
+    /** Invisible light where a beam lands (server fallback path). No item, no drops. */
+    public static final BlockEntry<BeamLightBlock> BEAM_LIGHT = REGISTRATE
+            .block("beam_light", BeamLightBlock::new)
+            .properties(p -> p.mapColor(MapColor.NONE).noCollission().noOcclusion().replaceable().noLootTable()
+                    .strength(-1.0f, 3600000.8f)
+                    .lightLevel(state -> state.getValue(BeamLightBlock.LEVEL))
+                    .pushReaction(PushReaction.DESTROY))
+            .blockstate((c, p) -> p.simpleBlock(c.get(),
+                    p.models().getBuilder(c.getName()).texture("particle", p.mcLoc("block/glass"))))
+            .loot((tables, block) -> {
+            })
+            .lang("Beam Light")
             .register();
 
     private LightworksBlocks() {

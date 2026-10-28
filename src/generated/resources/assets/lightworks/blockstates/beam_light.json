@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "lightworks:block/beam_light"
+    }
+  }
+}

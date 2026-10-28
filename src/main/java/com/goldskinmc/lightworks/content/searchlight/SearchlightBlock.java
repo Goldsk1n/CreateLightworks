@@ -3,8 +3,10 @@ package com.goldskinmc.lightworks.content.searchlight;
 import com.goldskinmc.lightworks.registry.LightworksBlockEntities;
 import com.mojang.serialization.MapCodec;
 import com.simibubi.create.foundation.block.IBE;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.DirectionalBlock;
 import net.minecraft.world.level.block.Mirror;
@@ -48,6 +50,11 @@ public class SearchlightBlock extends DirectionalBlock implements IBE<Searchligh
     @Override
     protected BlockState mirror(BlockState state, Mirror mirror) {
         return state.rotate(mirror.getRotation(state.getValue(FACING)));
+    }
+
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        IBE.onRemove(state, level, pos, newState);
     }
 
     @Override

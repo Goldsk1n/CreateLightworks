@@ -8,17 +8,31 @@ import org.junit.jupiter.api.Test;
 
 class ConeFalloffTest {
     private static final double EPS = 1e-9;
-    // 10 degree core, 5 degree soft edge, 48 blocks, full brightness; beam along +Z
-    private final ConeFalloff cone = new ConeFalloff(10, 5, 48, 15);
+    // 10 degree core, 5 degree soft edge, full brightness to 32 blocks, dark at 48; beam along +Z
+    private final ConeFalloff cone = new ConeFalloff(10, 5, 32, 48, 15);
 
     private double alongZ(double dx, double dy, double dz) {
         return cone.lightAt(dx, dy, dz, 0, 0, 1);
     }
 
     @Test
-    void onAxisLightFadesLinearlyWithDistance() {
-        assertEquals(15 * (1 - 1.0 / 48), alongZ(0, 0, 1), EPS);
-        assertEquals(15 * 0.5, alongZ(0, 0, 24), EPS);
+    void fullBrightnessUpToFullRange() {
+        assertEquals(15, alongZ(0, 0, 1), EPS);
+        assertEquals(15, alongZ(0, 0, 20), EPS);
+        assertEquals(15, alongZ(0, 0, 32), EPS);
+    }
+
+    @Test
+    void fadesLinearlyFromFullRangeToRange() {
+        assertEquals(7.5, alongZ(0, 0, 40), EPS);
+        assertEquals(15 * 4.0 / 16, alongZ(0, 0, 44), EPS);
+    }
+
+    @Test
+    void onAxisMatchesLightAtOnTheAxis() {
+        for (double d : new double[] {0.5, 10, 32, 33, 47.5}) {
+            assertEquals(cone.onAxis(d), alongZ(0, 0, d), EPS);
+        }
     }
 
     @Test
@@ -35,8 +49,8 @@ class ConeFalloffTest {
 
     @Test
     void insideTheCoreIsAsBrightAsTheAxis() {
-        double offAxis = 10 * Math.tan(Math.toRadians(8));
-        assertEquals(alongZ(0, 0, 10), alongZ(offAxis, 0, 10), EPS);
+        double offAxis = 40 * Math.tan(Math.toRadians(8));
+        assertEquals(alongZ(0, 0, 40), alongZ(offAxis, 0, 40), EPS);
     }
 
     @Test
@@ -50,17 +64,18 @@ class ConeFalloffTest {
 
     @Test
     void resultDoesNotDependOnBeamDirection() {
-        double alongX = cone.lightAt(20, 1, 0, 1, 0, 0);
+        double alongX = cone.lightAt(40, 1, 0, 1, 0, 0);
         double s = Math.sqrt(0.5);
-        double diagonal = cone.lightAt(20 * s, 1, 20 * s, s, 0, s);
-        assertEquals(alongZ(1, 0, 20), alongX, EPS);
+        double diagonal = cone.lightAt(40 * s, 1, 40 * s, s, 0, s);
+        assertEquals(alongZ(1, 0, 40), alongX, EPS);
         assertEquals(alongX, diagonal, EPS);
     }
 
     @Test
     void rejectsInvalidShapes() {
-        assertThrows(IllegalArgumentException.class, () -> new ConeFalloff(80, 10, 48, 15));
-        assertThrows(IllegalArgumentException.class, () -> new ConeFalloff(10, 5, 0, 15));
-        assertThrows(IllegalArgumentException.class, () -> new ConeFalloff(10, 5, 48, 16));
+        assertThrows(IllegalArgumentException.class, () -> new ConeFalloff(80, 10, 32, 48, 15));
+        assertThrows(IllegalArgumentException.class, () -> new ConeFalloff(10, 5, 0, 0, 15));
+        assertThrows(IllegalArgumentException.class, () -> new ConeFalloff(10, 5, 48, 48, 15));
+        assertThrows(IllegalArgumentException.class, () -> new ConeFalloff(10, 5, 32, 48, 16));
     }
 }
