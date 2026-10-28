@@ -1,8 +1,8 @@
 package com.goldskinmc.lightworks.gametest;
 
 import com.goldskinmc.lightworks.Lightworks;
-import com.goldskinmc.lightworks.content.searchlight.SearchlightBlock;
-import com.goldskinmc.lightworks.content.searchlight.SearchlightBlockEntity;
+import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
+import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.light.BeamTrace;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import dev.ryanhcode.sable.companion.SableCompanion;
@@ -63,11 +63,11 @@ public final class LightworksGameTests {
         BlockPos light = new BlockPos(0, 2, 2);
         BlockPos wall = new BlockPos(4, 2, 2);
         helper.setBlock(light, LightworksBlocks.SEARCHLIGHT.getDefaultState()
-                .setValue(SearchlightBlock.FACING, Direction.EAST));
+                .setValue(DirectionalLightBlock.FACING, Direction.EAST));
         helper.setBlock(wall, Blocks.STONE);
         helper.setBlock(new BlockPos(4, 3, 2), Blocks.GLASS);
 
-        SearchlightBlockEntity searchlight = helper.getBlockEntity(light);
+        DirectionalLightBlockEntity searchlight = helper.getBlockEntity(light);
         BeamTrace.Hit hit = BeamTrace.trace(helper.getLevel(), searchlight.beamOrigin(), searchlight.beamDirection(), 48);
 
         helper.assertTrue(helper.absolutePos(wall).equals(hit.block()),
@@ -85,8 +85,8 @@ public final class LightworksGameTests {
     public static void searchlightBeamRunsFullRangeWhenNothingIsInTheWay(GameTestHelper helper) {
         BlockPos light = new BlockPos(2, 1, 2);
         helper.setBlock(light, LightworksBlocks.SEARCHLIGHT.getDefaultState()
-                .setValue(SearchlightBlock.FACING, Direction.UP));
-        SearchlightBlockEntity searchlight = helper.getBlockEntity(light);
+                .setValue(DirectionalLightBlock.FACING, Direction.UP));
+        DirectionalLightBlockEntity searchlight = helper.getBlockEntity(light);
         BeamTrace.Hit hit = BeamTrace.trace(helper.getLevel(), searchlight.beamOrigin(), searchlight.beamDirection(), 2);
         helper.assertFalse(hit.hitBlock(), "beam should not hit anything, hit " + hit.block());
         helper.assertTrue(Math.abs(hit.distance() - 2) < 1e-6, "expected the full 2-block range, got " + hit.distance());

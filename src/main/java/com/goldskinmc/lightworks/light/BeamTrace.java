@@ -1,6 +1,8 @@
 package com.goldskinmc.lightworks.light;
 
+import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.beam.BeamSpot;
+import com.goldskinmc.lightworks.beam.ConeFalloff;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ClipContext;
@@ -44,6 +46,11 @@ public final class BeamTrace {
         Vec3 centre = hit.end().subtract(dir.scale(0.5));
         return new BeamSpot(centre.x, centre.y, centre.z, hit.end().x, hit.end().y, hit.end().z,
                 dir.x, dir.y, dir.z, peak);
+    }
+
+    /** How far a beam of this shape reaches: its own range, capped by the server's {@code maxBeamRange}. */
+    public static double range(ConeFalloff shape) {
+        return Math.min(shape.range(), LightworksConfig.maxBeamRange());
     }
 
     public static Hit trace(BlockGetter level, Vec3 origin, Vec3 direction, double range) {

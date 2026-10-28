@@ -1,7 +1,7 @@
 package com.goldskinmc.lightworks.gametest;
 
 import com.goldskinmc.lightworks.Lightworks;
-import com.goldskinmc.lightworks.content.searchlight.SearchlightBlock;
+import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.light.BeamLightBlock;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import net.minecraft.core.BlockPos;
@@ -30,7 +30,7 @@ public final class BeamLightGameTests {
     }
 
     private static void placeSearchlight(GameTestHelper helper, BlockPos pos, Direction facing) {
-        helper.setBlock(pos, LightworksBlocks.SEARCHLIGHT.getDefaultState().setValue(SearchlightBlock.FACING, facing));
+        helper.setBlock(pos, LightworksBlocks.SEARCHLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, facing));
     }
 
     private static boolean isBeamLight(GameTestHelper helper, BlockPos pos) {

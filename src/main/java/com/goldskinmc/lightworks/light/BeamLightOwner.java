@@ -1,11 +1,9 @@
 package com.goldskinmc.lightworks.light;
 
 import net.minecraft.core.BlockPos;
-import org.jetbrains.annotations.Nullable;
 
-/** A block entity that places a {@link BeamLightBlock} where its beam lands. */
+/** A block entity that places {@link BeamLightBlock}s where its beams land. */
 public interface BeamLightOwner {
-    /** Where this owner's beam light currently is, or null if it has none. */
-    @Nullable
-    BlockPos beamLightPos();
+    /** True while one of this owner's beams keeps its light at {@code pos}. */
+    boolean ownsBeamLight(BlockPos pos);
 }

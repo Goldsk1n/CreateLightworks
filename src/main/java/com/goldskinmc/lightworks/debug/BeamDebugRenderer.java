@@ -3,7 +3,8 @@ package com.goldskinmc.lightworks.debug;
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.compat.DynamicLights;
-import com.goldskinmc.lightworks.content.searchlight.SearchlightBlockEntity;
+import com.goldskinmc.lightworks.LightworksClientConfig;
+import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.light.BeamSource;
 import com.goldskinmc.lightworks.light.BeamTrace;
@@ -28,7 +29,7 @@ import net.neoforged.neoforge.client.event.CustomizeGuiOverlayEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 /**
- * Spike debug view, shown while the F3 screen is open: each beam (placed, on a vehicle or on a contraption)
+ * Debug view, shown while the F3 screen is open and the client config {@code debugOverlay} is on: each beam (placed, on a vehicle or on a contraption)
  * as a line from lens to hit point with a box around the hit block, plus details of the searchlight under
  * the crosshair.
  */
@@ -44,7 +45,7 @@ public final class BeamDebugRenderer {
     public static void onRenderLevel(RenderLevelStageEvent event) {
         Minecraft mc = Minecraft.getInstance();
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES || mc.level == null
-                || !mc.getDebugOverlay().showDebugScreen()) {
+                || !mc.getDebugOverlay().showDebugScreen() || !LightworksClientConfig.debugOverlay()) {
             return;
         }
         Vec3 camera = event.getCamera().getPosition();
@@ -84,11 +85,12 @@ public final class BeamDebugRenderer {
         event.getRight().add(DynamicLights.status());
         if (mc.hitResult instanceof BlockHitResult target && target.getType() == HitResult.Type.BLOCK) {
             BlockEntity be = mc.level.getBlockEntity(target.getBlockPos());
-            if (be instanceof SearchlightBlockEntity light) {
+            if (be instanceof DirectionalLightBlockEntity light) {
                 BeamPose beam = light.tickBeam();
                 BeamTrace.Hit hit = BeamTrace.trace(mc.level, beam.origin(), beam.direction(), RANGE);
-                event.getRight().add("Beam " + light.getFacing().getSerializedName() + " from " + format(beam.origin())
-                        + (beam.moving() ? " (on vehicle)" : ""));
+                event.getRight().add(String.format("Beam %s, aim %s, brightness %d, from %s%s",
+                        light.mountFacing().getSerializedName(), light.aim(), light.brightness(),
+                        format(beam.origin()), beam.moving() ? " (on vehicle)" : ""));
                 event.getRight().add(hit.block() == null
                         ? String.format("No hit within %.0f blocks", RANGE)
                         : String.format("Hits %s at %.2f blocks, block light %d", shortPos(hit.block()),

@@ -1,45 +1,54 @@
 package com.goldskinmc.lightworks.light;
 
+import com.goldskinmc.lightworks.LightworksClientConfig;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.simibubi.create.content.contraptions.render.ContraptionMatrices;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 /**
- * The cosmetic beam: a faint additive cone from the lens face to where the beam stops. It needs no
- * client mods, so it is what players without LambDynamicLights see of a moving light. Drawn in the
- * light block's own coordinates (block from 0 to 1 on each axis). Client only.
+ * The cosmetic beam: a faint additive cone from the lens to where the beam stops. It needs no client
+ * mods, so it is what players without LambDynamicLights see of a moving light. Drawn in the light block's
+ * own coordinates (block from 0 to 1 on each axis). Its opacity follows the light's brightness and the
+ * client config ({@code beamVisual}, {@code beamVisualWithShaders}). Client only.
  */
 public final class BeamVisual {
     private static final int SEGMENTS = 16;
     private static final float LENS_RADIUS = 0.3f;
-    private static final float RED = 1f;
-    private static final float GREEN = 0.93f;
-    private static final float BLUE = 0.78f;
     /** Opacity at the lens; it fades to nothing where the beam stops. Additive, so this is brightness. */
     private static final float ALPHA = 0.18f;
+    /** How far a dyed beam is lifted toward white, so dark dyes still read as light. */
+    private static final float WHITE_MIX = 0.3f;
 
     private BeamVisual() {
     }
 
-    public static void render(PoseStack poseStack, MultiBufferSource buffers, Direction facing, ClientBeam beam) {
+    /**
+     * @param lens where the beam leaves the light, in block coordinates
+     * @param axis unit vector the beam points along, in block coordinates
+     * @param rgb  beam colour, 0xRRGGBB
+     */
+    public static void render(PoseStack poseStack, MultiBufferSource buffers, Vector3f lens, Vector3f axis,
+            ClientBeam beam, int rgb) {
         float length = (float) beam.length();
-        if (length <= 0) {
+        float alpha = ALPHA * LightworksClientConfig.beamAlpha() * beam.brightness() / 15f;
+        if (length <= 0 || alpha <= 0) {
             return;
         }
+        float red = mix((rgb >> 16 & 0xFF) / 255f);
+        float green = mix((rgb >> 8 & 0xFF) / 255f);
+        float blue = mix((rgb & 0xFF) / 255f);
         // Cone half-angle halfway into the soft edge, where the lit spot visibly ends
         double halfAngle = Math.toRadians(beam.shape().coreDegrees() + beam.shape().edgeDegrees() / 2);
         float endRadius = LENS_RADIUS + length * (float) Math.tan(halfAngle);
 
-        Vector3f axis = facing.step();
-        Vector3f u = facing.getAxis() == Direction.Axis.X ? new Vector3f(0, 1, 0) : new Vector3f(1, 0, 0);
+        Vector3f helper = Math.abs(axis.y) < 0.9f ? new Vector3f(0, 1, 0) : new Vector3f(1, 0, 0);
+        Vector3f u = new Vector3f(axis).cross(helper).normalize();
         Vector3f v = new Vector3f(axis).cross(u);
-        Vector3f lens = new Vector3f(0.5f).add(new Vector3f(axis).mul(0.5f));
         Vector3f end = new Vector3f(lens).add(new Vector3f(axis).mul(length));
 
         Matrix4f pose = poseStack.last().pose();
@@ -54,19 +63,23 @@ public final class BeamVisual {
             Vector3f end0 = new Vector3f(n0).mul(endRadius).add(end);
             Vector3f end1 = new Vector3f(n1).mul(endRadius).add(end);
             // Both windings, so the cone shows from inside and outside whatever the culling state
-            quad(out, pose, lens0, lens1, end1, end0);
-            quad(out, pose, lens1, lens0, end0, end1);
+            quad(out, pose, lens0, lens1, end1, end0, red, green, blue, alpha);
+            quad(out, pose, lens1, lens0, end0, end1, red, green, blue, alpha);
         }
     }
 
     /** Same beam drawn inside a moving contraption, from {@code MovementBehaviour.renderInContraption}. */
     public static void renderInContraption(ContraptionMatrices matrices, MultiBufferSource buffers,
-            Direction localFacing, ClientBeam beam) {
+            Vector3f lens, Vector3f axis, ClientBeam beam, int rgb) {
         PoseStack poseStack = matrices.getViewProjection();
         poseStack.pushPose();
         poseStack.last().pose().mul(matrices.getModel().last().pose());
-        render(poseStack, buffers, localFacing, beam);
+        render(poseStack, buffers, lens, axis, beam, rgb);
         poseStack.popPose();
+    }
+
+    private static float mix(float channel) {
+        return channel + (1 - channel) * WHITE_MIX;
     }
 
     private static Vector3f ring(Vector3f u, Vector3f v, float angle) {
@@ -74,10 +87,10 @@ public final class BeamVisual {
     }
 
     private static void quad(VertexConsumer out, Matrix4f pose, Vector3f lensA, Vector3f lensB, Vector3f endB,
-            Vector3f endA) {
-        out.addVertex(pose, lensA.x, lensA.y, lensA.z).setColor(RED, GREEN, BLUE, ALPHA);
-        out.addVertex(pose, lensB.x, lensB.y, lensB.z).setColor(RED, GREEN, BLUE, ALPHA);
-        out.addVertex(pose, endB.x, endB.y, endB.z).setColor(RED, GREEN, BLUE, 0f);
-        out.addVertex(pose, endA.x, endA.y, endA.z).setColor(RED, GREEN, BLUE, 0f);
+            Vector3f endA, float red, float green, float blue, float alpha) {
+        out.addVertex(pose, lensA.x, lensA.y, lensA.z).setColor(red, green, blue, alpha);
+        out.addVertex(pose, lensB.x, lensB.y, lensB.z).setColor(red, green, blue, alpha);
+        out.addVertex(pose, endB.x, endB.y, endB.z).setColor(red, green, blue, 0f);
+        out.addVertex(pose, endA.x, endA.y, endA.z).setColor(red, green, blue, 0f);
     }
 }

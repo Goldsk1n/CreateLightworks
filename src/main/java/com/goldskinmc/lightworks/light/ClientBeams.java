@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.level.Level;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -50,6 +52,14 @@ public final class ClientBeams {
 
     public static boolean enabled() {
         return enabled;
+    }
+
+    /**
+     * True for the world the player is in. Ponder scenes and contraption render worlds hold block
+     * entities too; they may draw beams but must never register dynamic light.
+     */
+    public static boolean isRealWorld(Level level) {
+        return level == Minecraft.getInstance().level;
     }
 
     @SubscribeEvent

@@ -28,6 +28,7 @@ public final class ClientBeam {
     @Nullable
     private BeamSpot lastSpot;
     private double length;
+    private int brightness;
 
     public ClientBeam(ConeFalloff shape) {
         this.shape = shape;
@@ -44,20 +45,23 @@ public final class ClientBeam {
      *              placed where the beam will be on average until the next update. Hosts interpolate
      *              differently (Sable vehicles lag a tick behind, bearings extrapolate ahead), so this
      *              comes from the host's own render pose.
+     * @param brightness 0 (off) to 15; scales the spot and the cosmetic beam
      */
-    public void update(Level level, BeamPose beam, BeamPose drawn) {
-        if (!ClientBeams.enabled()) {
+    public void update(Level level, BeamPose beam, BeamPose drawn, int brightness) {
+        if (!ClientBeams.enabled() || brightness <= 0) {
             off();
             return;
         }
         if (spot == null) {
-            spot = DynamicLights.createSpot();
+            // Ponder scenes and contraption render worlds draw beams too, but only the real world gets light
+            spot = ClientBeams.isRealWorld(level) ? DynamicLights.createSpot() : DynamicSpot.NONE;
         }
         BeamPose at = beam.moving() ? drawn : beam;
-        BeamTrace.Hit hit = BeamTrace.trace(level, at.origin(), at.direction(), shape.range());
-        BeamSpot next = BeamTrace.spotFor(hit, at.direction(), shape.onAxis(hit.distance()));
+        BeamTrace.Hit hit = BeamTrace.trace(level, at.origin(), at.direction(), BeamTrace.range(shape));
+        BeamSpot next = BeamTrace.spotFor(hit, at.direction(), shape.onAxis(hit.distance()) * brightness / 15.0);
         // The cosmetic beam follows every tick; the lit spot only when it has moved enough to show
         length = hit.distance();
+        this.brightness = brightness;
         if (worthPublishing(lastSpot, next)) {
             lastSpot = next;
             spot.set(next);
@@ -75,6 +79,7 @@ public final class ClientBeam {
     public void off() {
         lastSpot = null;
         length = 0;
+        brightness = 0;
         if (spot != null) {
             spot.set(null);
         }
@@ -88,6 +93,7 @@ public final class ClientBeam {
         }
         lastSpot = null;
         length = 0;
+        brightness = 0;
     }
 
     /** The spot as last handed to the dynamic light: within {@link #MIN_SPOT_MOVE} of the traced one. */
@@ -98,5 +104,10 @@ public final class ClientBeam {
     /** How far the beam reached at the last update: to the hit, or its full range. 0 when off. */
     public double length() {
         return length;
+    }
+
+    /** Brightness at the last update, 0 to 15; 0 when off. */
+    public int brightness() {
+        return brightness;
     }
 }
