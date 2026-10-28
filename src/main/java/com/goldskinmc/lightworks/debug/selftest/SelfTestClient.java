@@ -1,46 +1,48 @@
 package com.goldskinmc.lightworks.debug.selftest;
 
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.createmod.ponder.foundation.ui.PonderUI;
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.beam.BeamSpot;
 import com.goldskinmc.lightworks.compat.DynamicLights;
 import com.goldskinmc.lightworks.content.signal.SignalLampMovement;
-import com.goldskinmc.lightworks.registry.LightworksBlocks;
-import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
-import com.simibubi.create.content.contraptions.behaviour.MovementContext;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.light.BeamSource;
 import com.goldskinmc.lightworks.light.BeamTrace;
 import com.goldskinmc.lightworks.light.ClientBeams;
+import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.mojang.blaze3d.platform.NativeImage;
+import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
+import com.simibubi.create.content.contraptions.behaviour.MovementContext;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import net.createmod.ponder.foundation.ui.PonderUI;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.phys.Vec3;
-import org.apache.commons.lang3.tuple.MutablePair;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import org.apache.commons.lang3.tuple.MutablePair;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -119,6 +121,7 @@ public final class SelfTestClient {
             return;
         }
         if (++ticksInWorld == READY_AFTER_TICKS) {
+            checkCreativeTabs(mc);
             SelfTestBridge.clientReady = true;
         }
         if (ticksInWorld == LOG_STATUS_AT) {
@@ -251,6 +254,18 @@ public final class SelfTestClient {
                 probe.tick(light, beam);
             }
         }
+    }
+
+    /**
+     * Builds every creative tab, as opening the inventory does: a tab listing an item twice throws here
+     * (it once crashed the game on the first inventory open).
+     */
+    private static void checkCreativeTabs(Minecraft mc) {
+        CreativeModeTabs.tryRebuildTabContents(mc.player.connection.enabledFeatures(), true,
+                mc.level.registryAccess());
+        CreativeModeTab tab = BuiltInRegistries.CREATIVE_MODE_TAB.get(Lightworks.id("main"));
+        Lightworks.LOGGER.info("[selftest] creative tabs built; Lightworks tab lists {} items",
+                tab == null ? -1 : tab.getDisplayItems().size());
     }
 
     /** Walks through the Ponder scenes the server asked for; the game is paused meanwhile. */
