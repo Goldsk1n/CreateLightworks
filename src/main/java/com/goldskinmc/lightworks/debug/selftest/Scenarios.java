@@ -72,7 +72,8 @@ final class Scenarios {
         ALL.put("bearing", Scenarios::bearing);
         ALL.put("piston", Scenarios::piston);
         // Not in the default set: heavier, or one-off
-        ALL.put("load", Scenarios::load);
+        ALL.put("load", () -> load("load", false));
+        ALL.put("load-mix", () -> load("load-mix", true));
         ALL.put("cleanup", Scenarios::cleanup);
         ALL.put("ponder", Scenarios::ponder);
         ALL.put("gallery", Scenarios::gallery);
@@ -824,11 +825,15 @@ final class Scenarios {
      * S6 and S7, load: 50 Searchlights under a 10 by 5 deck, made into one Sable vehicle. Measured with
      * every beam switched off (the baseline: the same vehicle and blocks), then on while hovering, then on
      * while flying. Each phase logs our server and client time and the client's frame times.
+     * <p>
+     * With {@code mix}, the 50 lights are every kind instead: under the deck 20 Searchlights and 10
+     * Floodlights pointing down; on top 5 Rotating Beacons (two beams each), 5 Warning Lights,
+     * 6 Tail and Brake Lights and 4 Navigation Lights.
      */
-    static Script load() {
-        Script script = new Script("load");
+    static Script load(String name, boolean mix) {
+        Script script = new Script(name);
         if (!ModList.get().isLoaded("sable")) {
-            return script.run(stage -> stage.log("load: skipped, Sable is not installed"));
+            return script.run(stage -> stage.log("%s: skipped, Sable is not installed", name));
         }
         int phaseTicks = 100;
         double speed = 0.1;
@@ -840,11 +845,30 @@ final class Scenarios {
                     for (int x = -4; x <= 5; x++) {
                         for (int z = -2; z <= 2; z++) {
                             stage.set(deck[0].offset(x, 0, z), Blocks.OAK_PLANKS.defaultBlockState());
-                            stage.set(deck[0].offset(x, -1, z), searchlight(Direction.DOWN));
+                            if (!mix) {
+                                stage.set(deck[0].offset(x, -1, z), searchlight(Direction.DOWN));
+                            }
+                        }
+                        if (mix) {
+                            stage.set(deck[0].offset(x, -1, -2), searchlight(Direction.DOWN));
+                            stage.set(deck[0].offset(x, -1, 0), searchlight(Direction.DOWN));
+                            stage.set(deck[0].offset(x, -1, 2), LightworksBlocks.FLOODLIGHT.getDefaultState()
+                                    .setValue(DirectionalLightBlock.FACING, Direction.DOWN));
+                            BlockState top = switch ((x + 4) % 4) {
+                                case 0 -> LightworksBlocks.WARNING_LIGHT.getDefaultState();
+                                case 1 -> LightworksBlocks.TAIL_LIGHT.getDefaultState();
+                                default -> LightworksBlocks.NAVIGATION_LIGHT.getDefaultState();
+                            };
+                            stage.set(deck[0].offset(x, 1, -1), top.setValue(SignalLampBlock.FACING, Direction.UP));
+                            stage.set(deck[0].offset(x, 1, 1), x % 2 == 0
+                                    ? LightworksBlocks.ROTATING_BEACON.getDefaultState()
+                                            .setValue(RotatingBeaconBlock.FACING, Direction.UP)
+                                    : (x % 4 == 1 ? LightworksBlocks.WARNING_LIGHT : LightworksBlocks.TAIL_LIGHT)
+                                            .getDefaultState().setValue(SignalLampBlock.FACING, Direction.UP));
                         }
                     }
                     BlockPos from = deck[0].offset(-4, -1, -2);
-                    BlockPos to = deck[0].offset(5, 0, 2);
+                    BlockPos to = deck[0].offset(5, mix ? 1 : 0, 2);
                     stage.run("sable paused true");
                     stage.run("sable assemble area " + from.getX() + " " + from.getY() + " " + from.getZ() + " "
                             + to.getX() + " " + to.getY() + " " + to.getZ());
@@ -852,14 +876,14 @@ final class Scenarios {
                     SelfTestBridge.beamsOff = true;
                 })
                 .waitTicks(60);
-        measure(script, "load-off-flying", phaseTicks,
+        measure(script, name + "-off-flying", phaseTicks,
                 (stage, i) -> stage.run("sable physics translation @l add " + speed + " 0 0 global"));
         script.run(stage -> SelfTestBridge.beamsOff = false).waitTicks(40);
-        measure(script, "load-on-hovering", phaseTicks, (stage, i) -> {
+        measure(script, name + "-on-hovering", phaseTicks, (stage, i) -> {
         });
-        measure(script, "load-on-flying", phaseTicks,
+        measure(script, name + "-on-flying", phaseTicks,
                 (stage, i) -> stage.run("sable physics translation @l add " + -speed + " 0 0 global"));
-        return script.shot("load-on")
+        return script.shot(name + "-on")
                 .run(stage -> {
                     stage.run("sable remove @l");
                     stage.run("sable paused false");
