@@ -4,6 +4,8 @@ import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.beam.Aim;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.goldskinmc.lightworks.content.LightState;
+import com.goldskinmc.lightworks.compat.DynamicLights;
+import com.goldskinmc.lightworks.content.LightGoggles;
 import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.content.MovingBeam;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlockEntity;
@@ -17,15 +19,18 @@ import com.goldskinmc.lightworks.light.ClientBeam;
 import com.goldskinmc.lightworks.light.ClientBeams;
 import com.goldskinmc.lightworks.light.ServerBeamLight;
 import com.simibubi.create.api.contraption.transformable.TransformableBlockEntity;
+import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.content.contraptions.StructureTransform;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import java.util.List;
 import java.util.Objects;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -42,7 +47,7 @@ import org.jetbrains.annotations.Nullable;
  * own aim.
  */
 public class DirectionalLightBlockEntity extends SmartBlockEntity
-        implements BeamLightOwner, BeamSource, TransformableBlockEntity {
+        implements BeamLightOwner, BeamSource, TransformableBlockEntity, IHaveGoggleInformation {
     /** Head angles written for contraption copies, which cannot see the head. */
     static final String HEAD_YAW = "HeadYaw";
     static final String HEAD_ELEVATION = "HeadElevation";
@@ -367,6 +372,47 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         Vec3 moved = transform.applyWithoutOffsetUncentered(direction(before, state.aim()));
         state.setAim(Aim.fromDirection(now.getStepX(), now.getStepY(), now.getStepZ(), moved.x, moved.y, moved.z));
         notifyUpdate();
+    }
+
+    /** Engineer's Goggles: state, aim, where the beam lands and how it lights. Client side. */
+    @Override
+    public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
+        LightGoggles.title(tooltip, getBlockState().getBlock().getName());
+        LightGoggles.brightness(tooltip, state);
+        if (type.followsMotion()) {
+            LightGoggles.line(tooltip, state.signal() == 0 ? "headlight_auto" : "headlight_manual", ChatFormatting.AQUA);
+        }
+        PanTiltHeadBlockEntity head = head();
+        float[] angles = aimAngles(0);
+        if (head != null) {
+            LightGoggles.line(tooltip, "aim_head", ChatFormatting.AQUA, Math.round(angles[1]), Math.round(angles[0]));
+        } else {
+            LightGoggles.line(tooltip, "aim", ChatFormatting.AQUA, state.aim().elevation(), state.aim().yaw());
+        }
+        if (state.on() && brightness() > 0 && level != null) {
+            BeamPose beam = tickBeam();
+            BeamTrace.Hit hit = BeamTrace.trace(level, beam.origin(), beam.direction(), BeamTrace.range(shape));
+            if (hit.hitBlock()) {
+                LightGoggles.line(tooltip, "beam_hit", ChatFormatting.WHITE,
+                        level.getBlockState(hit.block()).getBlock().getName(), String.format("%.1f", hit.distance()),
+                        lightLevelAt(hit));
+            } else {
+                LightGoggles.line(tooltip, "beam_miss", ChatFormatting.WHITE, (int) BeamTrace.range(shape));
+            }
+            if (beam.moving()) {
+                LightGoggles.line(tooltip, DynamicLights.present() ? "moving_dynamic" : "moving_beam_only",
+                        ChatFormatting.YELLOW);
+            } else if (!LightworksConfig.serverLightBlocks() && !DynamicLights.present()) {
+                LightGoggles.line(tooltip, "no_light_path", ChatFormatting.YELLOW);
+            }
+        }
+        LightGoggles.colour(tooltip, state.colour());
+        if (isPlayerSneaking) {
+            LightGoggles.hint(tooltip, head != null ? "on_head" : "aim");
+            LightGoggles.hint(tooltip, "dye");
+            LightGoggles.hint(tooltip, LightworksConfig.invertRedstone() ? "redstone_inverted" : "redstone");
+        }
+        return true;
     }
 
     @Override

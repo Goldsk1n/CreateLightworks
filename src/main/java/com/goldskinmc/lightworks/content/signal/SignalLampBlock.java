@@ -6,7 +6,13 @@ import com.simibubi.create.content.equipment.wrench.IWrenchable;
 import com.simibubi.create.foundation.block.IBE;
 import java.util.function.Supplier;
 import net.createmod.catnip.math.VoxelShaper;
+import com.goldskinmc.lightworks.content.Dyeing;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
@@ -65,6 +71,13 @@ public class SignalLampBlock extends DirectionalBlock implements IBE<SignalLampB
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         return defaultBlockState().setValue(FACING, context.getClickedFace());
+    }
+
+    /** Dyes tint the lens and beam. */
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player,
+            InteractionHand hand, BlockHitResult hitResult) {
+        return onBlockEntityUseItemOn(level, pos, light -> Dyeing.use(stack, level, pos, player, light, light.lightState()));
     }
 
     @Override

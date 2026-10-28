@@ -1,14 +1,17 @@
 package com.goldskinmc.lightworks.content.signal;
 
 import com.goldskinmc.lightworks.LightworksConfig;
+import com.goldskinmc.lightworks.content.LightGoggles;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.host.SableHost;
+import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.simibubi.create.foundation.blockEntity.behaviour.CenteredSideValueBoxTransform;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollOptionBehaviour;
 import java.util.List;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -26,7 +29,7 @@ import org.jetbrains.annotations.Nullable;
  * for a Warning Light, the pattern picked with its value box. A Tail and Brake Light on a Sable vehicle
  * watches the vehicle's speed on the client and brightens when it slows.
  */
-public class SignalLampBlockEntity extends SmartBlockEntity {
+public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGoggleInformation {
     /** How bright a Tail and Brake Light's lens is while not braking. */
     public static final float TAIL_GLOW = 0.45f;
 
@@ -148,6 +151,39 @@ public class SignalLampBlockEntity extends SmartBlockEntity {
         if (blockState.getValue(SignalLampBlock.LIGHT) != lightLevel) {
             level.setBlock(worldPosition, blockState.setValue(SignalLampBlock.LIGHT, lightLevel), Block.UPDATE_CLIENTS);
         }
+    }
+
+    @Override
+    public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
+        LightType type = lightType();
+        LightGoggles.title(tooltip, getBlockState().getBlock().getName());
+        LightGoggles.brightness(tooltip, state);
+        LightGoggles.line(tooltip, "block_light", ChatFormatting.GOLD, getBlockState().getValue(SignalLampBlock.LIGHT));
+        switch (type.kind()) {
+            case WARNING -> LightGoggles.line(tooltip, "pattern", ChatFormatting.AQUA,
+                    Component.translatable("create." + pattern().getTranslationKey()));
+            case TAIL -> LightGoggles.line(tooltip, brake.braking() ? "brake_now" : "brake", ChatFormatting.AQUA);
+            case NAVIGATION -> LightGoggles.line(tooltip, "side", ChatFormatting.AQUA, Component.translatable(
+                    "lightworks.navigation." + getBlockState().getValue(NavigationLightBlock.COLOUR).getSerializedName()));
+            default -> {
+            }
+        }
+        if (type.kind() != LightType.Kind.NAVIGATION) {
+            LightGoggles.colour(tooltip, state.colour());
+        }
+        if (isPlayerSneaking) {
+            switch (type.kind()) {
+                case WARNING -> LightGoggles.hint(tooltip, "pattern");
+                case NAVIGATION -> LightGoggles.hint(tooltip, "navigation");
+                default -> {
+                }
+            }
+            if (type.kind() != LightType.Kind.NAVIGATION) {
+                LightGoggles.hint(tooltip, "dye");
+            }
+            LightGoggles.hint(tooltip, LightworksConfig.invertRedstone() ? "redstone_inverted" : "redstone");
+        }
+        return true;
     }
 
     @Override

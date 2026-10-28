@@ -6,7 +6,11 @@ import com.simibubi.create.content.equipment.wrench.IWrenchable;
 import com.simibubi.create.foundation.block.IBE;
 import net.createmod.catnip.math.VoxelShaper;
 import java.util.function.Supplier;
+import com.goldskinmc.lightworks.content.Dyeing;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
@@ -94,6 +98,13 @@ public class DirectionalLightBlock extends DirectionalBlock implements IBE<Direc
             }
         });
         return InteractionResult.SUCCESS;
+    }
+
+    /** Dyes tint the lens and beam. */
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player,
+            InteractionHand hand, BlockHitResult hitResult) {
+        return onBlockEntityUseItemOn(level, pos, light -> Dyeing.use(stack, level, pos, player, light, light.lightState()));
     }
 
     @Override

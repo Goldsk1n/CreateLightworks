@@ -3,6 +3,7 @@ package com.goldskinmc.lightworks.content.beacon;
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.beam.Aim;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
+import com.goldskinmc.lightworks.content.LightGoggles;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.content.SpinAngle;
@@ -16,11 +17,14 @@ import com.goldskinmc.lightworks.light.ClientBeam;
 import com.goldskinmc.lightworks.light.ClientBeams;
 import com.goldskinmc.lightworks.light.ServerBeamLight;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
+import java.util.List;
 import java.util.Objects;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -179,6 +183,20 @@ public class RotatingBeaconBlockEntity extends KineticBlockEntity implements Bea
                 ClientBeams.remove(beam);
             }
         }
+    }
+
+    @Override
+    public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
+        super.addToGoggleTooltip(tooltip, isPlayerSneaking);
+        LightGoggles.title(tooltip, getBlockState().getBlock().getName());
+        LightGoggles.brightness(tooltip, state);
+        LightGoggles.line(tooltip, turning() ? "beacon_turning" : "beacon_stopped", ChatFormatting.AQUA);
+        LightGoggles.colour(tooltip, state.colour());
+        if (isPlayerSneaking) {
+            LightGoggles.hint(tooltip, "beacon");
+            LightGoggles.hint(tooltip, "dye");
+        }
+        return true;
     }
 
     @Override

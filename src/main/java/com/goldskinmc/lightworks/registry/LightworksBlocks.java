@@ -18,6 +18,7 @@ import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
 import com.simibubi.create.api.stress.BlockStressValues;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.TagKey;
 import java.util.function.Supplier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -31,13 +32,13 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public final class LightworksBlocks {
     public static final BlockEntry<DirectionalLightBlock> SEARCHLIGHT = directional("searchlight",
             LightType.SEARCHLIGHT, () -> LightworksBlockEntities.SEARCHLIGHT.get(), Block.box(2, 0, 2, 14, 15.5, 14),
-            "Searchlight");
+            "Searchlight", LightworksTags.LIGHT_FIXTURES);
     public static final BlockEntry<DirectionalLightBlock> FLOODLIGHT = directional("floodlight",
             LightType.FLOODLIGHT, () -> LightworksBlockEntities.FLOODLIGHT.get(), Block.box(0.5, 0, 0.5, 15.5, 12, 15.5),
-            "Floodlight");
+            "Floodlight", LightworksTags.LIGHT_FIXTURES);
     public static final BlockEntry<DirectionalLightBlock> HEADLIGHT = directional("headlight",
             LightType.HEADLIGHT, () -> LightworksBlockEntities.HEADLIGHT.get(), Block.box(4, 0, 4, 12, 13, 12),
-            "Headlight");
+            "Headlight", LightworksTags.SABLE_LIGHT);
 
     public static final BlockEntry<PanTiltHeadBlock> PAN_TILT_HEAD = REGISTRATE
             .block("pan_tilt_head", PanTiltHeadBlock::new)
@@ -59,7 +60,7 @@ public final class LightworksBlocks {
                     p.models().getExistingFile(p.modLoc("block/rotating_beacon/base"))))
             .onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 1.0))
             .onRegister(MovementBehaviour.movementBehaviour(new RotatingBeaconMovement()))
-            .tag(BlockTags.MINEABLE_WITH_PICKAXE)
+            .tag(BlockTags.MINEABLE_WITH_PICKAXE, LightworksTags.LIGHT_FIXTURES)
             .lang("Rotating Beacon")
             .item().model((c, p) -> {
             }).build()
@@ -109,7 +110,7 @@ public final class LightworksBlocks {
                 .blockstate((c, p) -> p.directionalBlock(c.get(),
                         p.models().getExistingFile(p.modLoc("block/" + name + "/base"))))
                 .onRegister(MovementBehaviour.movementBehaviour(new SignalLampMovement(type)))
-                .tag(BlockTags.MINEABLE_WITH_PICKAXE)
+                .tag(BlockTags.MINEABLE_WITH_PICKAXE, LightworksTags.SABLE_LIGHT)
                 .lang(lang)
                 .item().model((c, p) -> {
                 }).build()
@@ -123,14 +124,15 @@ public final class LightworksBlocks {
      * @param upShape outline when mounted on the floor; turned for other mounts
      */
     private static BlockEntry<DirectionalLightBlock> directional(String name, LightType type,
-            Supplier<BlockEntityType<DirectionalLightBlockEntity>> blockEntity, VoxelShape upShape, String lang) {
+            Supplier<BlockEntityType<DirectionalLightBlockEntity>> blockEntity, VoxelShape upShape, String lang,
+            TagKey<Block> weight) {
         return REGISTRATE.block(name, p -> new DirectionalLightBlock(p, type, blockEntity, upShape))
                 .initialProperties(() -> Blocks.IRON_BLOCK)
                 .properties(p -> p.strength(2.0f).sound(SoundType.COPPER).noOcclusion())
                 .blockstate((c, p) -> p.directionalBlock(c.get(),
                         p.models().getExistingFile(p.modLoc("block/" + name + "/base"))))
                 .onRegister(MovementBehaviour.movementBehaviour(new DirectionalLightMovement(type)))
-                .tag(BlockTags.MINEABLE_WITH_PICKAXE)
+                .tag(BlockTags.MINEABLE_WITH_PICKAXE, weight)
                 .lang(lang)
                 .item().model((c, p) -> {
                 }).build()

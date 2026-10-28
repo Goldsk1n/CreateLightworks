@@ -1,11 +1,15 @@
 package com.goldskinmc.lightworks.content.pantilt;
 
+import com.goldskinmc.lightworks.content.LightGoggles;
 import com.goldskinmc.lightworks.content.SpinAngle;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
+import java.util.List;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -118,6 +122,19 @@ public class PanTiltHeadBlockEntity extends KineticBlockEntity {
         if (level != null && !level.isClientSide) {
             sendData();
         }
+    }
+
+    @Override
+    public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
+        super.addToGoggleTooltip(tooltip, isPlayerSneaking);
+        LightGoggles.title(tooltip, getBlockState().getBlock().getName());
+        LightGoggles.line(tooltip, "pan_tilt", ChatFormatting.AQUA, Math.round(Mth.wrapDegrees(yaw(0)) + 360) % 360,
+                Math.round(elevation(0)));
+        LightGoggles.line(tooltip, "tilt_signal", ChatFormatting.RED, signal, Math.round(targetTilt()));
+        if (isPlayerSneaking) {
+            LightGoggles.hint(tooltip, "pan_tilt");
+        }
+        return true;
     }
 
     @Override

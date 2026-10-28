@@ -134,6 +134,9 @@ public final class SelfTestClient {
             }
             wasActive = active;
         }
+        if (active) {
+            mc.options.hideGui = !SelfTestBridge.showGui;
+        }
         if (SelfTestBridge.beamsOff != beamsOff) {
             beamsOff = SelfTestBridge.beamsOff;
             ClientBeams.setEnabled(!beamsOff);

@@ -18,6 +18,8 @@ final class SelfTestBridge {
     /** Point the camera looks at every frame, or null to leave the camera alone. */
     @Nullable
     static volatile Vec3 focus;
+    /** Shows the GUI during a scenario (goggle overlay shots); it is hidden otherwise. */
+    static volatile boolean showGui;
     /** Darkens every dynamic spot, to compare the server light path alone. */
     static volatile boolean dynamicLightsOff;
     /** Switches every client beam off (no dynamic light, no cosmetic beam): the baseline for load tests. */
@@ -55,6 +57,7 @@ final class SelfTestBridge {
         active = false;
         focus = null;
         dynamicLightsOff = false;
+        showGui = false;
         beamsOff = false;
         frameStats = null;
         recording = null;

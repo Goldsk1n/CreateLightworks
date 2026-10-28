@@ -14,6 +14,7 @@ import com.goldskinmc.lightworks.light.BeamTrace;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.simibubi.create.AllBlocks;
+import com.simibubi.create.AllItems;
 import com.simibubi.create.content.contraptions.IControlContraption.MovementMode;
 import com.simibubi.create.content.contraptions.glue.SuperGlueEntity;
 import com.simibubi.create.content.contraptions.piston.MechanicalPistonBlock;
@@ -32,6 +33,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
@@ -51,7 +54,7 @@ final class Scenarios {
     static final Map<String, Supplier<Script>> ALL = new LinkedHashMap<>();
     /** What {@code -Pselftest=true} runs. */
     static final String DEFAULT =
-            "fixed,aim,floodlight,pantilt,beacon,warning,navigation,vehicle,bearing,piston,vehicle-fast";
+            "fixed,aim,floodlight,pantilt,beacon,warning,navigation,goggles,vehicle,bearing,piston,vehicle-fast";
 
     static {
         ALL.put("fixed", Scenarios::fixed);
@@ -61,6 +64,7 @@ final class Scenarios {
         ALL.put("beacon", Scenarios::beacon);
         ALL.put("warning", Scenarios::warning);
         ALL.put("navigation", Scenarios::navigation);
+        ALL.put("goggles", Scenarios::goggles);
         ALL.put("vehicle", () -> vehicle("vehicle", 0.1, 100, true));
         // Create's default train top speed, 28 blocks a second: how far the spot trails at train speeds
         ALL.put("vehicle-fast", () -> vehicle("vehicle-fast", 1.4, 40, false));
@@ -435,6 +439,52 @@ final class Scenarios {
                 .shot("navigation-0")
                 .run(stage -> {
                     SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * Engineer's Goggles: the player wears them and looks at a dyed, dimmed Searchlight lighting a wall,
+     * then at a Warning Light, with the GUI shown: the overlay should list state, aim, beam and colour, and
+     * the beam path should be drawn.
+     */
+    static Script goggles() {
+        BlockPos[] at = new BlockPos[2];
+        ItemStack[] helmet = new ItemStack[1];
+        return new Script("goggles")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(0, 0);
+                    at[0] = stage.at(2, 0, 3);
+                    at[1] = stage.at(-2, 0, 3);
+                    for (int y = 0; y <= 3; y++) {
+                        for (int x = 0; x <= 4; x++) {
+                            stage.set(stage.at(x, y, 10), Blocks.STONE.defaultBlockState());
+                        }
+                    }
+                    stage.set(at[0], searchlight(Direction.UP));
+                    stage.lightAt(at[0]).aimAlong(new Vec3(0, 0.15, 1));
+                    stage.lightAt(at[0]).lightState().setColour(DyeColor.LIGHT_BLUE);
+                    stage.lightAt(at[0]).notifyUpdate();
+                    stage.set(at[0].east(), Blocks.LIGHT_WEIGHTED_PRESSURE_PLATE.defaultBlockState()
+                            .setValue(WeightedPressurePlateBlock.POWER, 3));
+                    stage.set(at[0].east().below(), Blocks.GLASS.defaultBlockState());
+                    stage.set(at[1], LightworksBlocks.WARNING_LIGHT.getDefaultState()
+                            .setValue(SignalLampBlock.FACING, Direction.UP));
+                    helmet[0] = stage.player.getItemBySlot(EquipmentSlot.HEAD);
+                    stage.player.setItemSlot(EquipmentSlot.HEAD, AllItems.GOGGLES.asStack());
+                    SelfTestBridge.showGui = true;
+                    SelfTestBridge.focus = Vec3.atCenterOf(at[0]).add(0, -0.2, 0);
+                })
+                .waitTicks(30)
+                .shot("goggles-0-searchlight")
+                .run(stage -> SelfTestBridge.focus = Vec3.atCenterOf(at[1]).add(0, -0.2, 0))
+                .waitTicks(10)
+                .shot("goggles-1-warning")
+                .run(stage -> {
+                    SelfTestBridge.showGui = false;
+                    SelfTestBridge.focus = null;
+                    stage.player.setItemSlot(EquipmentSlot.HEAD, helmet[0]);
                     stage.restoreBlocks();
                 });
     }

@@ -1,0 +1,6 @@
+{
+  "selector": "#lightworks:light_fixtures",
+  "properties": {
+    "sable:mass": 0.75
+  }
+}
