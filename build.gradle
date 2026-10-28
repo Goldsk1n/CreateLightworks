@@ -36,6 +36,11 @@ repositories {
             includeGroup 'io.github.ocelot'
         }
     }
+    // Modrinth's Maven: Sodium, Iris, spark and the test shader pack, dev runs only
+    exclusiveContent {
+        forRepository { maven { url = 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
     // Sable and Sable Companion
     exclusiveContent {
         forRepository { maven { url = 'https://maven.ryanhcode.dev/releases' } }
@@ -58,6 +63,8 @@ def floorRun = runProfile == 'floor'
 // Each profile keeps its own game directory, so worlds never load with mods they were not made with
 def runDir = runProfile == 'latest' ? 'run' : "run-${runProfile}"
 def quickPlayWorld = providers.gradleProperty('quickplay_world').getOrElse('lightworks-test')
+// -Pdev_perf=true adds Sodium, Iris and spark for the shader and performance scenarios
+def devPerf = providers.gradleProperty('dev_perf').map { it.toBoolean() }.getOrElse(false)
 
 neoForge {
     version = floorRun ? project.neo_floor_version : project.neo_version
@@ -161,14 +168,36 @@ dependencies {
         localRuntime fileTree(dir: 'libs', include: '*.jar')
     }
 
-    // Pure-logic unit tests: no game boot
+    if (devPerf && !floorRun) {
+        localRuntime("maven.modrinth:sodium:${sodium_version}") { transitive = false }
+        localRuntime("maven.modrinth:iris:${iris_version}") { transitive = false }
+        localRuntime("maven.modrinth:spark:${spark_version}") { transitive = false }
+    }
+
+    // Pure-logic and architecture tests: no game boot
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'com.tngtech.archunit:archunit:1.5.1'
 }
 
 tasks.named('test', Test) {
     useJUnitPlatform()
+}
+
+// Puts Complementary Reimagined into this profile's shaderpacks folder (for scenario S5).
+// Its licence allows personal use; it is never bundled or redistributed.
+configurations {
+    shaderpack
+}
+dependencies {
+    shaderpack "maven.modrinth:complementary-reimagined:${shaderpack_version}@zip"
+}
+tasks.register('installShaderpack', Copy) {
+    group = 'mod development'
+    description = 'Installs the test shader pack into the current run profile'
+    from configurations.shaderpack
+    into "${runDir}/shaderpacks"
 }
 
 // Gradle-launched runs use JetBrains Runtime, which can hot-swap class changes including new methods
