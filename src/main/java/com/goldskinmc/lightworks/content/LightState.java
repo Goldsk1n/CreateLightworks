@@ -88,6 +88,11 @@ public final class LightState {
     public void write(CompoundTag tag) {
         tag.putInt(SIGNAL, signal);
         tag.putInt(BRIGHTNESS, brightness);
+        // Defaults are left out, and removed when writing over older data
+        tag.remove(COLOUR);
+        tag.remove(YAW);
+        tag.remove(ELEVATION);
+        tag.remove(PATTERN);
         if (colour != null) {
             tag.putString(COLOUR, colour.getSerializedName());
         }

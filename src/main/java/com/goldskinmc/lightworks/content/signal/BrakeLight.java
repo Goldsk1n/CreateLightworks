@@ -36,6 +36,11 @@ public final class BrakeLight {
         speed = 0;
     }
 
+    /** Brake light on now, for a second (Ponder scenes, which have no real vehicle). */
+    public void trigger() {
+        brakeTicks = BRAKE_TICKS;
+    }
+
     public boolean braking() {
         return brakeTicks > 0;
     }

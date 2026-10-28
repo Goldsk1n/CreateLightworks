@@ -4,6 +4,7 @@ import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.content.LightGoggles;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
+import com.goldskinmc.lightworks.light.ClientBeams;
 import com.goldskinmc.lightworks.host.SableHost;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
@@ -21,7 +22,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -35,6 +35,8 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
 
     private final LightState state = new LightState();
     private final BrakeLight brake = new BrakeLight();
+    /** Client ticks seen, the pattern clock outside the real world (Ponder pauses game time). */
+    private long previewTicks;
     /** Warning Light only; set in addBehaviours, which runs before field initialisers. */
     @Nullable
     private ScrollOptionBehaviour<WarningPattern> pattern;
@@ -73,6 +75,18 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
         return pattern == null ? WarningPattern.STEADY : pattern.get();
     }
 
+    /** Warning Light only: what scrolling its value box does. */
+    public void setPattern(WarningPattern next) {
+        if (pattern != null) {
+            pattern.setValue(next.ordinal());
+        }
+    }
+
+    /** Lights the brake light for a second, as if the vehicle had slowed (Ponder scenes). */
+    public void showBrake() {
+        brake.trigger();
+    }
+
     /** Lens colour, 0xRRGGBB: the Navigation Light's side colour, otherwise the dye or the type's own. */
     public int rgb() {
         if (getBlockState().hasProperty(NavigationLightBlock.COLOUR)) {
@@ -81,17 +95,19 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
         return state.rgb(lightType());
     }
 
-    /** Lens brightness 0 to 1 for the frame being drawn. */
+    /** Lens brightness 0 to 1 for the frame being drawn. Client only. */
     public float intensity(float partialTick) {
-        return intensity(lightType(), state.brightness(), pattern(), brake.braking(), level, partialTick);
+        // Game time keeps every player's lamps in step; a Ponder scene runs on its own clock
+        long time = level == null ? 0 : ClientBeams.isRealWorld(level) ? level.getGameTime() : previewTicks;
+        return intensity(lightType(), state.brightness(), pattern(), brake.braking(), time, partialTick);
     }
 
-    /** Lens brightness of a signal lamp, placed or on a contraption. */
+    /** Lens brightness of a signal lamp, placed or on a contraption, at game time {@code time}. */
     public static float intensity(LightType type, int brightness, WarningPattern pattern, boolean braking,
-            @Nullable Level level, float partialTick) {
+            long time, float partialTick) {
         float base = brightness / 15f;
         return switch (type.kind()) {
-            case WARNING -> base * (level == null ? 1 : pattern.at(level.getGameTime(), partialTick));
+            case WARNING -> base * pattern.at(time, partialTick);
             case TAIL -> base * (braking ? 1 : TAIL_GLOW);
             default -> base;
         };
@@ -108,12 +124,13 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
     @Override
     public void tick() {
         super.tick();
+        if (level != null && level.isClientSide) {
+            previewTicks++;
+        }
         if (level != null && level.isClientSide && lightType().kind() == LightType.Kind.TAIL) {
-            // Null when not on a Sable vehicle: a fixed tail light never brakes
-            Vec3 velocity = SableHost.velocity(level, worldPosition);
-            if (velocity != null) {
-                brake.tick(velocity);
-            }
+            // Null when not on a Sable vehicle: a fixed tail light never starts braking, but a brake
+            // shown in a Ponder scene still runs out
+            brake.tick(SableHost.velocity(level, worldPosition));
         }
     }
 

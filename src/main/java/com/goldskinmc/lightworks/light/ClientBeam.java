@@ -5,7 +5,9 @@ import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.goldskinmc.lightworks.compat.DynamicLights;
 import com.goldskinmc.lightworks.compat.DynamicSpot;
 import com.goldskinmc.lightworks.host.BeamPose;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LightLayer;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -21,6 +23,8 @@ public final class ClientBeam {
     private static final double MIN_PEAK_CHANGE = 0.5;
     /** About 1 degree. */
     private static final double MIN_DIRECTION_DOT = 0.99985;
+    /** Longest beam outside the real world (Ponder scenes), so beams stay inside the scene. */
+    private static final double PREVIEW_RANGE = 8;
 
     private final ConeFalloff shape;
     @Nullable
@@ -29,6 +33,7 @@ public final class ClientBeam {
     private BeamSpot lastSpot;
     private double length;
     private int brightness;
+    private float skyExposure;
 
     public ClientBeam(ConeFalloff shape) {
         this.shape = shape;
@@ -57,11 +62,16 @@ public final class ClientBeam {
             spot = ClientBeams.isRealWorld(level) ? DynamicLights.createSpot() : DynamicSpot.NONE;
         }
         BeamPose at = beam.moving() ? drawn : beam;
-        BeamTrace.Hit hit = BeamTrace.trace(level, at.origin(), at.direction(), BeamTrace.range(shape));
+        double range = BeamTrace.range(shape);
+        BeamTrace.Hit hit = BeamTrace.trace(level, at.origin(), at.direction(),
+                ClientBeams.isRealWorld(level) ? range : Math.min(range, PREVIEW_RANGE));
         BeamSpot next = BeamTrace.spotFor(hit, at.direction(), shape.onAxis(hit.distance()) * brightness / 15.0);
         // The cosmetic beam follows every tick; the lit spot only when it has moved enough to show
         length = hit.distance();
         this.brightness = brightness;
+        // Open sky at the lens: daylight washes the visible beam out there (Ponder scenes never)
+        skyExposure = ClientBeams.isRealWorld(level)
+                ? level.getBrightness(LightLayer.SKY, BlockPos.containing(at.origin())) / 15f : 0;
         if (worthPublishing(lastSpot, next)) {
             lastSpot = next;
             spot.set(next);
@@ -109,5 +119,10 @@ public final class ClientBeam {
     /** Brightness at the last update, 0 to 15; 0 when off. */
     public int brightness() {
         return brightness;
+    }
+
+    /** Sky light at the lens at the last update, 0 (cave, Ponder) to 1 (open sky). */
+    public float skyExposure() {
+        return skyExposure;
     }
 }
