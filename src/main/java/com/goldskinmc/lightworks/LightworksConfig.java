@@ -24,4 +24,11 @@ public final class LightworksConfig {
     public static boolean serverLightBlocks() {
         return !SPEC.isLoaded() || SERVER_LIGHT_BLOCKS.get();
     }
+
+    /** Changes the setting in memory only, without saving the file (for testing). */
+    public static void setServerLightBlocks(boolean on) {
+        if (SPEC.isLoaded()) {
+            SERVER_LIGHT_BLOCKS.set(on);
+        }
+    }
 }

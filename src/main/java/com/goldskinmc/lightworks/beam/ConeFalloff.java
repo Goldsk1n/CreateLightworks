@@ -8,6 +8,8 @@ package com.goldskinmc.lightworks.beam;
  * Pure maths with no Minecraft classes, so it is unit-tested without booting the game.
  */
 public final class ConeFalloff {
+    private final double coreDegrees;
+    private final double edgeDegrees;
     private final double cosCore;
     private final double cosEdge;
     private final double fullRange;
@@ -31,6 +33,8 @@ public final class ConeFalloff {
         if (intensity < 0 || intensity > 15) {
             throw new IllegalArgumentException("Intensity must be between 0 and 15");
         }
+        this.coreDegrees = coreDegrees;
+        this.edgeDegrees = edgeDegrees;
         this.cosCore = Math.cos(Math.toRadians(coreDegrees));
         this.cosEdge = Math.cos(Math.toRadians(coreDegrees + edgeDegrees));
         this.fullRange = fullRange;
@@ -40,6 +44,14 @@ public final class ConeFalloff {
 
     public double range() {
         return range;
+    }
+
+    public double coreDegrees() {
+        return coreDegrees;
+    }
+
+    public double edgeDegrees() {
+        return edgeDegrees;
     }
 
     /** Light on the beam axis at {@code distance} blocks from the origin. */
