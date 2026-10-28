@@ -46,6 +46,11 @@ public class SignalLampMovement implements MovementBehaviour {
         return moving;
     }
 
+    /** True while a moving Tail and Brake Light shows its brake light (client). */
+    public static boolean braking(MovementContext context) {
+        return context.temporaryData instanceof Moving moving && moving.brake.braking();
+    }
+
     @Override
     public boolean mustTickWhileDisabled() {
         return true;
