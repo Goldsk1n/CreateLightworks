@@ -14,9 +14,18 @@ import org.jetbrains.annotations.Nullable;
  * as the beam changes. Owned by the light's block entity; server side only.
  */
 public final class ServerBeamLight {
-    private static final String POS_TAG = "BeamLight";
+    private final String tagKey;
     @Nullable
     private BlockPos pos;
+
+    public ServerBeamLight() {
+        this("BeamLight");
+    }
+
+    /** @param tagKey where {@link #save} keeps the position, so an owner with two beams can keep both */
+    public ServerBeamLight(String tagKey) {
+        this.tagKey = tagKey;
+    }
 
     public @Nullable BlockPos pos() {
         return pos;
@@ -78,11 +87,11 @@ public final class ServerBeamLight {
 
     public void save(CompoundTag tag) {
         if (pos != null) {
-            tag.putLong(POS_TAG, pos.asLong());
+            tag.putLong(tagKey, pos.asLong());
         }
     }
 
     public void load(CompoundTag tag) {
-        pos = tag.contains(POS_TAG) ? BlockPos.of(tag.getLong(POS_TAG)) : null;
+        pos = tag.contains(tagKey) ? BlockPos.of(tag.getLong(tagKey)) : null;
     }
 }

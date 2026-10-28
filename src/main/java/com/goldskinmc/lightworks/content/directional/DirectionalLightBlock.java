@@ -4,6 +4,7 @@ import com.goldskinmc.lightworks.content.LightType;
 import com.mojang.serialization.MapCodec;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 import com.simibubi.create.foundation.block.IBE;
+import net.createmod.catnip.math.VoxelShaper;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -38,14 +39,17 @@ import org.jetbrains.annotations.Nullable;
 public class DirectionalLightBlock extends DirectionalBlock implements IBE<DirectionalLightBlockEntity>, IWrenchable {
     private final LightType lightType;
     private final Supplier<? extends BlockEntityType<? extends DirectionalLightBlockEntity>> blockEntityType;
+    private final VoxelShaper shape;
     private final MapCodec<DirectionalLightBlock> codec;
 
+    /** @param upShape outline when mounted on the floor; turned for other mounts */
     public DirectionalLightBlock(Properties properties, LightType lightType,
-            Supplier<? extends BlockEntityType<? extends DirectionalLightBlockEntity>> blockEntityType) {
+            Supplier<? extends BlockEntityType<? extends DirectionalLightBlockEntity>> blockEntityType, VoxelShape upShape) {
         super(properties);
         this.lightType = lightType;
         this.blockEntityType = blockEntityType;
-        this.codec = simpleCodec(p -> new DirectionalLightBlock(p, lightType, blockEntityType));
+        this.shape = VoxelShaper.forDirectional(upShape, Direction.UP);
+        this.codec = simpleCodec(p -> new DirectionalLightBlock(p, lightType, blockEntityType, upShape));
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.UP));
     }
 
@@ -99,6 +103,11 @@ public class DirectionalLightBlock extends DirectionalBlock implements IBE<Direc
         if (!level.isClientSide) {
             withBlockEntityDo(level, pos, DirectionalLightBlockEntity::updateSignal);
         }
+    }
+
+    @Override
+    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return shape.get(state.getValue(FACING));
     }
 
     /** Beams pass through lights, so a tilted beam never stops on its own block. */

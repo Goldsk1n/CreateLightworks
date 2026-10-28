@@ -1,6 +1,12 @@
 {
   "values": [
     "lightworks:searchlight",
-    "lightworks:headlight"
+    "lightworks:floodlight",
+    "lightworks:headlight",
+    "lightworks:pan_tilt_head",
+    "lightworks:rotating_beacon",
+    "lightworks:warning_light",
+    "lightworks:tail_light",
+    "lightworks:navigation_light"
   ]
 }

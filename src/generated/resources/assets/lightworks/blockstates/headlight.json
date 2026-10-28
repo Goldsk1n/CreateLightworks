@@ -1,28 +1,28 @@
 {
   "variants": {
     "facing=down": {
-      "model": "lightworks:block/headlight",
+      "model": "lightworks:block/headlight/base",
       "x": 180
     },
     "facing=east": {
-      "model": "lightworks:block/headlight",
+      "model": "lightworks:block/headlight/base",
       "x": 90,
       "y": 90
     },
     "facing=north": {
-      "model": "lightworks:block/headlight",
+      "model": "lightworks:block/headlight/base",
       "x": 90
     },
     "facing=south": {
-      "model": "lightworks:block/headlight",
+      "model": "lightworks:block/headlight/base",
       "x": 90,
       "y": 180
     },
     "facing=up": {
-      "model": "lightworks:block/headlight"
+      "model": "lightworks:block/headlight/base"
     },
     "facing=west": {
-      "model": "lightworks:block/headlight",
+      "model": "lightworks:block/headlight/base",
       "x": 90,
       "y": 270
     }

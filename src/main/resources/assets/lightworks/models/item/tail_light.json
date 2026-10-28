@@ -1,0 +1,146 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "lens": "lightworks:block/lens",
+    "metal": "lightworks:block/light_metal",
+    "particle": "lightworks:block/light_metal"
+  },
+  "elements": [
+    {
+      "from": [
+        3,
+        0,
+        4
+      ],
+      "to": [
+        13,
+        2,
+        12
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            3,
+            14,
+            13,
+            16
+          ],
+          "texture": "#metal"
+        },
+        "south": {
+          "uv": [
+            3,
+            14,
+            13,
+            16
+          ],
+          "texture": "#metal"
+        },
+        "east": {
+          "uv": [
+            4,
+            14,
+            12,
+            16
+          ],
+          "texture": "#metal"
+        },
+        "west": {
+          "uv": [
+            4,
+            14,
+            12,
+            16
+          ],
+          "texture": "#metal"
+        },
+        "up": {
+          "uv": [
+            3,
+            4,
+            13,
+            12
+          ],
+          "texture": "#metal"
+        },
+        "down": {
+          "uv": [
+            3,
+            4,
+            13,
+            12
+          ],
+          "texture": "#metal"
+        }
+      }
+    },
+    {
+      "from": [
+        3.5,
+        2,
+        4.5
+      ],
+      "to": [
+        12.5,
+        3,
+        11.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            3.5,
+            13,
+            12.5,
+            14
+          ],
+          "texture": "#lens"
+        },
+        "south": {
+          "uv": [
+            3.5,
+            13,
+            12.5,
+            14
+          ],
+          "texture": "#lens"
+        },
+        "east": {
+          "uv": [
+            4.5,
+            13,
+            11.5,
+            14
+          ],
+          "texture": "#lens"
+        },
+        "west": {
+          "uv": [
+            4.5,
+            13,
+            11.5,
+            14
+          ],
+          "texture": "#lens"
+        },
+        "up": {
+          "uv": [
+            3.5,
+            4.5,
+            12.5,
+            11.5
+          ],
+          "texture": "#lens"
+        },
+        "down": {
+          "uv": [
+            3.5,
+            4.5,
+            12.5,
+            11.5
+          ],
+          "texture": "#lens"
+        }
+      }
+    }
+  ]
+}

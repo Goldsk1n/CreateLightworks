@@ -1,0 +1,30 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "lightworks:block/pan_tilt_head/base",
+      "x": 180
+    },
+    "facing=east": {
+      "model": "lightworks:block/pan_tilt_head/base",
+      "x": 90,
+      "y": 90
+    },
+    "facing=north": {
+      "model": "lightworks:block/pan_tilt_head/base",
+      "x": 90
+    },
+    "facing=south": {
+      "model": "lightworks:block/pan_tilt_head/base",
+      "x": 90,
+      "y": 180
+    },
+    "facing=up": {
+      "model": "lightworks:block/pan_tilt_head/base"
+    },
+    "facing=west": {
+      "model": "lightworks:block/pan_tilt_head/base",
+      "x": 90,
+      "y": 270
+    }
+  }
+}

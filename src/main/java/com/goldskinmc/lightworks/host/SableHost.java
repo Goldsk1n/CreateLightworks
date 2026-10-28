@@ -7,6 +7,7 @@ import dev.ryanhcode.sable.companion.math.Pose3dc;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Turns a beam defined in a block entity's own coordinates into world coordinates. Blocks on a Sable
@@ -33,6 +34,19 @@ public final class SableHost {
             return new BeamPose(origin, direction, false);
         }
         return transform(vehicle.renderPose(partialTick), origin, direction);
+    }
+
+    /**
+     * How far the block moved over the last physics tick, in world blocks, or null when it is not on a
+     * Sable vehicle.
+     */
+    public static @Nullable Vec3 velocity(Level level, BlockPos blockPos) {
+        SubLevelAccess vehicle = SableCompanion.INSTANCE.getContaining(level, blockPos);
+        if (vehicle == null) {
+            return null;
+        }
+        Vec3 centre = Vec3.atCenterOf(blockPos);
+        return vehicle.logicalPose().transformPosition(centre).subtract(vehicle.lastPose().transformPosition(centre));
     }
 
     private static BeamPose transform(Pose3dc pose, Vec3 origin, Vec3 direction) {

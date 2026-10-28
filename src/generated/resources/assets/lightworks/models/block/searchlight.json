@@ -1,7 +1,0 @@
-{
-  "parent": "minecraft:block/orientable_vertical",
-  "textures": {
-    "front": "lightworks:block/searchlight_front",
-    "side": "lightworks:block/searchlight_side"
-  }
-}
