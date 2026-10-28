@@ -2,10 +2,9 @@ package com.goldskinmc.lightworks.registry;
 
 import static com.goldskinmc.lightworks.Lightworks.REGISTRATE;
 
-import com.goldskinmc.lightworks.content.searchlight.HeadlightBlock;
-import com.goldskinmc.lightworks.content.searchlight.SearchlightBlock;
-import com.goldskinmc.lightworks.content.searchlight.SearchlightBlockEntity;
-import com.goldskinmc.lightworks.content.searchlight.SearchlightMovement;
+import com.goldskinmc.lightworks.content.LightType;
+import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
+import com.goldskinmc.lightworks.content.directional.DirectionalLightMovement;
 import com.goldskinmc.lightworks.light.BeamLightBlock;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
 import com.tterrag.registrate.util.entry.BlockEntry;
@@ -16,30 +15,30 @@ import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 
 public final class LightworksBlocks {
-    public static final BlockEntry<SearchlightBlock> SEARCHLIGHT = REGISTRATE
-            .block("searchlight", SearchlightBlock::new)
+    public static final BlockEntry<DirectionalLightBlock> SEARCHLIGHT = REGISTRATE
+            .block("searchlight", p -> new DirectionalLightBlock(p, LightType.SEARCHLIGHT,
+                    () -> LightworksBlockEntities.SEARCHLIGHT.get()))
             .initialProperties(() -> Blocks.IRON_BLOCK)
             .properties(p -> p.strength(2.0f).sound(SoundType.COPPER).noOcclusion())
             // directionalBlock rotates an up-facing model, so the lens goes on the top face
             .blockstate((c, p) -> p.directionalBlock(c.get(), p.models().orientableVertical(c.getName(),
                     p.modLoc("block/searchlight_side"),
                     p.modLoc("block/searchlight_front"))))
-            .onRegister(MovementBehaviour.movementBehaviour(
-                    new SearchlightMovement(SearchlightBlockEntity.BEAM, false)))
+            .onRegister(MovementBehaviour.movementBehaviour(new DirectionalLightMovement(LightType.SEARCHLIGHT)))
             .tag(BlockTags.MINEABLE_WITH_PICKAXE)
             .lang("Searchlight")
             .simpleItem()
             .register();
 
-    public static final BlockEntry<HeadlightBlock> HEADLIGHT = REGISTRATE
-            .block("headlight", HeadlightBlock::new)
+    public static final BlockEntry<DirectionalLightBlock> HEADLIGHT = REGISTRATE
+            .block("headlight", p -> new DirectionalLightBlock(p, LightType.HEADLIGHT,
+                    () -> LightworksBlockEntities.HEADLIGHT.get()))
             .initialProperties(() -> Blocks.IRON_BLOCK)
             .properties(p -> p.strength(2.0f).sound(SoundType.COPPER).noOcclusion())
             .blockstate((c, p) -> p.directionalBlock(c.get(), p.models().orientableVertical(c.getName(),
                     p.modLoc("block/headlight_side"),
                     p.modLoc("block/headlight_front"))))
-            .onRegister(MovementBehaviour.movementBehaviour(
-                    new SearchlightMovement(SearchlightBlockEntity.HEADLIGHT_BEAM, true)))
+            .onRegister(MovementBehaviour.movementBehaviour(new DirectionalLightMovement(LightType.HEADLIGHT)))
             .tag(BlockTags.MINEABLE_WITH_PICKAXE)
             .lang("Headlight")
             .simpleItem()

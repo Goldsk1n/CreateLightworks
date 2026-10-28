@@ -27,6 +27,11 @@ public final class Lightworks {
         modBus.addListener(Lightworks::addToCreativeTabs);
         container.registerConfig(ModConfig.Type.SERVER, LightworksConfig.SPEC);
         REGISTRATE.addRawLang("lightworks.configuration.serverLightBlocks", "Server light blocks");
+        REGISTRATE.addRawLang("lightworks.configuration.invertRedstone", "Invert redstone");
+        REGISTRATE.addRawLang("lightworks.configuration.maxBeamRange", "Longest beam");
+        REGISTRATE.addRawLang("lightworks.configuration.beamVisual", "Visible beam");
+        REGISTRATE.addRawLang("lightworks.configuration.beamVisualWithShaders", "Visible beam with shaders");
+        REGISTRATE.addRawLang("lightworks.configuration.debugOverlay", "Debug overlay (F3)");
     }
 
     private static void addToCreativeTabs(BuildCreativeModeTabContentsEvent event) {

@@ -39,7 +39,7 @@ public class BeamLightBlockEntity extends BlockEntity {
         if (!level.isLoaded(owner)) {
             return false;
         }
-        return !(level.getBlockEntity(owner) instanceof BeamLightOwner light && worldPosition.equals(light.beamLightPos()));
+        return !(level.getBlockEntity(owner) instanceof BeamLightOwner light && light.ownsBeamLight(worldPosition));
     }
 
     @Override

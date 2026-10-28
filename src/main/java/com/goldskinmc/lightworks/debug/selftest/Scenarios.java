@@ -1,7 +1,8 @@
 package com.goldskinmc.lightworks.debug.selftest;
 
+import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.LightworksConfig;
-import com.goldskinmc.lightworks.content.searchlight.SearchlightBlock;
+import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.simibubi.create.AllBlocks;
@@ -52,11 +53,11 @@ final class Scenarios {
     }
 
     static BlockState searchlight(Direction facing) {
-        return LightworksBlocks.SEARCHLIGHT.getDefaultState().setValue(SearchlightBlock.FACING, facing);
+        return LightworksBlocks.SEARCHLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, facing);
     }
 
     static BlockState headlight(Direction facing) {
-        return LightworksBlocks.HEADLIGHT.getDefaultState().setValue(SearchlightBlock.FACING, facing);
+        return LightworksBlocks.HEADLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, facing);
     }
 
     /**
@@ -389,7 +390,7 @@ final class Scenarios {
             int removed = 0;
             for (BlockPos pos : BlockPos.betweenClosed(stage.at(-24, -1, -24), stage.at(24, 16, 24))) {
                 BlockState state = stage.level.getBlockState(pos);
-                if (state.is(LightworksBlocks.SEARCHLIGHT.get()) || state.is(LightworksBlocks.HEADLIGHT.get())) {
+                if (state.getBlock().builtInRegistryHolder().key().location().getNamespace().equals(Lightworks.MOD_ID)) {
                     stage.level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
                     removed++;
                 }
