@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "G": {
+      "tag": "c:glass_blocks/colorless"
+    },
+    "I": {
+      "tag": "c:plates/iron"
+    },
+    "L": {
+      "tag": "c:dyes/green"
+    },
+    "R": {
+      "tag": "c:dyes/red"
+    },
+    "T": {
+      "item": "create:electron_tube"
+    }
+  },
+  "pattern": [
+    " G ",
+    "RTL",
+    " I "
+  ],
+  "result": {
+    "count": 2,
+    "id": "lightworks:navigation_light"
+  }
+}

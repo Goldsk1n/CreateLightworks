@@ -78,7 +78,8 @@ public class SignalLampMovement implements MovementBehaviour {
         Moving moving = moving(context);
         float partialTick = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
         float intensity = context.disabled ? 0 : SignalLampBlockEntity.intensity(type, moving.state.brightness(),
-                WarningPattern.of(moving.state.pattern()), moving.brake.braking(), context.world, partialTick);
+                WarningPattern.of(moving.state.pattern()), moving.brake.braking(), context.world.getGameTime(),
+                partialTick);
         int rgb = context.state.hasProperty(NavigationLightBlock.COLOUR)
                 ? context.state.getValue(NavigationLightBlock.COLOUR).rgb() : moving.state.rgb(type);
         int worldLight = context.position == null ? LightTexture.FULL_BRIGHT

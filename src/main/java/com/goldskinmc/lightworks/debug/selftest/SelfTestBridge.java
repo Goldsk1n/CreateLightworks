@@ -20,6 +20,13 @@ final class SelfTestBridge {
     static volatile Vec3 focus;
     /** Shows the GUI during a scenario (goggle overlay shots); it is hidden otherwise. */
     static volatile boolean showGui;
+    /**
+     * Comma-separated item ids whose Ponder scenes the client walks through, photographing each. Ponder's
+     * screen pauses a singleplayer game, so the client runs this alone and sets {@code ponderDone}.
+     */
+    @Nullable
+    static volatile String ponderPlan;
+    static volatile boolean ponderDone;
     /** Darkens every dynamic spot, to compare the server light path alone. */
     static volatile boolean dynamicLightsOff;
     /** Switches every client beam off (no dynamic light, no cosmetic beam): the baseline for load tests. */
@@ -58,6 +65,7 @@ final class SelfTestBridge {
         focus = null;
         dynamicLightsOff = false;
         showGui = false;
+        ponderPlan = null;
         beamsOff = false;
         frameStats = null;
         recording = null;

@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "C": {
+      "item": "create:brass_casing"
+    },
+    "P": {
+      "tag": "c:plates/brass"
+    },
+    "S": {
+      "item": "create:shaft"
+    },
+    "W": {
+      "item": "create:cogwheel"
+    }
+  },
+  "pattern": [
+    " P ",
+    "WCW",
+    " S "
+  ],
+  "result": {
+    "count": 1,
+    "id": "lightworks:pan_tilt_head"
+  }
+}

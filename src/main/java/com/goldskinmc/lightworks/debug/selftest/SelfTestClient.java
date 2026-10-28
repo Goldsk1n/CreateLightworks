@@ -1,5 +1,9 @@
 package com.goldskinmc.lightworks.debug.selftest;
 
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.createmod.ponder.foundation.ui.PonderUI;
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.beam.BeamSpot;
 import com.goldskinmc.lightworks.compat.DynamicLights;
@@ -58,6 +62,12 @@ public final class SelfTestClient {
     private static int ticksSinceFinished;
     /** Multiplayer: how often to log what the client sees, since no script runs in this process. */
     private static final int MULTIPLAYER_LOG_INTERVAL = 200;
+    /** Client ticks into each Ponder scene at which it is photographed; the last one moves on. */
+    private static final int[] PONDER_SHOTS = {100, 240, 380};
+    @Nullable
+    private static String[] ponderItems;
+    private static int ponderIndex;
+    private static int ponderTicks;
     private static boolean wasInWorld;
 
     private static int ticksInWorld;
@@ -145,6 +155,7 @@ public final class SelfTestClient {
             suppressing = SelfTestBridge.dynamicLightsOff;
             DynamicLights.setSuppressed(suppressing);
         }
+        showPonder(mc);
         takeRequestedShot(mc);
         recordFrame(mc);
         probeMovingSpots(mc.player);
@@ -240,6 +251,50 @@ public final class SelfTestClient {
                 probe.tick(light, beam);
             }
         }
+    }
+
+    /** Walks through the Ponder scenes the server asked for; the game is paused meanwhile. */
+    private static void showPonder(Minecraft mc) {
+        String plan = SelfTestBridge.ponderPlan;
+        if (plan == null) {
+            return;
+        }
+        if (ponderItems == null) {
+            ponderItems = plan.split(",");
+            ponderIndex = 0;
+            ponderTicks = 0;
+            openPonder(mc);
+            return;
+        }
+        ponderTicks++;
+        String item = ponderItems[ponderIndex];
+        for (int i = 0; i < PONDER_SHOTS.length; i++) {
+            if (ponderTicks == PONDER_SHOTS[i]) {
+                String name = "ponder-" + ResourceLocation.parse(item).getPath() + "-" + (i + 1);
+                NativeImage image = Screenshot.takeScreenshot(mc.getMainRenderTarget());
+                Lightworks.LOGGER.info(String.format("[selftest] shot %s: whole frame %.1f (0-255)", name,
+                        meanLuma(image, 1)));
+                save(image, name);
+            }
+        }
+        if (ponderTicks < PONDER_SHOTS[PONDER_SHOTS.length - 1]) {
+            return;
+        }
+        ponderTicks = 0;
+        if (++ponderIndex < ponderItems.length) {
+            openPonder(mc);
+            return;
+        }
+        mc.setScreen(null);
+        ponderItems = null;
+        SelfTestBridge.ponderPlan = null;
+        SelfTestBridge.ponderDone = true;
+    }
+
+    private static void openPonder(Minecraft mc) {
+        String item = ponderItems[ponderIndex];
+        Lightworks.LOGGER.info("[selftest] ponder: showing {}", item);
+        mc.setScreen(PonderUI.of(new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(item)))));
     }
 
     private static void takeRequestedShot(Minecraft mc) {

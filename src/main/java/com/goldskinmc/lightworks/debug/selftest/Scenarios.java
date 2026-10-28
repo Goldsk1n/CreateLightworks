@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
@@ -73,6 +74,8 @@ final class Scenarios {
         // Not in the default set: heavier, or one-off
         ALL.put("load", Scenarios::load);
         ALL.put("cleanup", Scenarios::cleanup);
+        ALL.put("ponder", Scenarios::ponder);
+        ALL.put("gallery", Scenarios::gallery);
     }
 
     private Scenarios() {
@@ -441,6 +444,116 @@ final class Scenarios {
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
                 });
+    }
+
+    /**
+     * Ponder: opens every block's scene in turn and photographs it three times as it plays (5, 12 and 19
+     * seconds in). Ponder pauses the game, so the client does this alone while the server waits. Read the
+     * shots for the beam, lens and text.
+     */
+    static Script ponder() {
+        String plan = String.join(",", Stream.of("searchlight", "floodlight", "pan_tilt_head", "rotating_beacon",
+                "warning_light", "headlight", "tail_light", "navigation_light")
+                .map(block -> Lightworks.MOD_ID + ":" + block).toList());
+        return new Script("ponder")
+                .run(stage -> {
+                    if (stage.level.getServer().isDedicatedServer()) {
+                        stage.log("ponder: skipped on a dedicated server");
+                        SelfTestBridge.ponderDone = true;
+                        return;
+                    }
+                    SelfTestBridge.ponderDone = false;
+                    SelfTestBridge.ponderPlan = plan;
+                })
+                .waitUntil(stage -> SelfTestBridge.ponderDone, 6000, "the Ponder walkthrough");
+    }
+
+    /**
+     * Screenshot sheet: every block on one deck, in daylight (models and textures) and at night (lenses,
+     * beams, light), seen from the front and the back; then, with Sable, the same deck assembled into a
+     * vehicle, hovering and after moving 3 blocks east. Port is on the west end, starboard on the east, the
+     * deck faces north (toward the camera).
+     */
+    static Script gallery() {
+        BlockPos[] deck = new BlockPos[1];
+        Script script = new Script("gallery")
+                .run(stage -> {
+                    stage.night();
+                    stage.level.setDayTime(6000);
+                    stage.hover(0, 10, -4);
+                    deck[0] = stage.at(0, 5, 4);
+                    BlockPos d = deck[0];
+                    for (int x = -4; x <= 4; x++) {
+                        for (int z = -1; z <= 1; z++) {
+                            stage.set(d.offset(x, 0, z), Blocks.SPRUCE_PLANKS.defaultBlockState());
+                        }
+                    }
+                    stage.set(d.offset(-4, 1, 0), searchlight(Direction.UP));
+                    stage.lightAt(d.offset(-4, 1, 0)).aimAlong(new Vec3(0.2, 0.25, -1));
+                    stage.set(d.offset(-2, 1, 0), LightworksBlocks.PAN_TILT_HEAD.getDefaultState()
+                            .setValue(DirectionalKineticBlock.FACING, Direction.UP));
+                    stage.set(d.offset(-2, 2, 0), searchlight(Direction.UP));
+                    stage.set(d.offset(0, 1, 0), LightworksBlocks.ROTATING_BEACON.getDefaultState()
+                            .setValue(RotatingBeaconBlock.FACING, Direction.UP));
+                    stage.set(d.offset(2, 1, 0), LightworksBlocks.WARNING_LIGHT.getDefaultState()
+                            .setValue(SignalLampBlock.FACING, Direction.UP));
+                    stage.set(d.offset(0, 0, -2), LightworksBlocks.FLOODLIGHT.getDefaultState()
+                            .setValue(DirectionalLightBlock.FACING, Direction.NORTH));
+                    stage.lightAt(d.offset(0, 0, -2)).aimAlong(new Vec3(0, -0.7, -1));
+                    stage.set(d.offset(-3, 0, -2), headlight(Direction.NORTH));
+                    stage.set(d.offset(3, 0, -2), headlight(Direction.NORTH));
+                    stage.set(d.offset(-3, 0, 2), LightworksBlocks.TAIL_LIGHT.getDefaultState()
+                            .setValue(SignalLampBlock.FACING, Direction.SOUTH));
+                    stage.set(d.offset(3, 0, 2), LightworksBlocks.TAIL_LIGHT.getDefaultState()
+                            .setValue(SignalLampBlock.FACING, Direction.SOUTH));
+                    stage.set(d.offset(-5, 0, 0), navigationLight(Direction.WEST, "port"));
+                    stage.set(d.offset(5, 0, 0), navigationLight(Direction.EAST, "starboard"));
+                    SelfTestBridge.focus = Vec3.atCenterOf(d.above());
+                })
+                .waitTicks(40)
+                .shot("gallery-0-day")
+                .run(stage -> stage.level.setDayTime(18000))
+                .waitTicks(40)
+                .shot("gallery-1-night")
+                .run(stage -> stage.hover(0, 10, 12))
+                .waitTicks(20)
+                .shot("gallery-2-night-rear")
+                .run(stage -> stage.hover(0, 10, -4))
+                .waitTicks(20);
+        if (ModList.get().isLoaded("sable")) {
+            script.run(stage -> {
+                        BlockPos from = deck[0].offset(-5, 0, -2);
+                        BlockPos to = deck[0].offset(5, 2, 2);
+                        stage.run("sable paused true");
+                        stage.run("sable assemble area " + from.getX() + " " + from.getY() + " " + from.getZ() + " "
+                                + to.getX() + " " + to.getY() + " " + to.getZ());
+                    })
+                    .waitTicks(40)
+                    .shot("gallery-3-vehicle")
+                    .repeat(30, (stage, i) -> stage.run("sable physics translation @l add 0.1 0 0 global"))
+                    .waitTicks(10)
+                    .shot("gallery-4-vehicle-moved")
+                    .run(stage -> {
+                        stage.run("sable remove @l");
+                        stage.run("sable paused false");
+                    });
+        } else {
+            script.run(stage -> stage.log("gallery: vehicle shots skipped, Sable is not installed"));
+        }
+        return script.run(stage -> {
+            SelfTestBridge.focus = null;
+            stage.restoreBlocks();
+        });
+    }
+
+    private static BlockState navigationLight(Direction facing, String colour) {
+        BlockState state = LightworksBlocks.NAVIGATION_LIGHT.getDefaultState().setValue(SignalLampBlock.FACING, facing);
+        for (var value : NavigationLightBlock.COLOUR.getPossibleValues()) {
+            if (value.getSerializedName().equals(colour)) {
+                state = state.setValue(NavigationLightBlock.COLOUR, value);
+            }
+        }
+        return state;
     }
 
     /**

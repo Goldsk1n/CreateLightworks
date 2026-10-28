@@ -81,6 +81,13 @@ final class Stage {
         player.teleportTo(level, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0, 0);
     }
 
+    /** Holds the player flying at origin + offset (creative), for shots from above. */
+    void hover(double dx, double dy, double dz) {
+        player.getAbilities().flying = true;
+        player.onUpdateAbilities();
+        player.teleportTo(level, origin.getX() + 0.5 + dx, origin.getY() + dy, origin.getZ() + 0.5 + dz, 0, 0);
+    }
+
     /** Midnight, with the daylight cycle stopped until the stage is restored. */
     void night() {
         level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(false, level.getServer());

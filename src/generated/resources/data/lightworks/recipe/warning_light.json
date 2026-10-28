@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "D": {
+      "tag": "c:dyes/orange"
+    },
+    "G": {
+      "tag": "c:glass_blocks/colorless"
+    },
+    "I": {
+      "tag": "c:plates/iron"
+    },
+    "T": {
+      "item": "create:electron_tube"
+    }
+  },
+  "pattern": [
+    " G ",
+    "DTD",
+    " I "
+  ],
+  "result": {
+    "count": 2,
+    "id": "lightworks:warning_light"
+  }
+}
