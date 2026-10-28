@@ -1,15 +1,14 @@
 package com.goldskinmc.lightworks.content.searchlight;
 
 import com.goldskinmc.lightworks.LightworksConfig;
-import com.goldskinmc.lightworks.beam.BeamSpot;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.host.SableHost;
-import com.goldskinmc.lightworks.compat.DynamicLights;
-import com.goldskinmc.lightworks.compat.DynamicSpot;
-import com.goldskinmc.lightworks.debug.TrackedLights;
 import com.goldskinmc.lightworks.light.BeamLightOwner;
+import com.goldskinmc.lightworks.light.BeamSource;
 import com.goldskinmc.lightworks.light.BeamTrace;
+import com.goldskinmc.lightworks.light.ClientBeam;
+import com.goldskinmc.lightworks.light.ClientBeams;
 import com.goldskinmc.lightworks.light.ServerBeamLight;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -24,7 +23,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
-public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLightOwner {
+public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLightOwner, BeamSource {
     /** Narrow beam: full brightness to 32 blocks, dark at 48. */
     public static final ConeFalloff BEAM = new ConeFalloff(6, 4, 32, 48, 15);
     /** How often the beam is re-traced to notice blocks placed or removed in its path. */
@@ -32,9 +31,7 @@ public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLigh
 
     private final ServerBeamLight serverLight = new ServerBeamLight();
     /** Client only: the dynamic light that follows this beam's spot. */
-    private DynamicSpot dynamicSpot = DynamicSpot.NONE;
-    @Nullable
-    private BeamSpot lastSpot;
+    private final ClientBeam clientBeam = new ClientBeam(BEAM);
     @Nullable
     private Direction tracedFacing;
     private boolean retraceDue = true;
@@ -71,13 +68,24 @@ public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLigh
     }
 
     /** The beam in world coordinates, following the vehicle when this Searchlight is on one. */
-    public BeamPose worldBeam() {
+    @Override
+    public BeamPose tickBeam() {
         return SableHost.toWorld(level, worldPosition, beamOrigin(), beamDirection());
     }
 
-    /** Client only: the spot most recently handed to the dynamic light, or null if the beam hits nothing. */
-    public @Nullable BeamSpot lastSpot() {
-        return lastSpot;
+    @Override
+    public BeamPose renderBeam(float partialTick) {
+        return SableHost.toWorldForRender(worldPosition, beamOrigin(), beamDirection(), partialTick);
+    }
+
+    @Override
+    public ClientBeam beam() {
+        return clientBeam;
+    }
+
+    @Override
+    public boolean isGone() {
+        return isRemoved() || level == null;
     }
 
     @Override
@@ -86,16 +94,15 @@ public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLigh
         if (level == null) {
             return;
         }
-        BeamPose beam = worldBeam();
+        BeamPose beam = tickBeam();
         // On a vehicle the beam moves every tick; a fixed one is re-traced when re-aimed or periodically
-        if (!beam.onVehicle() && !retraceDue && getFacing() == tracedFacing) {
+        if (!beam.moving() && !retraceDue && getFacing() == tracedFacing) {
             return;
         }
-        BeamTrace.Hit hit = BeamTrace.trace(level, beam.origin(), beam.direction(), BEAM.range());
         if (level.isClientSide) {
-            lastSpot = BeamTrace.spotFor(hit, beam.direction(), BEAM.onAxis(hit.distance()));
-            dynamicSpot.set(lastSpot);
-        } else if (LightworksConfig.serverLightBlocks() && !beam.onVehicle()) {
+            clientBeam.update(level, beam);
+        } else if (LightworksConfig.serverLightBlocks() && !beam.moving()) {
+            BeamTrace.Hit hit = BeamTrace.trace(level, beam.origin(), beam.direction(), BEAM.range());
             serverLight.update(level, worldPosition, hit, beam.direction(), lightLevelAt(hit));
         } else {
             // Light blocks cannot keep up with a moving vehicle: vehicles rely on the client dynamic light
@@ -129,8 +136,7 @@ public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLigh
     public void onLoad() {
         super.onLoad();
         if (level != null && level.isClientSide) {
-            TrackedLights.add(this);
-            dynamicSpot = DynamicLights.createSpot();
+            ClientBeams.add(this);
             retraceDue = true;
         }
     }
@@ -139,9 +145,10 @@ public class SearchlightBlockEntity extends SmartBlockEntity implements BeamLigh
     @Override
     public void invalidate() {
         super.invalidate();
-        TrackedLights.remove(this);
-        dynamicSpot.remove();
-        dynamicSpot = DynamicSpot.NONE;
+        // ClientBeams is client-only: never load it on a dedicated server
+        if (level != null && level.isClientSide) {
+            ClientBeams.remove(this);
+        }
     }
 
     @Override

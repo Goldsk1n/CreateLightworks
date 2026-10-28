@@ -3,7 +3,9 @@ package com.goldskinmc.lightworks.registry;
 import static com.goldskinmc.lightworks.Lightworks.REGISTRATE;
 
 import com.goldskinmc.lightworks.content.searchlight.SearchlightBlock;
+import com.goldskinmc.lightworks.content.searchlight.SearchlightMovement;
 import com.goldskinmc.lightworks.light.BeamLightBlock;
+import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.Blocks;
@@ -20,6 +22,7 @@ public final class LightworksBlocks {
             .blockstate((c, p) -> p.directionalBlock(c.get(), p.models().orientableVertical(c.getName(),
                     p.modLoc("block/searchlight_side"),
                     p.modLoc("block/searchlight_front"))))
+            .onRegister(MovementBehaviour.movementBehaviour(new SearchlightMovement()))
             .tag(BlockTags.MINEABLE_WITH_PICKAXE)
             .lang("Searchlight")
             .simpleItem()

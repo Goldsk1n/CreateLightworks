@@ -23,6 +23,13 @@ public final class DynamicLights {
         return present() ? LdlSpots.create() : DynamicSpot.NONE;
     }
 
+    /** Switches every dynamic spot dark (or back on) without removing it: self-test comparisons. */
+    public static void setSuppressed(boolean suppressed) {
+        if (present()) {
+            LdlSpots.setSuppressed(suppressed);
+        }
+    }
+
     /** One-line status for the debug overlay and self-test log. */
     public static String status() {
         return present() ? LdlSpots.status() : "LambDynamicLights not installed";

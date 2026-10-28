@@ -80,6 +80,8 @@ neoForge {
             jvmArgument '-Xmx4G'
             // -Pselftest=true builds a test Searchlight on join and logs both light paths (debug/SelfTest)
             systemProperty 'lightworks.selftest', providers.gradleProperty('selftest').getOrElse('false')
+            // -Pselftest_quit=true closes the game once the self-test is done (unattended runs)
+            systemProperty 'lightworks.selftest.quit', providers.gradleProperty('selftest_quit').getOrElse('false')
             // Join the test world straight from launch once it exists in this profile's saves
             if (file("${runDir}/saves/${quickPlayWorld}").exists()) {
                 programArguments.addAll '--quickPlaySingleplayer', quickPlayWorld
@@ -171,7 +173,6 @@ dependencies {
     }
 
     if (devPerf && !floorRun) {
-        localRuntime("maven.modrinth:sodium:${sodium_version}") { transitive = false }
         localRuntime("maven.modrinth:iris:${iris_version}") { transitive = false }
         localRuntime("maven.modrinth:spark:${spark_version}") { transitive = false }
     }
@@ -212,7 +213,34 @@ def jbrLauncher = javaToolchains.launcherFor {
     languageVersion = JavaLanguageVersion.of(21)
     vendor = JvmVendorSpec.JETBRAINS
 }
+// Sodium's jar is a launcher service that loads the real mod from inside itself. That only works from a
+// mods folder, not the dev classpath, so -Pdev_perf runs copy it into the profile's mods/ as dev-perf-*.jar.
+// Other runs remove it again; any other file in mods/ is left alone.
+configurations {
+    devPerfMods
+}
+dependencies {
+    devPerfMods("maven.modrinth:sodium:${sodium_version}") { transitive = false }
+}
+tasks.register('syncDevPerfMods') {
+    // Not a Sync: with nothing to copy, a Sync is skipped as NO-SOURCE and never deletes the old jar
+    def modsDir = file("${runDir}/mods")
+    def jars = devPerf && !floorRun ? configurations.devPerfMods : files()
+    inputs.files(jars)
+    outputs.upToDateWhen { false }
+    doLast {
+        modsDir.mkdirs()
+        modsDir.listFiles().findAll { it.name.startsWith('dev-perf-') }.each { it.delete() }
+        jars.each { jar ->
+            java.nio.file.Files.copy(jar.toPath(), new File(modsDir, "dev-perf-${jar.name}").toPath())
+        }
+    }
+}
+
 tasks.withType(JavaExec).configureEach {
+    if (name.startsWith('run')) {
+        dependsOn 'syncDevPerfMods'
+    }
     if (devHotswap && name.startsWith('run')) {
         javaLauncher = jbrLauncher
         jvmArgs '-XX:+AllowEnhancedClassRedefinition'

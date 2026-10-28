@@ -3,10 +3,11 @@ package com.goldskinmc.lightworks.debug;
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.compat.DynamicLights;
-import com.goldskinmc.lightworks.host.BeamPose;
-import com.goldskinmc.lightworks.host.SableHost;
 import com.goldskinmc.lightworks.content.searchlight.SearchlightBlockEntity;
+import com.goldskinmc.lightworks.host.BeamPose;
+import com.goldskinmc.lightworks.light.BeamSource;
 import com.goldskinmc.lightworks.light.BeamTrace;
+import com.goldskinmc.lightworks.light.ClientBeams;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
@@ -27,8 +28,9 @@ import net.neoforged.neoforge.client.event.CustomizeGuiOverlayEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 /**
- * Spike debug view, shown while the F3 screen is open: each searchlight's beam as a line from lens to
- * hit point with a box around the hit block, plus details of the searchlight under the crosshair.
+ * Spike debug view, shown while the F3 screen is open: each beam (placed, on a vehicle or on a contraption)
+ * as a line from lens to hit point with a box around the hit block, plus details of the searchlight under
+ * the crosshair.
  */
 @EventBusSubscriber(modid = Lightworks.MOD_ID, value = Dist.CLIENT)
 public final class BeamDebugRenderer {
@@ -53,13 +55,9 @@ public final class BeamDebugRenderer {
         float partialTick = event.getPartialTick().getGameTimeDeltaPartialTick(false);
         poseStack.pushPose();
         poseStack.translate(-camera.x, -camera.y, -camera.z);
-        for (SearchlightBlockEntity light : TrackedLights.snapshot()) {
-            if (light.getLevel() != mc.level || light.isRemoved()) {
-                continue;
-            }
-            // Render pose, so a beam on a moving vehicle is drawn where the vehicle is this frame
-            BeamPose beam = SableHost.toWorldForRender(light.getBlockPos(), light.beamOrigin(),
-                    light.beamDirection(), partialTick);
+        for (BeamSource light : ClientBeams.snapshot()) {
+            // Render pose, so a beam on a vehicle or contraption is drawn where it is this frame
+            BeamPose beam = light.renderBeam(partialTick);
             if (beam.origin().distanceToSqr(camera) > MAX_VIEW_DISTANCE_SQR) {
                 continue;
             }
@@ -81,16 +79,16 @@ public final class BeamDebugRenderer {
             return;
         }
         event.getRight().add("");
-        event.getRight().add("[Lightworks] searchlights tracked: " + TrackedLights.snapshot().size());
+        event.getRight().add("[Lightworks] beams tracked: " + ClientBeams.count());
         event.getRight().add("Server light blocks: " + (LightworksConfig.serverLightBlocks() ? "on" : "off"));
         event.getRight().add(DynamicLights.status());
         if (mc.hitResult instanceof BlockHitResult target && target.getType() == HitResult.Type.BLOCK) {
             BlockEntity be = mc.level.getBlockEntity(target.getBlockPos());
             if (be instanceof SearchlightBlockEntity light) {
-                BeamPose beam = light.worldBeam();
+                BeamPose beam = light.tickBeam();
                 BeamTrace.Hit hit = BeamTrace.trace(mc.level, beam.origin(), beam.direction(), RANGE);
                 event.getRight().add("Beam " + light.getFacing().getSerializedName() + " from " + format(beam.origin())
-                        + (beam.onVehicle() ? " (on vehicle)" : ""));
+                        + (beam.moving() ? " (on vehicle)" : ""));
                 event.getRight().add(hit.block() == null
                         ? String.format("No hit within %.0f blocks", RANGE)
                         : String.format("Hits %s at %.2f blocks, block light %d", shortPos(hit.block()),

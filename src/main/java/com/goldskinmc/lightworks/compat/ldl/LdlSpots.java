@@ -5,6 +5,8 @@ import com.goldskinmc.lightworks.compat.DynamicSpot;
 import dev.lambdaurora.lambdynlights.api.behavior.DynamicLightBehavior;
 import dev.lambdaurora.lambdynlights.api.behavior.DynamicLightBehaviorManager;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import net.minecraft.core.BlockPos;
@@ -20,7 +22,9 @@ public final class LdlSpots {
     private static final double MAX_RADIUS = 7.75;
     private static final AtomicInteger ACTIVE = new AtomicInteger();
     private static final AtomicLong CALLS = new AtomicLong();
+    private static final Set<SpotBehavior> LIVE = ConcurrentHashMap.newKeySet();
     private static volatile double maxReturned;
+    private static volatile boolean suppressed;
 
     private LdlSpots() {
     }
@@ -33,7 +37,14 @@ public final class LdlSpots {
         SpotBehavior behavior = new SpotBehavior();
         manager.add(behavior);
         ACTIVE.incrementAndGet();
+        LIVE.add(behavior);
         return behavior;
+    }
+
+    public static void setSuppressed(boolean value) {
+        suppressed = value;
+        // Make LambDynamicLights rebuild the sections under every spot with the new values
+        LIVE.forEach(behavior -> behavior.changed = true);
     }
 
     public static String status() {
@@ -65,6 +76,7 @@ public final class LdlSpots {
             if (!removed) {
                 removed = true;
                 ACTIVE.decrementAndGet();
+                LIVE.remove(this);
             }
         }
 
@@ -72,7 +84,7 @@ public final class LdlSpots {
         public double lightAtPos(BlockPos pos, double falloffRatio) {
             CALLS.incrementAndGet();
             BeamSpot current = spot;
-            if (current == null) {
+            if (current == null || suppressed) {
                 return 0;
             }
             double light = current.lightAt(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, falloffRatio);
