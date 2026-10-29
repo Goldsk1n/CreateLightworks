@@ -366,7 +366,8 @@ final class Scenarios {
 
     /**
      * Four Warning Lights in a row, one per pattern (steady, blink, pulse, flash), filmed for two seconds.
-     * Logs the block light beside each (steady whatever the pattern) and each pattern's lens over 30 ticks.
+     * Logs the block light beside each at one moment (a blinking lamp's follows its pattern, so it can read
+     * lower than the steady one's 11) and each pattern's lens over 30 ticks.
      */
     static Script warning() {
         BlockPos[] lamps = new BlockPos[4];
