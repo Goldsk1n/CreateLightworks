@@ -24,6 +24,8 @@ public final class PartRenderer {
     };
     /** How much of its colour an unlit lens keeps, so it reads as tinted glass. */
     private static final float UNLIT_LENS = 0.3f;
+    /** Warm white a lit lens core is drawn halfway towards (0xFFF6E6). */
+    private static final float CORE_RED = 1f, CORE_GREEN = 0xF6 / 255f, CORE_BLUE = 0xE6 / 255f;
     private static final RandomSource RANDOM = RandomSource.create();
 
     private PartRenderer() {
@@ -34,18 +36,29 @@ public final class PartRenderer {
     }
 
     /**
+     * Draws the lens part {@code <block>/lens}, tinted; while lit, also its {@code <block>/lens_core} (the
+     * hot centre and highlight) halfway to warm white, as Create's lit glass turns white at its peak.
+     *
+     * @param part       the lens part, listed in {@link Partials}
      * @param rgb        lens colour, 0xRRGGBB
      * @param intensity  0 (unlit glass) to 1 (fully lit)
      * @param worldLight light at the block, used while unlit
      */
-    public static void lens(PoseStack poseStack, MultiBufferSource buffers, BakedModel model, int rgb, float intensity,
+    public static void lens(PoseStack poseStack, MultiBufferSource buffers, String part, int rgb, float intensity,
             int worldLight) {
         float k = UNLIT_LENS + (1 - UNLIT_LENS) * Math.max(0, Math.min(1, intensity));
-        float red = (rgb >> 16 & 0xFF) / 255f * k;
-        float green = (rgb >> 8 & 0xFF) / 255f * k;
-        float blue = (rgb & 0xFF) / 255f * k;
-        int light = intensity > 0.02f ? LightTexture.FULL_BRIGHT : worldLight;
-        draw(poseStack, buffers.getBuffer(RenderType.cutout()), model, red, green, blue, light, false);
+        float red = (rgb >> 16 & 0xFF) / 255f;
+        float green = (rgb >> 8 & 0xFF) / 255f;
+        float blue = (rgb & 0xFF) / 255f;
+        boolean lit = intensity > 0.02f;
+        int light = lit ? LightTexture.FULL_BRIGHT : worldLight;
+        VertexConsumer out = buffers.getBuffer(RenderType.cutout());
+        draw(poseStack, out, Partials.get(part), red * k, green * k, blue * k, light, false);
+        String core = part + "_core";
+        if (lit && Partials.has(core)) {
+            draw(poseStack, out, Partials.get(core), (red + CORE_RED) / 2 * k, (green + CORE_GREEN) / 2 * k,
+                    (blue + CORE_BLUE) / 2 * k, light, false);
+        }
     }
 
     private static void draw(PoseStack poseStack, VertexConsumer out, BakedModel model, float red, float green,

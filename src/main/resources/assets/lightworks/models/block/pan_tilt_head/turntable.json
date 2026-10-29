@@ -1,9 +1,8 @@
 {
   "parent": "block/block",
   "textures": {
-    "turntable": "lightworks:block/turntable",
-    "turntable_side": "lightworks:block/turntable_side",
-    "particle": "lightworks:block/turntable_side"
+    "sheet": "lightworks:block/pan_tilt_head",
+    "particle": "create:block/brass_casing"
   },
   "elements": [
     {
@@ -20,48 +19,48 @@
       "faces": {
         "north": {
           "uv": [
-            1,
-            0,
-            15,
-            3
+            7.0,
+            0.0,
+            14.0,
+            1.5
           ],
-          "texture": "#turntable_side"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
-            1,
-            0,
-            15,
-            3
+            7.0,
+            0.0,
+            14.0,
+            1.5
           ],
-          "texture": "#turntable_side"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            1,
-            0,
-            15,
-            3
+            7.0,
+            0.0,
+            14.0,
+            1.5
           ],
-          "texture": "#turntable_side"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            1,
-            0,
-            15,
-            3
+            7.0,
+            0.0,
+            14.0,
+            1.5
           ],
-          "texture": "#turntable_side"
+          "texture": "#sheet"
         },
         "up": {
           "uv": [
-            1,
-            1,
-            15,
-            15
+            0.0,
+            0.0,
+            7.0,
+            7.0
           ],
-          "texture": "#turntable"
+          "texture": "#sheet"
         }
       }
     }

@@ -35,6 +35,7 @@ import com.simibubi.create.content.kinetics.motor.CreativeMotorBlockEntity;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.UUID;
 import java.util.Set;
 import java.util.HashSet;
@@ -528,8 +529,13 @@ final class Scenarios {
                     SelfTestBridge.focus = Vec3.atCenterOf(d.above());
                 })
                 .waitTicks(40)
-                .shot("gallery-0-day")
-                .run(stage -> stage.level.setDayTime(18000))
+                .shot("gallery-0-day");
+        closeUps(script, deck);
+        script.run(stage -> {
+                    stage.hover(0, 10, -4);
+                    SelfTestBridge.focus = Vec3.atCenterOf(deck[0].above());
+                    stage.level.setDayTime(18000);
+                })
                 .waitTicks(40)
                 .shot("gallery-1-night")
                 .run(stage -> stage.hover(0, 10, 12))
@@ -561,6 +567,40 @@ final class Scenarios {
             SelfTestBridge.focus = null;
             stage.restoreBlocks();
         });
+    }
+
+    /**
+     * Daylight close-ups of every gallery block from about two blocks away (gallery-close-*), for judging
+     * models and textures; one extra Rotating Beacon floats above the deck, seen from below, to show the
+     * half shaft in its bottom.
+     */
+    private static void closeUps(Script script, BlockPos[] deck) {
+        record View(String name, int dx, int dy, int dz, Vec3 towardCamera) {
+        }
+        Vec3 front = new Vec3(0.7, 0.8, -1.5);
+        List<View> views = List.of(
+                new View("searchlight", -4, 1, 0, front),
+                new View("pan-tilt-head", -2, 1, 0, new Vec3(0.8, 0.9, -1.7)),
+                new View("rotating-beacon", 0, 1, 0, front),
+                new View("warning-light", 2, 1, 0, front),
+                new View("floodlight", 0, 0, -2, new Vec3(0.9, 0.6, -1.3)),
+                new View("headlight", 3, 0, -2, front),
+                new View("tail-light", 3, 0, 2, new Vec3(0.7, 0.8, 1.5)),
+                new View("navigation-light", 5, 0, 0, new Vec3(1.5, 0.8, -0.7)),
+                new View("beacon-underside", -1, 3, -3, new Vec3(0.9, -1.2, -1.2)));
+        script.run(stage -> stage.set(deck[0].offset(-1, 3, -3), LightworksBlocks.ROTATING_BEACON.getDefaultState()
+                .setValue(RotatingBeaconBlock.FACING, Direction.UP)));
+        for (View view : views) {
+            script.run(stage -> {
+                        Vec3 block = Vec3.atCenterOf(deck[0].offset(view.dx(), view.dy(), view.dz()));
+                        Vec3 eye = block.add(view.towardCamera().normalize().scale(2.2));
+                        BlockPos origin = stage.at(0, 0, 0);
+                        stage.hover(eye.x - origin.getX() - 0.5, eye.y - 1.62 - origin.getY(), eye.z - origin.getZ() - 0.5);
+                        SelfTestBridge.focus = block;
+                    })
+                    .waitTicks(10)
+                    .shot("gallery-close-" + view.name());
+        }
     }
 
     /**

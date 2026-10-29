@@ -1,12 +1,10 @@
 {
   "parent": "block/block",
   "textures": {
-    "casing": "lightworks:block/pan_tilt_head_side",
-    "casing_plain": "lightworks:block/casing_plain",
-    "shaft": "lightworks:block/shaft_input",
-    "turntable": "lightworks:block/turntable",
-    "turntable_side": "lightworks:block/turntable_side",
-    "particle": "lightworks:block/light_metal"
+    "c0": "create:block/brass_casing",
+    "sheet": "lightworks:block/pan_tilt_head",
+    "c1": "create:block/brass_gearbox",
+    "particle": "create:block/brass_casing"
   },
   "elements": [
     {
@@ -28,7 +26,7 @@
             16,
             16
           ],
-          "texture": "#casing"
+          "texture": "#c0"
         },
         "south": {
           "uv": [
@@ -37,7 +35,7 @@
             16,
             16
           ],
-          "texture": "#casing"
+          "texture": "#c0"
         },
         "east": {
           "uv": [
@@ -46,7 +44,7 @@
             16,
             16
           ],
-          "texture": "#casing"
+          "texture": "#c0"
         },
         "west": {
           "uv": [
@@ -55,7 +53,7 @@
             16,
             16
           ],
-          "texture": "#casing"
+          "texture": "#c0"
         },
         "up": {
           "uv": [
@@ -64,16 +62,158 @@
             16,
             16
           ],
-          "texture": "#casing_plain"
+          "texture": "#c0"
+        }
+      }
+    },
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        0.95,
+        2
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            0.0,
+            7.0,
+            8.0,
+            7.475
+          ],
+          "texture": "#sheet"
+        },
+        "down": {
+          "uv": [
+            0,
+            14,
+            16,
+            16
+          ],
+          "texture": "#c1"
+        }
+      }
+    },
+    {
+      "from": [
+        0,
+        0,
+        14
+      ],
+      "to": [
+        16,
+        0.95,
+        16
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            7.0,
+            8.0,
+            7.475
+          ],
+          "texture": "#sheet"
         },
         "down": {
           "uv": [
             0,
             0,
             16,
-            16
+            2
           ],
-          "texture": "#shaft"
+          "texture": "#c1"
+        }
+      }
+    },
+    {
+      "from": [
+        0,
+        0,
+        2
+      ],
+      "to": [
+        2,
+        0.95,
+        14
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            8.0,
+            7.0,
+            14.0,
+            7.475
+          ],
+          "texture": "#sheet"
+        },
+        "down": {
+          "uv": [
+            0,
+            2,
+            2,
+            14
+          ],
+          "texture": "#c1"
+        }
+      }
+    },
+    {
+      "from": [
+        14,
+        0,
+        2
+      ],
+      "to": [
+        16,
+        0.95,
+        14
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            8.0,
+            7.0,
+            14.0,
+            7.475
+          ],
+          "texture": "#sheet"
+        },
+        "down": {
+          "uv": [
+            14,
+            2,
+            16,
+            14
+          ],
+          "texture": "#c1"
+        }
+      }
+    },
+    {
+      "from": [
+        2,
+        0.95,
+        2
+      ],
+      "to": [
+        14,
+        1.0,
+        14
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            2,
+            2,
+            14,
+            14
+          ],
+          "texture": "#c1"
         }
       }
     },
@@ -91,48 +231,48 @@
       "faces": {
         "north": {
           "uv": [
-            1,
-            0,
-            15,
-            3
+            7.0,
+            0.0,
+            14.0,
+            1.5
           ],
-          "texture": "#turntable_side"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
-            1,
-            0,
-            15,
-            3
+            7.0,
+            0.0,
+            14.0,
+            1.5
           ],
-          "texture": "#turntable_side"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            1,
-            0,
-            15,
-            3
+            7.0,
+            0.0,
+            14.0,
+            1.5
           ],
-          "texture": "#turntable_side"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            1,
-            0,
-            15,
-            3
+            7.0,
+            0.0,
+            14.0,
+            1.5
           ],
-          "texture": "#turntable_side"
+          "texture": "#sheet"
         },
         "up": {
           "uv": [
-            1,
-            1,
-            15,
-            15
+            0.0,
+            0.0,
+            7.0,
+            7.0
           ],
-          "texture": "#turntable"
+          "texture": "#sheet"
         }
       }
     }

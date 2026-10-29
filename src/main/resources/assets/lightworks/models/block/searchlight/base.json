@@ -1,10 +1,8 @@
 {
   "parent": "block/block",
   "textures": {
-    "base": "lightworks:block/light_base",
-    "base_side": "lightworks:block/light_base_side",
-    "iron": "lightworks:block/light_iron",
-    "particle": "lightworks:block/light_base_side"
+    "sheet": "lightworks:block/searchlight",
+    "particle": "create:block/brass_casing"
   },
   "elements": [
     {
@@ -21,57 +19,57 @@
       "faces": {
         "north": {
           "uv": [
-            2,
-            14,
-            14,
-            16
+            0.0,
+            14.0,
+            6.0,
+            15.0
           ],
-          "texture": "#base_side"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
-            2,
-            14,
-            14,
-            16
+            0.0,
+            14.0,
+            6.0,
+            15.0
           ],
-          "texture": "#base_side"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            2,
-            14,
-            14,
-            16
+            0.0,
+            14.0,
+            6.0,
+            15.0
           ],
-          "texture": "#base_side"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            2,
-            14,
-            14,
-            16
+            0.0,
+            14.0,
+            6.0,
+            15.0
           ],
-          "texture": "#base_side"
+          "texture": "#sheet"
         },
         "up": {
           "uv": [
-            2,
-            2,
-            14,
-            14
+            0.0,
+            0.0,
+            6.0,
+            6.0
           ],
-          "texture": "#base"
+          "texture": "#sheet"
         },
         "down": {
           "uv": [
-            2,
-            2,
-            14,
-            14
+            6.0,
+            0.0,
+            12.0,
+            6.0
           ],
-          "texture": "#base_side"
+          "texture": "#sheet"
         }
       }
     },
@@ -89,57 +87,57 @@
       "faces": {
         "north": {
           "uv": [
-            5,
-            13,
-            11,
-            14
+            0.0,
+            15.0,
+            3.0,
+            15.5
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
-            5,
-            13,
-            11,
-            14
+            0.0,
+            15.0,
+            3.0,
+            15.5
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            5,
-            13,
-            11,
-            14
+            0.0,
+            15.0,
+            3.0,
+            15.5
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            5,
-            13,
-            11,
-            14
+            0.0,
+            15.0,
+            3.0,
+            15.5
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "up": {
           "uv": [
-            5,
-            5,
-            11,
-            11
+            1.0,
+            10.0,
+            4.0,
+            13.0
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "down": {
           "uv": [
-            5,
-            5,
-            11,
-            11
+            1.0,
+            10.0,
+            4.0,
+            13.0
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         }
       }
     }

@@ -1,13 +1,8 @@
 {
   "parent": "block/block",
   "textures": {
-    "base": "lightworks:block/light_base",
-    "base_side": "lightworks:block/light_base_side",
-    "iron": "lightworks:block/light_iron",
-    "lens": "lightworks:block/lens",
-    "metal": "lightworks:block/light_metal",
-    "rim": "lightworks:block/rim_top",
-    "particle": "lightworks:block/light_metal"
+    "sheet": "lightworks:block/headlight",
+    "particle": "create:block/andesite_casing"
   },
   "elements": [
     {
@@ -18,199 +13,190 @@
       ],
       "to": [
         12,
-        1.5,
+        2,
         12
       ],
       "faces": {
         "north": {
           "uv": [
-            4,
-            14.5,
-            12,
-            16
+            10.0,
+            4.0,
+            14.0,
+            5.0
           ],
-          "texture": "#base_side"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
-            4,
-            14.5,
-            12,
-            16
+            10.0,
+            4.0,
+            14.0,
+            5.0
           ],
-          "texture": "#base_side"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            4,
-            14.5,
-            12,
-            16
+            10.0,
+            4.0,
+            14.0,
+            5.0
           ],
-          "texture": "#base_side"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            4,
-            14.5,
-            12,
-            16
+            10.0,
+            4.0,
+            14.0,
+            5.0
           ],
-          "texture": "#base_side"
+          "texture": "#sheet"
         },
         "up": {
           "uv": [
-            4,
-            4,
-            12,
-            12
+            0.0,
+            0.0,
+            4.0,
+            4.0
           ],
-          "texture": "#base"
+          "texture": "#sheet"
         },
         "down": {
           "uv": [
-            4,
-            4,
-            12,
-            12
+            8.0,
+            0.0,
+            12.0,
+            4.0
           ],
-          "texture": "#base_side"
+          "texture": "#sheet"
         }
       }
     },
     {
       "from": [
         7,
-        1.5,
+        2,
         7
       ],
       "to": [
         9,
-        4.5,
+        5,
         9
       ],
       "faces": {
         "north": {
           "uv": [
-            7,
-            11.5,
-            9,
-            14.5
+            9.0,
+            4.0,
+            10.0,
+            5.5
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
-            7,
-            11.5,
-            9,
-            14.5
+            9.0,
+            4.0,
+            10.0,
+            5.5
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            7,
-            11.5,
-            9,
-            14.5
+            9.0,
+            4.0,
+            10.0,
+            5.5
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            7,
-            11.5,
-            9,
-            14.5
+            9.0,
+            4.0,
+            10.0,
+            5.5
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "up": {
           "uv": [
-            7,
-            7,
-            9,
-            9
+            14.0,
+            4.0,
+            15.0,
+            5.0
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "down": {
           "uv": [
-            7,
-            7,
-            9,
-            9
+            14.0,
+            4.0,
+            15.0,
+            5.0
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         }
       }
     },
     {
       "from": [
-        4.5,
-        4.5,
-        4.5
+        5,
+        5,
+        5
       ],
       "to": [
-        11.5,
         11,
-        11.5
+        11,
+        11
       ],
       "faces": {
         "north": {
           "uv": [
-            4.5,
-            5,
-            11.5,
-            11.5
+            0.0,
+            4.0,
+            3.0,
+            7.0
           ],
-          "texture": "#metal"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
-            4.5,
-            5,
-            11.5,
-            11.5
+            0.0,
+            4.0,
+            3.0,
+            7.0
           ],
-          "texture": "#metal"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            4.5,
-            5,
-            11.5,
-            11.5
+            0.0,
+            4.0,
+            3.0,
+            7.0
           ],
-          "texture": "#metal"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            4.5,
-            5,
-            11.5,
-            11.5
+            0.0,
+            4.0,
+            3.0,
+            7.0
           ],
-          "texture": "#metal"
-        },
-        "up": {
-          "uv": [
-            4.5,
-            4.5,
-            11.5,
-            11.5
-          ],
-          "texture": "#metal"
+          "texture": "#sheet"
         },
         "down": {
           "uv": [
-            4.5,
-            4.5,
-            11.5,
-            11.5
+            12.0,
+            0.0,
+            15.0,
+            3.0
           ],
-          "texture": "#metal"
+          "texture": "#sheet"
         }
       }
     },
@@ -228,57 +214,57 @@
       "faces": {
         "north": {
           "uv": [
-            4,
-            3.5,
-            12,
-            5
+            10.0,
+            4.0,
+            14.0,
+            4.75
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
-            4,
-            3.5,
-            12,
-            5
+            10.0,
+            4.0,
+            14.0,
+            4.75
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            4,
-            3.5,
-            12,
-            5
+            10.0,
+            4.0,
+            14.0,
+            4.75
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            4,
-            3.5,
-            12,
-            5
+            10.0,
+            4.0,
+            14.0,
+            4.75
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         },
         "up": {
           "uv": [
-            4,
-            4,
-            12,
-            12
+            4.0,
+            0.0,
+            8.0,
+            4.0
           ],
-          "texture": "#rim"
+          "texture": "#sheet"
         },
         "down": {
           "uv": [
-            4,
-            4,
-            12,
-            12
+            0.0,
+            0.0,
+            4.0,
+            4.0
           ],
-          "texture": "#iron"
+          "texture": "#sheet"
         }
       }
     },
@@ -296,57 +282,57 @@
       "faces": {
         "north": {
           "uv": [
-            5,
-            3.2,
-            11,
-            3.5
+            0.0,
+            7.0,
+            3.0,
+            7.15
           ],
-          "texture": "#lens"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
-            5,
-            3.2,
-            11,
-            3.5
+            0.0,
+            7.0,
+            3.0,
+            7.15
           ],
-          "texture": "#lens"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            5,
-            3.2,
-            11,
-            3.5
+            0.0,
+            7.0,
+            3.0,
+            7.15
           ],
-          "texture": "#lens"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            5,
-            3.2,
-            11,
-            3.5
+            0.0,
+            7.0,
+            3.0,
+            7.15
           ],
-          "texture": "#lens"
+          "texture": "#sheet"
         },
         "up": {
           "uv": [
-            5,
-            5,
-            11,
-            11
+            3.0,
+            4.0,
+            6.0,
+            7.0
           ],
-          "texture": "#lens"
+          "texture": "#sheet"
         },
         "down": {
           "uv": [
-            5,
-            5,
-            11,
-            11
+            3.0,
+            4.0,
+            6.0,
+            7.0
           ],
-          "texture": "#lens"
+          "texture": "#sheet"
         }
       }
     }

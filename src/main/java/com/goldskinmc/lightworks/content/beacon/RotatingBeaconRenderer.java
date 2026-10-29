@@ -2,6 +2,7 @@ package com.goldskinmc.lightworks.content.beacon;
 
 import com.goldskinmc.lightworks.light.BeamTrace;
 import com.goldskinmc.lightworks.light.BeamVisual;
+import com.goldskinmc.lightworks.render.KineticParts;
 import com.goldskinmc.lightworks.render.MountFrame;
 import com.goldskinmc.lightworks.render.PartRenderer;
 import com.goldskinmc.lightworks.render.Partials;
@@ -16,8 +17,8 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
 /**
- * Draws the rotor at its angle, its two lenses and, for a placed beacon, both cosmetic beams. Inside a
- * contraption lenses and beams come from the movement behaviour.
+ * Draws the input shaft, the rotor at its angle, its two lenses and, for a placed beacon, both cosmetic
+ * beams. Inside a contraption lenses and beams come from the movement behaviour.
  */
 public class RotatingBeaconRenderer implements BlockEntityRenderer<RotatingBeaconBlockEntity> {
     public RotatingBeaconRenderer(BlockEntityRendererProvider.Context context) {
@@ -29,6 +30,7 @@ public class RotatingBeaconRenderer implements BlockEntityRenderer<RotatingBeaco
         boolean inContraption = beacon.getLevel() instanceof VirtualRenderWorld;
         int rgb = beacon.lightState().rgb(beacon.lightType());
         float lit = inContraption ? -1 : beacon.beams()[0].beam().brightness() / 15f;
+        KineticParts.shaftHalf(beacon, beacon.facing().getOpposite(), poseStack, buffers, packedLight);
         renderRotor(poseStack, buffers, beacon.facing(), beacon.angle(partialTick), rgb, lit, packedLight, true);
         if (inContraption) {
             return;
@@ -57,7 +59,7 @@ public class RotatingBeaconRenderer implements BlockEntityRenderer<RotatingBeaco
             PartRenderer.solid(poseStack, buffers, Partials.get("rotating_beacon/rotor"), packedLight);
         }
         if (lit >= 0) {
-            PartRenderer.lens(poseStack, buffers, Partials.get("rotating_beacon/lens"), rgb, lit, packedLight);
+            PartRenderer.lens(poseStack, buffers, "rotating_beacon/lens", rgb, lit, packedLight);
         }
         poseStack.popPose();
     }

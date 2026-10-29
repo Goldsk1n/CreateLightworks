@@ -3,7 +3,6 @@ package com.goldskinmc.lightworks.content.signal;
 import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.render.MountFrame;
 import com.goldskinmc.lightworks.render.PartRenderer;
-import com.goldskinmc.lightworks.render.Partials;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.foundation.virtualWorld.VirtualRenderWorld;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -34,7 +33,7 @@ public class SignalLampRenderer implements BlockEntityRenderer<SignalLampBlockEn
         poseStack.pushPose();
         MountFrame.enter(poseStack, facing);
         MountFrame.toCorner(poseStack);
-        PartRenderer.lens(poseStack, buffers, Partials.get(type.name() + "/lens"), rgb, intensity, packedLight);
+        PartRenderer.lens(poseStack, buffers, type.name() + "/lens", rgb, intensity, packedLight);
         poseStack.popPose();
     }
 }
