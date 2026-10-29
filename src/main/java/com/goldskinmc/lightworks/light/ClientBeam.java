@@ -61,6 +61,9 @@ public final class ClientBeam {
     /** Corner length over centre length at the last corner trace. */
     private final float[] cornerRatios = new float[CORNERS];
     private int ticksToCorners;
+    /** Nearest place a corner or edge ray landed at the last corner trace, for when the centre ray misses. */
+    @Nullable
+    private BeamTrace.Landing landing;
     private int brightness;
     private float skyExposure;
 
@@ -101,10 +104,14 @@ public final class ClientBeam {
         double range = BeamTrace.range(shape);
         BeamTrace.Hit hit = BeamTrace.trace(level, at.origin(), at.direction(),
                 ClientBeams.isRealWorld(level) ? range : Math.min(range, PREVIEW_RANGE));
-        BeamSpot next = BeamTrace.spotFor(hit, at.direction(), shape.onAxis(hit.distance()) * brightness / 15.0);
         // The cosmetic beam follows every tick; the lit spot only when it has moved enough to show
         length = hit.distance();
         List<Vec3> ends = traceCorners(level, at, hit, ClientBeams.isRealWorld(level) ? range : Math.min(range, PREVIEW_RANGE));
+        // Centre ray in the open but part of the beam on something: light where that part lands
+        BeamTrace.Landing lit = hit.hitBlock()
+                ? new BeamTrace.Landing(hit, at.direction(), shape.onAxis(hit.distance()))
+                : landing;
+        BeamSpot next = lit == null ? null : BeamTrace.spotFor(lit.hit(), lit.direction(), lit.light() * brightness / 15.0);
         this.brightness = brightness;
         // Open sky at the lens: daylight washes the visible beam out there (Ponder scenes never)
         skyExposure = ClientBeams.isRealWorld(level)
@@ -114,13 +121,9 @@ public final class ClientBeam {
             lastSpot = next;
             spot.set(next);
         }
-        updateTint(level, at, hit, ends, brightness, tintRgb, moved);
+        updateTint(level, at, lit, ends, brightness, tintRgb, moved);
     }
 
-    /** Half-angle of the visible beam, in radians: halfway into the soft edge, where the lit spot visibly ends. */
-    public static double visibleHalfAngle(ConeFalloff shape) {
-        return Math.toRadians(shape.coreDegrees() + shape.edgeDegrees() / 2);
-    }
 
     /**
      * Traces the corner and edge-middle rays of the square beam; returns where every ray that hit a block
@@ -144,31 +147,34 @@ public final class ClientBeam {
         ticksToCorners = MOVING_CORNER_INTERVAL + (ticksToCorners < 0 ? (System.identityHashCode(this) & 7) : 0);
         double[] u = BeamFrame.side(a.x, a.y, a.z);
         double[] v = BeamFrame.up(a.x, a.y, a.z, u);
-        double spread = Math.tan(visibleHalfAngle(shape));
+        double spread = Math.tan(BeamTrace.visibleHalfAngle(shape));
+        landing = null;
         for (int i = 0; i < CORNERS; i++) {
             if (i == CENTRE || far) {
                 cornerLengths[i] = (float) centre.distance();
                 cornerRatios[i] = 1;
                 continue;
             }
-            int cu = BeamFrame.cornerU(i);
-            int cv = BeamFrame.cornerV(i);
-            Vec3 offset = new Vec3(cu * u[0] + cv * v[0], cu * u[1] + cv * v[1], cu * u[2] + cv * v[2]);
-            Vec3 start = at.origin().add(offset.scale(lensHalf));
-            Vec3 direction = a.add(offset.scale(spread)).normalize();
-            BeamTrace.Hit hit = BeamTrace.trace(level, start, direction, range);
+            Vec3[] ray = BeamTrace.cornerRay(i, at.origin(), a, u, v, spread, lensHalf);
+            BeamTrace.Hit hit = BeamTrace.trace(level, ray[0], ray[1], range);
             cornerLengths[i] = (float) hit.distance();
             cornerRatios[i] = (float) (hit.distance() / Math.max(0.01, centre.distance()));
             if (hit.hitBlock()) {
                 ends.add(hit.end());
+                if (BeamTrace.landsUsefully(hit) && (landing == null || hit.distance() < landing.hit().distance())) {
+                    landing = new BeamTrace.Landing(hit, ray[1], BeamTrace.edgeLight(shape, hit.distance()));
+                }
             }
+        }
+        if (landing == null && !centre.hitBlock() && !far) {
+            landing = BeamTrace.halfLanding(level, at.origin(), a, shape, lensHalf, range);
         }
         return ends;
     }
 
     /** Finds the tinted faces again only when the light changed or its spot moved enough to be republished. */
-    private void updateTint(Level level, BeamPose at, BeamTrace.Hit hit, List<Vec3> ends, int brightness,
-            int tintRgb, boolean moved) {
+    private void updateTint(Level level, BeamPose at, @Nullable BeamTrace.Landing lit, List<Vec3> ends,
+            int brightness, int tintRgb, boolean moved) {
         if (tintRgb < 0 || ends.isEmpty() || !ClientBeams.isRealWorld(level)) {
             clearTint();
             return;
@@ -178,8 +184,8 @@ public final class ClientBeam {
         }
         if (moved || tint.faces() == 0 || tintRgb != tintedRgb || brightness != tintedBrightness) {
             // The white light the beam leaves round its spot (light block or dynamic light) is tinted too
-            double glowRadius = hit.hitBlock() ? shape.onAxis(hit.distance()) * brightness / 15.0 * GLOW_PER_LEVEL : 0;
-            Vec3 glowCentre = hit.end().subtract(at.direction().scale(0.5));
+            double glowRadius = lit == null ? 0 : lit.light() * brightness / 15.0 * GLOW_PER_LEVEL;
+            Vec3 glowCentre = lit == null ? at.origin() : lit.hit().end().subtract(lit.direction().scale(0.5));
             tint.beam(level, at.origin(), at.direction(), shape, ends, glowCentre, glowRadius, tintRgb,
                     brightness / 15f);
             tintedRgb = tintRgb;

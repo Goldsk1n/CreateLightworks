@@ -1,6 +1,7 @@
 package com.goldskinmc.lightworks.gametest;
 
 import com.goldskinmc.lightworks.Lightworks;
+import com.goldskinmc.lightworks.beam.Aim;
 import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
@@ -55,6 +56,40 @@ public final class LightworksGameTests {
             int twoAway = blockLight(helper, source.east(2));
             helper.assertTrue(next == 14 && twoAway == 13,
                     "expected light 14 then 13 next to a level-15 source, got " + next + " and " + twoAway);
+        });
+    }
+
+    /**
+     * A beam whose centre ray goes into the open still lights where its lower edge lands: a Floodlight just
+     * above a stone floor, tilted 30 degrees up, places its light block over the floor (weaker than on axis).
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 60)
+    public static void beamEdgeLightsWhereTheCentreMisses(GameTestHelper helper) {
+        for (int x = 0; x < 5; x++) {
+            for (int z = 0; z < 5; z++) {
+                helper.setBlock(new BlockPos(x, 0, z), Blocks.STONE);
+            }
+        }
+        BlockPos light = new BlockPos(0, 1, 2);
+        helper.setBlock(light.west(), Blocks.STONE);
+        helper.setBlock(light, LightworksBlocks.FLOODLIGHT.getDefaultState()
+                .setValue(DirectionalLightBlock.FACING, Direction.EAST));
+        DirectionalLightBlockEntity floodlight = helper.getBlockEntity(light);
+        // Yaw 0 leans toward the mount frame's R, which is up for a side mount
+        floodlight.lightState().setAim(new Aim(0, 60));
+        floodlight.setChanged();
+        helper.succeedWhen(() -> {
+            BeamTrace.Hit centre = BeamTrace.trace(helper.getLevel(), floodlight.beamOrigin(), floodlight.beamDirection(),
+                    BeamTrace.range(LightType.FLOODLIGHT.beam()));
+            helper.assertFalse(centre.hitBlock() && helper.absolutePos(new BlockPos(0, 0, 0)).getY() == centre.block().getY(),
+                    "the centre ray should not land on the floor");
+            int found = 0;
+            for (BlockPos pos : BlockPos.betweenClosed(new BlockPos(0, 1, 0), new BlockPos(4, 3, 4))) {
+                if (helper.getBlockState(pos).is(LightworksBlocks.BEAM_LIGHT.get())) {
+                    found = helper.getBlockState(pos).getValue(LightBlock.LEVEL);
+                }
+            }
+            helper.assertTrue(found > 0, "expected a light block over the floor where the beam's edge lands");
         });
     }
 

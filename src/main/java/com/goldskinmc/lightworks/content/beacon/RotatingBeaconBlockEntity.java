@@ -284,9 +284,16 @@ public class RotatingBeaconBlockEntity extends KineticBlockEntity implements Bea
                 clientBeam.update(level, beam, beam.moving() ? renderBeam(0.5f) : beam, brightness, tint);
             } else if (LightworksConfig.serverLightBlocks() && !beam.moving()) {
                 BeamTrace.Hit hit = BeamTrace.trace(level, beam.origin(), beam.direction(), BeamTrace.range(shape));
-                int lightLevel = hit.hitBlock()
-                        ? Mth.clamp((int) Math.round(shape.onAxis(hit.distance()) * brightness / 15.0), 0, 15) : 0;
-                serverLight.update(level, worldPosition, hit, beam.direction(), lightLevel);
+                BeamTrace.Landing edge = hit.hitBlock() ? null : BeamTrace.edgeLanding(level, beam.origin(),
+                        beam.direction(), shape, type.lensHalf(), BeamTrace.range(shape));
+                if (edge != null) {
+                    serverLight.update(level, worldPosition, edge.hit(), edge.direction(),
+                            Mth.clamp((int) Math.round(edge.light() * brightness / 15.0), 0, 15));
+                } else {
+                    int lightLevel = hit.hitBlock()
+                            ? Mth.clamp((int) Math.round(shape.onAxis(hit.distance()) * brightness / 15.0), 0, 15) : 0;
+                    serverLight.update(level, worldPosition, hit, beam.direction(), lightLevel);
+                }
             } else {
                 serverLight.clear(level);
             }

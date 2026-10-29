@@ -282,7 +282,15 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
             clientBeam.update(level, beam, beam.moving() ? renderBeam(0.5f) : beam, brightness, tint);
         } else if (LightworksConfig.serverLightBlocks() && !beam.moving()) {
             BeamTrace.Hit hit = BeamTrace.trace(level, beam.origin(), beam.direction(), BeamTrace.range(shape));
-            serverLight.update(level, worldPosition, hit, beam.direction(), lightLevelAt(hit));
+            BeamTrace.Landing edge = hit.hitBlock() ? null : BeamTrace.edgeLanding(level, beam.origin(),
+                    beam.direction(), shape, type.lensHalf(), BeamTrace.range(shape));
+            if (edge != null) {
+                // The centre is in the open but part of the beam lands: light it there, at the edge's strength
+                serverLight.update(level, worldPosition, edge.hit(), edge.direction(),
+                        Mth.clamp((int) Math.round(edge.light() * brightness / 15.0), 0, 15));
+            } else {
+                serverLight.update(level, worldPosition, hit, beam.direction(), lightLevelAt(hit));
+            }
         } else {
             // Light blocks cannot keep up with a moving vehicle: vehicles rely on the client dynamic light
             serverLight.clear(level);

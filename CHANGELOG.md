@@ -37,7 +37,8 @@ First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 
 - Players without LambDynamicLights still get light from fixed lights (server light blocks) and see
   every beam; with it, moving lights light the world too.
 - The visible beam is a square, Minecraft-style truncated pyramid that starts flush on the lens and
-  stops where it lands, also where only part of it hits a wall. It stays a soft haze when you stand in or
+  stops where it lands, also where only part of it hits a wall. A beam aimed over open ground still
+  lights the ground where its lower edge reaches it. It stays a soft haze when you stand in or
   beside it. Works with Sodium and Iris shaders (fainter with shaders on by default;
   client config `beamVisual` / `beamVisualWithShaders`).
 - Recipes, tooltips, a Ponder scene for every block, Sable mass data and our own creative tab.

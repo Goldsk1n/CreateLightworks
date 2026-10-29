@@ -754,6 +754,19 @@ final class Scenarios {
                     SelfTestBridge.focus = Vec3.atCenterOf(stage.at(1, 0, 5));
                 })
                 .waitTicks(40)
+                .run(stage -> {
+                    // Every light the beams placed: level-aimed beams light where their lower edge lands
+                    StringBuilder lights = new StringBuilder();
+                    for (BlockPos pos : BlockPos.betweenClosed(stage.at(-2, -1, 0), stage.at(30, 4, 12))) {
+                        BlockState state = stage.level.getBlockState(pos);
+                        if (state.is(LightworksBlocks.BEAM_LIGHT.get())) {
+                            lights.append(String.format(" (%d %d %d)=%d", pos.getX() - stage.origin.getX(),
+                                    pos.getY() - stage.origin.getY(), pos.getZ() - stage.origin.getZ(),
+                                    state.getValue(BlockStateProperties.LEVEL)));
+                        }
+                    }
+                    stage.log("closeup: light blocks relative to the site:%s", lights.length() == 0 ? " none" : lights);
+                })
                 .shot("closeup-0")
                 // Right beside the beacon at lens height, as a player standing next to it sees it
                 .run(stage -> {
