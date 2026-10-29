@@ -122,7 +122,7 @@ public final class LightworksLang {
                 behaviour("When stopped", "Lights where the beams land, like two fixed Searchlights."),
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
                 action("When R-clicked with Dye", "Colours the lens, the beams and the light they cast."));
-        tooltip("warning_light", "An _amber_ lamp that shines steady, blinks, pulses or flashes. Gives steady block light where it stands, whatever its pattern.",
+        tooltip("warning_light", "An _amber_ lamp that shines steady, blinks, pulses or flashes, and lights the world round it in the same rhythm.",
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
                 action("When scrolling the value panel", "Picks the _pattern_."),
                 action("When R-clicked with Dye", "Changes its colour."));

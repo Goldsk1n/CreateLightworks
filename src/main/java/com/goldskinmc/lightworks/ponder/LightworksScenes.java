@@ -422,7 +422,7 @@ final class LightworksScenes {
         scene.idle(60);
 
         scene.overlay().showText(80)
-                .text("The block light stays steady whatever the pattern, so the world around it never flickers")
+                .text("The light it casts follows the pattern too, like a redstone lamp on a clock")
                 .placeNearTarget()
                 .pointAt(util.vector().topOf(lamp));
         scene.idle(90);

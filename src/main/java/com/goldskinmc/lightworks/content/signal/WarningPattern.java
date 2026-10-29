@@ -44,6 +44,15 @@ public enum WarningPattern implements INamedIconOptions {
         };
     }
 
+    /**
+     * Share of a placed lamp's block light at {@code gameTime}: the lens pattern, with the pulse in
+     * quarter steps so the light (and the chunk it sits in) only changes a few times per cycle.
+     */
+    public float blockLight(long gameTime) {
+        float lens = at(gameTime, 0);
+        return this == PULSE ? Math.round(lens * 4) / 4f : lens;
+    }
+
     @Override
     public AllIcons getIcon() {
         return icon;

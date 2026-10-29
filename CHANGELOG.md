@@ -13,8 +13,8 @@ First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 
   redstone signal tilts it 6° per level.
 - **Rotating Beacon**: two opposite beams that sweep round with shaft speed; lights where they land once
   stopped.
-- **Warning Light**: amber lamp with steady, blink, pulse and flash patterns (value panel); steady block
-  light whatever the pattern.
+- **Warning Light**: amber lamp with steady, blink, pulse and flash patterns (value panel); the light it
+  casts follows the pattern.
 - **Headlight**: forward beam for vehicles. On a moving contraption, train or Sable vehicle only the
   Headlights facing the way it travels light up, so they swap when it reverses. Powered at assembly, a
   Headlight stays lit both ways.

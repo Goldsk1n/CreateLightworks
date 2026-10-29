@@ -69,7 +69,7 @@
   "block.lightworks.warning_light.tooltip.condition1": "When powered by Redstone",
   "block.lightworks.warning_light.tooltip.control1": "When scrolling the value panel",
   "block.lightworks.warning_light.tooltip.control2": "When R-clicked with Dye",
-  "block.lightworks.warning_light.tooltip.summary": "An _amber_ lamp that shines steady, blinks, pulses or flashes. Gives steady block light where it stands, whatever its pattern.",
+  "block.lightworks.warning_light.tooltip.summary": "An _amber_ lamp that shines steady, blinks, pulses or flashes, and lights the world round it in the same rhythm.",
   "create.lightworks.warning_pattern.blink": "Blink",
   "create.lightworks.warning_pattern.flash": "Flash",
   "create.lightworks.warning_pattern.pulse": "Pulse",
@@ -181,7 +181,7 @@
   "lightworks.ponder.warning_light.header": "Warning Lights",
   "lightworks.ponder.warning_light.text_1": "Warning Lights glow amber and give block light where they stand",
   "lightworks.ponder.warning_light.text_2": "Scroll its value panel to pick a pattern: steady, blink, pulse or flash",
-  "lightworks.ponder.warning_light.text_3": "The block light stays steady whatever the pattern, so the world around it never flickers",
+  "lightworks.ponder.warning_light.text_3": "The light it casts follows the pattern too, like a redstone lamp on a clock",
   "lightworks.ponder.warning_light.text_4": "Right-click with a dye to change its colour",
   "lightworks.warning_light.pattern": "Pattern"
 }

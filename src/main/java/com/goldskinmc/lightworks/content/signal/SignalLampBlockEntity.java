@@ -131,6 +131,10 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
     @Override
     public void tick() {
         super.tick();
+        if (level != null && !level.isClientSide && lightType().kind() == LightType.Kind.WARNING) {
+            // A blinking lamp lights the world only while its lens is lit
+            updateBlockLight();
+        }
         if (level != null && level.isClientSide) {
             previewTicks++;
             updateGlow();
@@ -202,8 +206,17 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
             setChanged();
             sendData();
         }
-        // Steady block light, whatever the lens pattern: blinking light levels would rebuild chunks
-        int lightLevel = Math.round(lightType().placedLight() * brightness / 15f);
+        updateBlockLight();
+    }
+
+    /**
+     * The {@code LIGHT} level the lamp gives: its brightness, and for a Warning Light its pattern, like a
+     * redstone lamp on a clock (each change relights the area and rebuilds the chunk section, so the
+     * pulse moves in quarter steps).
+     */
+    private void updateBlockLight() {
+        float pattern = lightType().kind() == LightType.Kind.WARNING ? pattern().blockLight(level.getGameTime()) : 1;
+        int lightLevel = Math.round(lightType().placedLight() * state.brightness() / 15f * pattern);
         BlockState blockState = getBlockState();
         if (blockState.getValue(SignalLampBlock.LIGHT) != lightLevel) {
             level.setBlock(worldPosition, blockState.setValue(SignalLampBlock.LIGHT, lightLevel), Block.UPDATE_CLIENTS);
