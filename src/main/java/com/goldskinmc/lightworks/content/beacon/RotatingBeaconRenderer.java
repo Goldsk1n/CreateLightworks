@@ -36,7 +36,7 @@ public class RotatingBeaconRenderer implements BlockEntityRenderer<RotatingBeaco
         for (RotatingBeaconBlockEntity.Beam beam : beacon.beams()) {
             Vec3 d = beam.direction(partialTick);
             Vector3f axis = new Vector3f((float) d.x, (float) d.y, (float) d.z);
-            Vector3f lens = new Vector3f(0.5f).add(new Vector3f(axis).mul(0.5f));
+            Vector3f lens = new Vector3f(0.5f).add(new Vector3f(axis).mul((float) beacon.lightType().lensDistance()));
             BeamVisual.render(poseStack, buffers, lens, axis, beam.beam(), rgb);
         }
     }

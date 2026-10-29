@@ -53,8 +53,7 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
     static final String HEAD_ELEVATION = "HeadElevation";
     /** How often the beam is re-traced to notice blocks placed or removed in its path. */
     private static final int RETRACE_INTERVAL_TICKS = 5;
-    /** The lens sits this far from the block's centre, along the beam. */
-    public static final double LENS_RADIUS = 0.5;
+
 
     private final LightType type;
     private final ConeFalloff shape;
@@ -81,7 +80,7 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         super(type, pos, blockState);
         this.type = blockState.getBlock() instanceof DirectionalLightBlock block ? block.lightType() : LightType.SEARCHLIGHT;
         this.shape = Objects.requireNonNull(this.type.beam());
-        this.clientBeam = new ClientBeam(shape);
+        this.clientBeam = new ClientBeam(shape, (float) this.type.lensHalf());
         setLazyTickRate(RETRACE_INTERVAL_TICKS);
     }
 
@@ -175,7 +174,7 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
     }
 
     public Vec3 beamOrigin(float partialTick) {
-        return Vec3.atCenterOf(worldPosition).add(beamDirection(partialTick).scale(LENS_RADIUS));
+        return Vec3.atCenterOf(worldPosition).add(beamDirection(partialTick).scale(lightType().lensDistance()));
     }
 
     static Vec3 direction(Direction facing, Aim aim) {

@@ -40,7 +40,7 @@ public class DirectionalLightRenderer implements BlockEntityRenderer<Directional
         }
         Vec3 direction = light.beamDirection(partialTick);
         Vector3f axis = new Vector3f((float) direction.x, (float) direction.y, (float) direction.z);
-        Vector3f lens = new Vector3f(0.5f).add(new Vector3f(axis).mul((float) DirectionalLightBlockEntity.LENS_RADIUS));
+        Vector3f lens = new Vector3f(0.5f).add(new Vector3f(axis).mul((float) light.lightType().lensDistance()));
         BeamVisual.render(poseStack, buffers, lens, axis, light.beam(), light.lightState().rgb(light.lightType()));
     }
 

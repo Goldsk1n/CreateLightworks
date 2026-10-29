@@ -1,6 +1,7 @@
 package com.goldskinmc.lightworks.gametest;
 
 import com.goldskinmc.lightworks.Lightworks;
+import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.light.BeamTrace;
@@ -57,7 +58,7 @@ public final class LightworksGameTests {
         });
     }
 
-    /** The beam leaves the lens face and stops at the first block in its way, not before or after. */
+    /** The beam leaves the lens glass and stops at the first block in its way, not before or after. */
     @GameTest(template = EMPTY)
     public static void searchlightBeamStopsAtFirstSolidBlock(GameTestHelper helper) {
         BlockPos light = new BlockPos(0, 2, 2);
@@ -72,8 +73,10 @@ public final class LightworksGameTests {
 
         helper.assertTrue(helper.absolutePos(wall).equals(hit.block()),
                 "beam should hit the wall at " + helper.absolutePos(wall) + " but hit " + hit.block());
-        // Lens face is at relative x = 1.0, the wall's west face at x = 4.0
-        helper.assertTrue(Math.abs(hit.distance() - 3.0) < 1e-6, "expected 3 blocks to the wall, got " + hit.distance());
+        // The lens glass is lensDistance east of the block centre (x = 0.5), the wall's west face at x = 4.0
+        double expected = 4.0 - (0.5 + LightType.SEARCHLIGHT.lensDistance());
+        helper.assertTrue(Math.abs(hit.distance() - expected) < 1e-6,
+                "expected " + expected + " blocks to the wall, got " + hit.distance());
         helper.succeed();
     }
 
