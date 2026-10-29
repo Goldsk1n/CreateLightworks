@@ -12,8 +12,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 /**
- * Right-clicking a light with a dye tints its lens and beam, using up the dye like dyeing a sign. Colour is
- * cosmetic: block light and dynamic light stay white.
+ * Right-clicking a light with a dye tints its lens, its beam and what it lights, using up the dye like
+ * dyeing a sign. Block light and dynamic light stay white underneath; the colour is painted over them
+ * ({@code ProjectedTint}).
  */
 public final class Dyeing {
     private Dyeing() {

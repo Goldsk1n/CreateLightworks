@@ -76,7 +76,8 @@ public final class MovingBeam implements BeamSource {
             // and frames then draw it ahead of this pose: lead the spot by half a tick of motion
             Vec3 lead = context.motion == null ? Vec3.ZERO : context.motion.scale(0.5);
             beam.update(context.world, pose, new BeamPose(pose.origin().add(lead), pose.direction(), true),
-                    state.brightness());
+                    state.brightness(),
+                    state.colour() == null ? -1 : rgb());
         }
     }
 

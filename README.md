@@ -20,7 +20,8 @@ trains and [Create Aeronautics](https://modrinth.com/mod/create-aeronautics) veh
 | Navigation Light | Red (port), green (starboard) or white (stern), set by placement | Wrench cycles the colour |
 
 Redstone dims every light (brightness = 15 − signal); the server config `invertRedstone` makes lights
-off unless powered. Engineer's Goggles show a light's state and draw its beam. Every block has a recipe,
+off unless powered. Dyed lights and signal lamps colour what they light (client config `colouredLight`;
+off under shader packs). Engineer's Goggles show a light's state and draw its beam. Every block has a recipe,
 a tooltip and a Ponder scene.
 
 ## How light reaches the world

@@ -4,8 +4,9 @@ import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.content.LightGoggles;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
-import com.goldskinmc.lightworks.light.ClientBeams;
 import com.goldskinmc.lightworks.host.SableHost;
+import com.goldskinmc.lightworks.light.ClientBeams;
+import com.goldskinmc.lightworks.light.ProjectedTint;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -22,6 +23,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -37,6 +39,11 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
     private final BrakeLight brake = new BrakeLight();
     /** Client ticks seen, the pattern clock outside the real world (Ponder pauses game time). */
     private long previewTicks;
+    /** The lamp's colour painted on the blocks round it; client only, made on the first tick. */
+    @Nullable
+    private ProjectedTint glow;
+    private int glowRgb;
+    private boolean glowDue = true;
     /** Warning Light only; set in addBehaviours, which runs before field initialisers. */
     @Nullable
     private ScrollOptionBehaviour<WarningPattern> pattern;
@@ -126,6 +133,7 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
         super.tick();
         if (level != null && level.isClientSide) {
             previewTicks++;
+            updateGlow();
         }
         if (level != null && level.isClientSide && lightType().kind() == LightType.Kind.TAIL) {
             // Null when not on a Sable vehicle: a fixed tail light never starts braking, but a brake
@@ -134,9 +142,41 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
         }
     }
 
+    /**
+     * Colours the blocks round the lamp like its lens. The lit faces are found again now and then (blocks
+     * placed or broken nearby) and when the colour changes; a pattern only changes the strength.
+     */
+    private void updateGlow() {
+        if (!ClientBeams.isRealWorld(level)) {
+            return;
+        }
+        if (glow == null) {
+            glow = new ProjectedTint();
+        }
+        int rgb = rgb();
+        if (glowDue || rgb != glowRgb) {
+            glowDue = false;
+            glowRgb = rgb;
+            glow.glow(level, Vec3.atCenterOf(worldPosition), 1 + lightType().placedLight() * 0.4, rgb, intensity(0));
+        } else {
+            glow.setBrightness(intensity(0));
+        }
+    }
+
+    /** SmartBlockEntity calls this when the block is removed and when its chunk unloads. */
+    @Override
+    public void invalidate() {
+        super.invalidate();
+        if (glow != null) {
+            glow.clear();
+            glow = null;
+        }
+    }
+
     @Override
     public void lazyTick() {
         super.lazyTick();
+        glowDue = true;
         if (level != null && !level.isClientSide) {
             refreshBrightness();
         }

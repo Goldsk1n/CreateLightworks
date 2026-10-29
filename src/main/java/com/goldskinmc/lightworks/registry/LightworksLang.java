@@ -71,7 +71,7 @@ public final class LightworksLang {
         add("lightworks.navigation.stern", "stern (white)");
         add("lightworks.goggles.hint.aim", "Wrench: aim where you look");
         add("lightworks.goggles.hint.on_head", "Aimed by the Pan-Tilt Head below");
-        add("lightworks.goggles.hint.dye", "Dye: tint the lens and beam");
+        add("lightworks.goggles.hint.dye", "Dye: colour the lens, beam and light");
         add("lightworks.goggles.hint.redstone", "Redstone dims it; 15 turns it off");
         add("lightworks.goggles.hint.redstone_inverted", "Redstone lights it; brighter the stronger");
         add("lightworks.goggles.hint.pan_tilt", "Shaft pans the light on top; redstone tilts it 6° a level");
@@ -87,6 +87,7 @@ public final class LightworksLang {
         add("lightworks.configuration.maxBeamRange", "Longest beam");
         add("lightworks.configuration.beamVisual", "Visible beam");
         add("lightworks.configuration.beamVisualWithShaders", "Visible beam with shaders");
+        add("lightworks.configuration.colouredLight", "Coloured light");
         add("lightworks.configuration.debugOverlay", "Debug overlay (F3)");
         // Scene text lives in the scenes; Ponder hands it over once every scene is built
         REGISTRATE.addDataGenerator(ProviderType.LANG, provider -> LightworksPonder.provideLang(provider::add));
@@ -102,17 +103,17 @@ public final class LightworksLang {
                 behaviour("When placed", "Aims where you are looking. Mount it on a _Pan-Tilt Head_ to sweep it round."),
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
                 action("When R-clicked with a Wrench", "Aims it where you are looking."),
-                action("When R-clicked with Dye", "Tints the lens and beam."));
+                action("When R-clicked with Dye", "Colours the lens, the beam and the light it casts."));
         tooltip("floodlight", "A wide _cone_ for lighting an area: bright out to _12 blocks_, dark by 20. Mount it high and aim it down.",
                 behaviour("When placed", "Aims where you are looking, away from the face it is mounted on."),
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
                 action("When R-clicked with a Wrench", "Aims it where you are looking."),
-                action("When R-clicked with Dye", "Tints the lens and beam."));
+                action("When R-clicked with Dye", "Colours the lens, the beam and the light it casts."));
         tooltip("headlight", "A forward _beam_ for vehicles. On a moving contraption, train or Sable vehicle it lights only while _leading_, so Headlights at both ends swap over when it reverses.",
                 behaviour("When powered at assembly", "Stays lit _both ways_, dimmed by the signal."),
                 behaviour("When placed", "Always lit: a Searchlight with a shorter, wider beam."),
                 action("When R-clicked with a Wrench", "Aims it where you are looking."),
-                action("When R-clicked with Dye", "Tints the lens and beam."));
+                action("When R-clicked with Dye", "Colours the lens, the beam and the light it casts."));
         tooltip("pan_tilt_head", "A kinetic mount for a _Searchlight_ or _Floodlight_ placed on top of it.",
                 behaviour("When rotated", "_Pans_ the light round, as fast as the shaft turns."),
                 behaviour("When powered by Redstone", "_Tilts_ the light up 6° per signal level, straight up at 15."));
@@ -120,7 +121,7 @@ public final class LightworksLang {
                 behaviour("When rotated", "The beams turn _as fast as the shaft_."),
                 behaviour("When stopped", "Lights where the beams land, like two fixed Searchlights."),
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
-                action("When R-clicked with Dye", "Tints the lens and beams."));
+                action("When R-clicked with Dye", "Colours the lens, the beams and the light they cast."));
         tooltip("warning_light", "An _amber_ lamp that shines steady, blinks, pulses or flashes. Gives steady block light where it stands, whatever its pattern.",
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
                 action("When scrolling the value panel", "Picks the _pattern_."),

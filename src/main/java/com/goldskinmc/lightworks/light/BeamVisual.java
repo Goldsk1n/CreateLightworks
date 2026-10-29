@@ -91,7 +91,7 @@ public final class BeamVisual {
     }
 
     /** 0 at night to 1 at a clear noon, in the player's world; rain and storms darken it. */
-    private static float daylight() {
+    static float daylight() {
         ClientLevel level = Minecraft.getInstance().level;
         return level == null ? 0 : Mth.clamp((level.getSkyDarken(1) - 0.2f) / 0.8f, 0, 1);
     }
