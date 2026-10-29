@@ -15,6 +15,14 @@ import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.light.BeamTrace;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.simibubi.create.AllBlocks;
+import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
+import com.simibubi.create.content.contraptions.actors.trainControls.ControlsBlock;
+import com.simibubi.create.content.trains.track.TrackShape;
+import com.simibubi.create.content.trains.track.TrackBlock;
+import com.simibubi.create.content.trains.station.StationBlockEntity;
+import com.simibubi.create.content.trains.entity.Train;
+import com.simibubi.create.content.trains.bogey.AbstractBogeyBlock;
+import com.simibubi.create.Create;
 import com.simibubi.create.AllItems;
 import com.simibubi.create.content.contraptions.IControlContraption.MovementMode;
 import com.simibubi.create.content.contraptions.glue.SuperGlueEntity;
@@ -27,6 +35,9 @@ import com.simibubi.create.content.kinetics.motor.CreativeMotorBlockEntity;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
 import java.util.LinkedHashMap;
+import java.util.UUID;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
@@ -80,6 +91,7 @@ final class Scenarios {
         ALL.put("ponder", Scenarios::ponder);
         ALL.put("gallery", Scenarios::gallery);
         ALL.put("closeup", Scenarios::closeup);
+        ALL.put("train", Scenarios::train);
     }
 
     private Scenarios() {
@@ -552,6 +564,176 @@ final class Scenarios {
     }
 
     /**
+     * A real Create train: 49 blocks of track, a station, one bogey under three casings with Headlights at
+     * both ends, a Tail and Brake Light and Train Controls each way, assembled at the station and driven
+     * by setting its speed (as a driver would): east for 60 ticks, a stop, then west for 60 ticks and a
+     * stop. The probe logs which Headlight is lit (they should swap when it reverses) and the brake light.
+     * <p>
+     * Not finished (Oct 29): track, station, assembly mode and bogey all work, but
+     * {@code StationBlockEntity.assemble} returns without a train, an error or a warning. The real-train
+     * check stays with the owner until this is solved. Not in the default set.
+     */
+    static Script train() {
+        BlockPos[] at = new BlockPos[3];
+        Train[] train = new Train[1];
+        ItemStack[] hand = new ItemStack[1];
+        Set<UUID> known = new HashSet<>();
+        return new Script("train")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(0, -6);
+                    at[0] = stage.at(0, 0, 4);
+                    stage.reserve(stage.at(-30, 0, 2), stage.at(30, 4, 7));
+                    for (int x = -24; x <= 24; x++) {
+                        stage.set(stage.at(x, 0, 4), AllBlocks.TRACK.getDefaultState()
+                                .setValue(TrackBlock.SHAPE, TrackShape.XO));
+                    }
+                    hand[0] = stage.player.getMainHandItem().copy();
+                    SelfTestBridge.focus = Vec3.atCenterOf(at[0].above());
+                })
+                // The track joins Create's rail network a tick after it is placed
+                .waitTicks(10)
+                .run(stage -> {
+                    // The station item, used as a player would: on the track, then where the station goes
+                    stage.player.setYRot(-90);
+                    stage.player.setXRot(30);
+                    stage.player.setItemInHand(InteractionHand.MAIN_HAND, AllBlocks.TRACK_STATION.asStack());
+                    use(stage, at[0], Direction.UP);
+                    use(stage, stage.at(0, -1, 6), Direction.UP);
+                    at[1] = stage.at(0, 0, 6);
+                    stage.log("train: station %s", stage.level.getBlockEntity(at[1]) instanceof StationBlockEntity
+                            ? "placed" : "missing (" + stage.level.getBlockState(at[1]) + ")");
+                })
+                .waitTicks(5)
+                .run(stage -> {
+                    if (!(stage.level.getBlockEntity(at[1]) instanceof StationBlockEntity station)) {
+                        return;
+                    }
+                    boolean assembling = station.enterAssemblyMode(stage.player);
+                    // The first bogey goes on the track one block past the station's, in the assembly direction
+                    Direction way = station.getAssemblyDirection();
+                    BlockPos clicked = way == null ? at[0] : at[0].relative(way);
+                    stage.player.setItemInHand(InteractionHand.MAIN_HAND, AllBlocks.RAILWAY_CASING.asStack(4));
+                    BlockState track = stage.level.getBlockState(clicked);
+                    track.useItemOn(stage.player.getMainHandItem(), stage.level, stage.player, InteractionHand.MAIN_HAND,
+                            new BlockHitResult(Vec3.atCenterOf(clicked), Direction.UP, clicked, false));
+                    BlockPos bogey = stage.level.getBlockState(clicked.above()).getBlock() instanceof AbstractBogeyBlock<?>
+                            ? clicked.above() : null;
+                    stage.log("train: assembly mode %s, direction %s, bogey %s", assembling, way,
+                            bogey == null ? "missing" : "at " + bogey);
+                    if (bogey == null) {
+                        return;
+                    }
+                    at[2] = bogey;
+                    BlockPos body = bogey.above();
+                    for (int x = -1; x <= 1; x++) {
+                        stage.set(body.offset(x, 0, 0), AllBlocks.RAILWAY_CASING.getDefaultState());
+                    }
+                    stage.set(body.offset(2, 0, 0), headlight(Direction.EAST));
+                    stage.set(body.offset(-2, 0, 0), headlight(Direction.WEST));
+                    stage.set(body.offset(-1, 0, -1), LightworksBlocks.TAIL_LIGHT.getDefaultState()
+                            .setValue(SignalLampBlock.FACING, Direction.NORTH));
+                    stage.set(body.offset(1, 1, 0), AllBlocks.TRAIN_CONTROLS.getDefaultState()
+                            .setValue(ControlsBlock.FACING, Direction.EAST));
+                    stage.set(body.offset(-1, 1, 0), AllBlocks.TRAIN_CONTROLS.getDefaultState()
+                            .setValue(ControlsBlock.FACING, Direction.WEST));
+                    stage.level.addFreshEntity(new SuperGlueEntity(stage.level,
+                            AABB.encapsulatingFullBlocks(body.offset(-2, 0, -1), body.offset(2, 1, 0))));
+                })
+                .waitTicks(5)
+                .run(stage -> {
+                    if (at[2] == null || !(stage.level.getBlockEntity(at[1]) instanceof StationBlockEntity station)) {
+                        return;
+                    }
+                    known.addAll(Create.RAILWAYS.trains.keySet());
+                    station.refreshAssemblyInfo();
+                    stage.log("train: before assembly: network station %s, assembling %s, bogeys %s",
+                            station.getStation() != null, station.isAssembling(), field(station, "bogeyCount"));
+                    station.assemble(stage.player.getUUID());
+                    stage.log("train: assembly error %s, trains now %d, assembling %s", assemblyError(station),
+                            Create.RAILWAYS.trains.size(), station.isAssembling());
+                })
+                .waitTicks(5)
+                .run(stage -> {
+                    // The newly assembled train: the one Create did not know before
+                    for (Train candidate : Create.RAILWAYS.trains.values()) {
+                        if (!known.contains(candidate.id)) {
+                            train[0] = candidate;
+                        }
+                    }
+                    stage.log("train: %s; %d contraption entities near", train[0] != null
+                                    ? "assembled, " + train[0].carriages.size() + " carriage"
+                                    : "not assembled, " + Create.RAILWAYS.trains.size() + " trains known",
+                            stage.level.getEntitiesOfClass(AbstractContraptionEntity.class,
+                                    new AABB(at[0]).inflate(30)).size());
+                })
+                .waitTicks(15)
+                .run(stage -> {
+                    SelfTestBridge.probeGroundY = stage.origin.getY();
+                    SelfTestBridge.probe = "train";
+                    SelfTestBridge.recording = "train-run";
+                })
+                .repeat(60, (stage, i) -> drive(train[0], 0.3))
+                .repeat(30, (stage, i) -> drive(train[0], 0))
+                .repeat(60, (stage, i) -> drive(train[0], -0.3))
+                .repeat(30, (stage, i) -> drive(train[0], 0))
+                .run(stage -> {
+                    SelfTestBridge.recording = null;
+                    SelfTestBridge.probe = null;
+                })
+                .shot("train-0-stopped")
+                .run(stage -> {
+                    if (train[0] != null) {
+                        Create.RAILWAYS.removeTrain(train[0].id);
+                    }
+                    stage.player.setItemInHand(InteractionHand.MAIN_HAND, hand[0]);
+                    SelfTestBridge.focus = null;
+                    stage.discardContraptions(at[0], 30);
+                    stage.restoreBlocks();
+                    stage.discardContraptions(at[0], 30);
+                });
+    }
+
+    /** Sets a train's speed for this tick, as its controls do (blocks per tick; negative backwards). */
+    private static void drive(Train train, double speed) {
+        if (train != null) {
+            train.manualTick = true;
+            train.targetSpeed = speed;
+            train.speed = speed;
+        }
+    }
+
+    /** Uses the item in the player's main hand on a block face, as a right-click would. */
+    private static void use(Stage stage, BlockPos pos, Direction face) {
+        ItemStack stack = stage.player.getMainHandItem();
+        stack.useOn(new UseOnContext(stage.player, InteractionHand.MAIN_HAND,
+                new BlockHitResult(Vec3.atCenterOf(pos).relative(face, 0.5), face, pos, false)));
+    }
+
+    /** A private field of a Create class, for the log. */
+    private static Object field(Object owner, String name) {
+        try {
+            java.lang.reflect.Field field = owner.getClass().getDeclaredField(name);
+            field.setAccessible(true);
+            return field.get(owner);
+        } catch (ReflectiveOperationException e) {
+            return "?";
+        }
+    }
+
+    /** Why a station did not assemble: its last error, read like the station screen does. */
+    private static String assemblyError(StationBlockEntity station) {
+        try {
+            java.lang.reflect.Field field = StationBlockEntity.class.getDeclaredField("lastException");
+            field.setAccessible(true);
+            Object error = field.get(station);
+            return error instanceof Exception exception ? exception.getMessage() : String.valueOf(error);
+        } catch (ReflectiveOperationException e) {
+            return "unknown (" + e + ")";
+        }
+    }
+
+    /**
      * Close-up at night from the side: a Searchlight, a Floodlight and a stopped Rotating Beacon, all
      * shining east; the beam should start flush on each lens and be the lens's size.
      */
@@ -573,6 +755,20 @@ final class Scenarios {
                 })
                 .waitTicks(40)
                 .shot("closeup-0")
+                // Right beside the beacon at lens height, as a player standing next to it sees it
+                .run(stage -> {
+                    stage.hover(-1.3, 0.2, 7.5);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 0, 8)).add(0, 0.6, 0);
+                })
+                .waitTicks(10)
+                .shot("closeup-1-beside-beacon")
+                // Standing in the Searchlight's beam, looking along it
+                .run(stage -> {
+                    stage.hover(2.0, 0.0, 3.5);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(12, 0, 4));
+                })
+                .waitTicks(10)
+                .shot("closeup-2-in-beam")
                 .run(stage -> {
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
