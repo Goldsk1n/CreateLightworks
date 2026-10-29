@@ -36,6 +36,20 @@ public final class BeamVisual {
     /** How much of the beam's brightness is lost over its full range, on top of its falloff. */
     private static final float HAZE = 0.6f;
     private static final float GLASS_LIFT = 0.01f;
+    private static final Vector3f NORMAL = new Vector3f();
+    private static final Vector3f EDGE = new Vector3f();
+    private static final Vector3f VIEW = new Vector3f();
+    /** Neighbouring rays whose lengths differ by more than this (blocks) are drawn as a torn side. */
+    private static final float TORN_LENGTH = 1.5f;
+    /** Distance in front of the lens where the beam is at full strength, to compare its falloff against. */
+    private static final double LENS_SAMPLE = 1e-3;
+    /** Haze closer to the camera than this (blocks) is at its faintest... */
+    private static final float NEAR_FADE_START = 0.75f;
+    /** ...and from this far on at full strength. */
+    private static final float NEAR_FADE_END = 4f;
+    private static final float NEAR_FLOOR = 0.1f;
+    /** A face seen exactly edge-on keeps this share of its haze. */
+    private static final float EDGE_FLOOR = 0.4f;
     /** The closed lens end is fainter than the sides, which overlap along the view. */
     private static final float CAP_ALPHA = 0.5f;
     /**
@@ -48,6 +62,7 @@ public final class BeamVisual {
                     .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                     .setTransparencyState(RenderStateShard.LIGHTNING_TRANSPARENCY)
                     .setOutputState(RenderStateShard.WEATHER_TARGET)
+                    .setCullState(RenderStateShard.CULL)
                     .createCompositeState(false));
 
     private BeamVisual() {
@@ -88,15 +103,16 @@ public final class BeamVisual {
         int corners = BeamFrame.GRID * BeamFrame.GRID;
         Vector3f[] near = new Vector3f[corners];
         Vector3f[] far = new Vector3f[corners];
+        Vector3f[] directions = new Vector3f[corners];
+        float[] lengths = new float[corners];
         float[] farAlpha = new float[corners];
         for (int i = 0; i < corners; i++) {
             Vector3f offset = new Vector3f(u).mul(BeamFrame.cornerU(i)).add(new Vector3f(v).mul(BeamFrame.cornerV(i)));
             near[i] = new Vector3f(offset).mul(beam.lensHalf()).add(lens);
-            Vector3f direction = new Vector3f(offset).mul(spread).add(axis).normalize();
-            float length = beam.cornerLength(i);
-            far[i] = new Vector3f(direction).mul(length).add(near[i]);
-            // The light's own falloff, and a little haze, so the far end never outshines the lens
-            farAlpha[i] = alpha * (float) (shape.onAxis(length) / shape.onAxis(0) * (1 - HAZE * length / shape.range()));
+            directions[i] = new Vector3f(offset).mul(spread).add(axis).normalize();
+            lengths[i] = beam.cornerLength(i);
+            far[i] = new Vector3f(directions[i]).mul(lengths[i]).add(near[i]);
+            farAlpha[i] = alphaAt(alpha, shape, lengths[i]);
         }
 
         Matrix4f pose = poseStack.last().pose();
@@ -111,9 +127,24 @@ public final class BeamVisual {
         for (int k = 0; k < rim.length; k++) {
             int a = rim[k];
             int b = rim[(k + 1) % rim.length];
-            // Both windings, so the beam shows from inside and outside whatever the culling state
-            side(out, pose, near[a], near[b], far[b], far[a], alpha, farAlpha[b], farAlpha[a], red, green, blue);
-            side(out, pose, near[b], near[a], far[a], far[b], alpha, farAlpha[a], farAlpha[b], red, green, blue);
+            float shorter = Math.min(lengths[a], lengths[b]);
+            if (Math.max(lengths[a], lengths[b]) - shorter < TORN_LENGTH) {
+                twoSided(out, pose, near[a], near[b], far[b], far[a], alpha, farAlpha[b], farAlpha[a], red, green, blue);
+                continue;
+            }
+            // One ray stopped on something and its neighbour went on: the face runs to where the first
+            // stopped, then only a strip along the longer ray goes on, fading in from the obstacle (one
+            // skewed face from the obstacle to the far end would lie as a bright sheet along the ground)
+            int stop = lengths[a] < lengths[b] ? a : b;
+            int go = stop == a ? b : a;
+            Vector3f level = new Vector3f(directions[go]).mul(shorter).add(near[go]);
+            float levelAlpha = alphaAt(alpha, shape, shorter);
+            Vector3f farA = a == go ? level : far[a];
+            Vector3f farB = b == go ? level : far[b];
+            twoSided(out, pose, near[a], near[b], farB, farA, alpha, b == go ? levelAlpha : farAlpha[b],
+                    a == go ? levelAlpha : farAlpha[a], red, green, blue);
+            twoSided(out, pose, far[stop], level, far[go], far[stop], 0, farAlpha[go], 0, red, green, blue,
+                    levelAlpha);
         }
         // The lens end, closed so the beam has no dark hole where it starts
         Vector3f c0 = near[BeamFrame.corner(-1, -1)];
@@ -121,8 +152,29 @@ public final class BeamVisual {
         Vector3f c2 = near[BeamFrame.corner(1, 1)];
         Vector3f c3 = near[BeamFrame.corner(-1, 1)];
         float capAlpha = alpha * CAP_ALPHA;
-        side(out, pose, c0, c1, c2, c3, capAlpha, capAlpha, capAlpha, red, green, blue);
-        side(out, pose, c1, c0, c3, c2, capAlpha, capAlpha, capAlpha, red, green, blue);
+        twoSided(out, pose, c0, c1, c2, c3, capAlpha, capAlpha, capAlpha, red, green, blue);
+    }
+
+    /** The light's own falloff, and a little haze, so the far end never outshines the lens. */
+    private static float alphaAt(float alpha, ConeFalloff shape, float length) {
+        // onAxis is 0 at the origin itself, so compare against just in front of it
+        double atLens = shape.onAxis(LENS_SAMPLE);
+        double share = atLens > 0 ? Math.min(1, shape.onAxis(length) / atLens) : 0;
+        return alpha * (float) (share * Math.max(0, 1 - HAZE * length / shape.range()));
+    }
+
+    /** Both windings, so the beam shows from inside and outside whatever the culling state. */
+    private static void twoSided(VertexConsumer out, Matrix4f pose, Vector3f nearA, Vector3f nearB, Vector3f farB,
+            Vector3f farA, float nearAlpha, float farAlphaB, float farAlphaA, float red, float green, float blue) {
+        twoSided(out, pose, nearA, nearB, farB, farA, nearAlpha, farAlphaB, farAlphaA, red, green, blue, nearAlpha);
+    }
+
+    /** As above, with its own opacity at {@code nearB}. */
+    private static void twoSided(VertexConsumer out, Matrix4f pose, Vector3f nearA, Vector3f nearB, Vector3f farB,
+            Vector3f farA, float nearAlphaA, float farAlphaB, float farAlphaA, float red, float green, float blue,
+            float nearAlphaB) {
+        side(out, pose, nearA, nearB, farB, farA, nearAlphaA, nearAlphaB, farAlphaB, farAlphaA, red, green, blue);
+        side(out, pose, nearB, nearA, farA, farB, nearAlphaB, nearAlphaA, farAlphaA, farAlphaB, red, green, blue);
     }
 
     /** 0 at night to 1 at a clear noon, in the player's world; rain and storms darken it. */
@@ -146,11 +198,35 @@ public final class BeamVisual {
     }
 
 
+    /**
+     * One quad of the beam. Each corner's opacity is softened by how the camera sees it: haze within a few
+     * blocks of the camera fades out (standing in or beside a beam, its faces would otherwise stack into a
+     * white wall), and a face seen edge-on fades a little, so the beam's outline is soft.
+     */
     private static void side(VertexConsumer out, Matrix4f pose, Vector3f nearA, Vector3f nearB, Vector3f farB,
-            Vector3f farA, float nearAlpha, float farAlphaB, float farAlphaA, float red, float green, float blue) {
-        out.addVertex(pose, nearA.x, nearA.y, nearA.z).setColor(red, green, blue, nearAlpha);
-        out.addVertex(pose, nearB.x, nearB.y, nearB.z).setColor(red, green, blue, nearAlpha);
-        out.addVertex(pose, farB.x, farB.y, farB.z).setColor(red, green, blue, farAlphaB);
-        out.addVertex(pose, farA.x, farA.y, farA.z).setColor(red, green, blue, farAlphaA);
+            Vector3f farA, float nearAlphaA, float nearAlphaB, float farAlphaB, float farAlphaA, float red,
+            float green, float blue) {
+        // Render thread only: scratch vectors, so 50 beams make no garbage every frame
+        Vector3f normal = NORMAL.set(nearB).sub(nearA).cross(EDGE.set(farA).sub(nearA));
+        pose.transformDirection(normal);
+        if (normal.lengthSquared() > 1e-12f) {
+            normal.normalize();
+        }
+        vertex(out, pose, nearA, normal, nearAlphaA, red, green, blue);
+        vertex(out, pose, nearB, normal, nearAlphaB, red, green, blue);
+        vertex(out, pose, farB, normal, farAlphaB, red, green, blue);
+        vertex(out, pose, farA, normal, farAlphaA, red, green, blue);
+    }
+
+    private static void vertex(VertexConsumer out, Matrix4f pose, Vector3f at, Vector3f normal, float alpha,
+            float red, float green, float blue) {
+        // Camera-relative position: the poses here only move and turn, so its length is the distance
+        Vector3f view = pose.transformPosition(VIEW.set(at));
+        float distance = view.length();
+        float near = Mth.clamp((distance - NEAR_FADE_START) / (NEAR_FADE_END - NEAR_FADE_START), 0, 1);
+        near = NEAR_FLOOR + (1 - NEAR_FLOOR) * near * near * (3 - 2 * near);
+        float facing = distance > 1e-4f ? Math.abs(view.dot(normal)) / distance : 1;
+        float edge = EDGE_FLOOR + (1 - EDGE_FLOOR) * facing;
+        out.addVertex(pose, at.x, at.y, at.z).setColor(red, green, blue, alpha * near * edge);
     }
 }

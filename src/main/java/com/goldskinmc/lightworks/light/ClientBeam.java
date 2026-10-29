@@ -33,12 +33,12 @@ public final class ClientBeam {
     /** Longest beam outside the real world (Ponder scenes), so beams stay inside the scene. */
     private static final double PREVIEW_RANGE = 8;
     /** Moving lights further from the camera than this trace only their centre (corners would not show). */
-    private static final double CORNER_TRACE_DISTANCE = 48;
+    private static final double CORNER_TRACE_DISTANCE = 32;
     /**
      * A moving light traces its corner rays only every this many ticks (lights take turns); in between each
      * corner keeps its last length relative to the centre, which holds while the beam sweeps one surface.
      */
-    private static final int MOVING_CORNER_INTERVAL = 4;
+    private static final int MOVING_CORNER_INTERVAL = 8;
     private static final int CORNERS = BeamFrame.GRID * BeamFrame.GRID;
     private static final int CENTRE = BeamFrame.corner(0, 0);
     /** Blocks of tinted glow round the spot per level of light there: block light fades one level a block. */
@@ -141,7 +141,7 @@ public final class ClientBeam {
             return ends;
         }
         // Lights on one vehicle start their turns on different ticks
-        ticksToCorners = MOVING_CORNER_INTERVAL + (ticksToCorners < 0 ? (System.identityHashCode(this) & 3) : 0);
+        ticksToCorners = MOVING_CORNER_INTERVAL + (ticksToCorners < 0 ? (System.identityHashCode(this) & 7) : 0);
         double[] u = BeamFrame.side(a.x, a.y, a.z);
         double[] v = BeamFrame.up(a.x, a.y, a.z, u);
         double spread = Math.tan(visibleHalfAngle(shape));

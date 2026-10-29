@@ -62,6 +62,7 @@ public final class ProjectedTint {
     private static final float DAY_FADE = 0.8f;
     /** The glow round a beam's spot is softer than the spot itself. */
     private static final float GLOW_WEIGHT = 0.6f;
+    private static final long EXPIRY_TICKS = 5;
 
     private static final RenderType TINT = RenderType.create("lightworks_tint", DefaultVertexFormat.POSITION_COLOR,
             VertexFormat.Mode.QUADS, 4096, false, false, RenderType.CompositeState.builder()
@@ -85,6 +86,8 @@ public final class ProjectedTint {
     private float blue;
     private float strength;
     private float skyExposure;
+    /** Client game time after which this tint stops drawing unless refreshed; MAX for owned tints. */
+    private long expires = Long.MAX_VALUE;
 
     /**
      * Tints the faces a beam lights: a square spot (matching the visible beam) round every place one of
@@ -139,6 +142,14 @@ public final class ProjectedTint {
     /** Changes how strong the tint is without finding the faces again (a blinking pattern). */
     public void setBrightness(float brightness) {
         strength = brightness;
+    }
+
+    /**
+     * Keeps this tint drawing for a few more ticks. For lamps on contraptions, which can be discarded or
+     * unloaded without a word: their tint fades out by itself when nothing refreshes it.
+     */
+    public void keepAlive(Level level) {
+        expires = level.getGameTime() + EXPIRY_TICKS;
     }
 
     /** Stops drawing until the next {@link #beam} or {@link #glow}. */
@@ -299,6 +310,8 @@ public final class ProjectedTint {
         poseStack.pushPose();
         poseStack.translate(-camera.x, -camera.y, -camera.z);
         Matrix4f pose = poseStack.last().pose();
+        long now = Minecraft.getInstance().level == null ? 0 : Minecraft.getInstance().level.getGameTime();
+        ACTIVE.removeIf(tint -> now > tint.expires);
         for (ProjectedTint tint : ACTIVE) {
             float amount = STRENGTH * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
             if (amount > 0.01f) {

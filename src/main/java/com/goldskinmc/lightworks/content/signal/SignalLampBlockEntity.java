@@ -43,6 +43,8 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
     @Nullable
     private ProjectedTint glow;
     private int glowRgb;
+    @Nullable
+    private Vec3 glowAt;
     private boolean glowDue = true;
     /** Warning Light only; set in addBehaviours, which runs before field initialisers. */
     @Nullable
@@ -158,13 +160,22 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
             glow = new ProjectedTint();
         }
         int rgb = rgb();
-        if (glowDue || rgb != glowRgb) {
+        // On a Sable vehicle the block sits in Sable's plot: the glow goes where the vehicle shows it
+        Vec3 at = SableHost.toWorld(level, worldPosition, Vec3.atCenterOf(worldPosition), new Vec3(0, 1, 0)).origin();
+        // Moved with its vehicle: faces found again every block (finding them is the costly part)
+        if (glowDue || rgb != glowRgb || glowAt == null || glowAt.distanceToSqr(at) > 1) {
             glowDue = false;
             glowRgb = rgb;
-            glow.glow(level, Vec3.atCenterOf(worldPosition), 1 + lightType().placedLight() * 0.4, rgb, intensity(0));
+            glowAt = at;
+            glow.glow(level, at, glowRadius(lightType()), rgb, intensity(0));
         } else {
             glow.setBrightness(intensity(0));
         }
+    }
+
+    /** How far a lamp's coloured glow reaches, in blocks: further for a brighter lamp. */
+    public static double glowRadius(LightType type) {
+        return 1 + type.placedLight() * 0.4;
     }
 
     /** SmartBlockEntity calls this when the block is removed and when its chunk unloads. */
