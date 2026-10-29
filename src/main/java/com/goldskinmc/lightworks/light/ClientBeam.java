@@ -1,18 +1,25 @@
 package com.goldskinmc.lightworks.light;
 
+import com.goldskinmc.lightworks.beam.BeamFrame;
 import com.goldskinmc.lightworks.beam.BeamSpot;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.goldskinmc.lightworks.compat.DynamicLights;
 import com.goldskinmc.lightworks.compat.DynamicSpot;
 import com.goldskinmc.lightworks.host.BeamPose;
+import java.util.ArrayList;
+import java.util.List;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * The client half of one beam: traces it, moves its dynamic spot to where it lands, and remembers the
- * beam's length for the cosmetic beam. Client thread only.
+ * The client half of one beam: traces it, moves its dynamic spot to where it lands, and remembers how far
+ * it reaches for the cosmetic beam. The visible beam is a square truncated pyramid ({@link BeamFrame}), so
+ * besides its centre a beam traces the rays along its corners and edge middles: a beam grazing a wall
+ * stops on it where it touches it and goes on beside it. Client thread only.
  */
 public final class ClientBeam {
     /**
@@ -25,6 +32,19 @@ public final class ClientBeam {
     private static final double MIN_DIRECTION_DOT = 0.99985;
     /** Longest beam outside the real world (Ponder scenes), so beams stay inside the scene. */
     private static final double PREVIEW_RANGE = 8;
+    /** Half the width of the lens, in blocks: where the visible beam starts. */
+    public static final float LENS_HALF = 0.3f;
+    /** Moving lights further from the camera than this trace only their centre (corners would not show). */
+    private static final double CORNER_TRACE_DISTANCE = 48;
+    /**
+     * A moving light traces its corner rays only every this many ticks (lights take turns); in between each
+     * corner keeps its last length relative to the centre, which holds while the beam sweeps one surface.
+     */
+    private static final int MOVING_CORNER_INTERVAL = 4;
+    private static final int CORNERS = BeamFrame.GRID * BeamFrame.GRID;
+    private static final int CENTRE = BeamFrame.corner(0, 0);
+    /** Blocks of tinted glow round the spot per level of light there: block light fades one level a block. */
+    private static final double GLOW_PER_LEVEL = 0.5;
 
     private final ConeFalloff shape;
     @Nullable
@@ -36,6 +56,11 @@ public final class ClientBeam {
     @Nullable
     private BeamSpot lastSpot;
     private double length;
+    /** How far each corner ray reached, by {@link BeamFrame#corner} index (the centre is {@link #length}). */
+    private final float[] cornerLengths = new float[CORNERS];
+    /** Corner length over centre length at the last corner trace. */
+    private final float[] cornerRatios = new float[CORNERS];
+    private int ticksToCorners;
     private int brightness;
     private float skyExposure;
 
@@ -74,6 +99,7 @@ public final class ClientBeam {
         BeamSpot next = BeamTrace.spotFor(hit, at.direction(), shape.onAxis(hit.distance()) * brightness / 15.0);
         // The cosmetic beam follows every tick; the lit spot only when it has moved enough to show
         length = hit.distance();
+        List<Vec3> ends = traceCorners(level, at, hit, ClientBeams.isRealWorld(level) ? range : Math.min(range, PREVIEW_RANGE));
         this.brightness = brightness;
         // Open sky at the lens: daylight washes the visible beam out there (Ponder scenes never)
         skyExposure = ClientBeams.isRealWorld(level)
@@ -83,12 +109,62 @@ public final class ClientBeam {
             lastSpot = next;
             spot.set(next);
         }
-        updateTint(level, at, hit, brightness, tintRgb, moved);
+        updateTint(level, at, hit, ends, brightness, tintRgb, moved);
+    }
+
+    /** Half-angle of the visible beam, in radians: halfway into the soft edge, where the lit spot visibly ends. */
+    public static double visibleHalfAngle(ConeFalloff shape) {
+        return Math.toRadians(shape.coreDegrees() + shape.edgeDegrees() / 2);
+    }
+
+    /**
+     * Traces the corner and edge-middle rays of the square beam; returns where every ray that hit a block
+     * ended (the centre's hit included), for the coloured spot.
+     */
+    private List<Vec3> traceCorners(Level level, BeamPose at, BeamTrace.Hit centre, double range) {
+        List<Vec3> ends = new ArrayList<>(CORNERS);
+        if (centre.hitBlock()) {
+            ends.add(centre.end());
+        }
+        Vec3 a = at.direction();
+        boolean far = at.moving() && Minecraft.getInstance().gameRenderer.getMainCamera().getPosition()
+                .distanceToSqr(at.origin()) > CORNER_TRACE_DISTANCE * CORNER_TRACE_DISTANCE;
+        if (at.moving() && !far && --ticksToCorners > 0) {
+            for (int i = 0; i < CORNERS; i++) {
+                cornerLengths[i] = (float) Math.min(range, cornerRatios[i] * centre.distance());
+            }
+            return ends;
+        }
+        // Lights on one vehicle start their turns on different ticks
+        ticksToCorners = MOVING_CORNER_INTERVAL + (ticksToCorners < 0 ? (System.identityHashCode(this) & 3) : 0);
+        double[] u = BeamFrame.side(a.x, a.y, a.z);
+        double[] v = BeamFrame.up(a.x, a.y, a.z, u);
+        double spread = Math.tan(visibleHalfAngle(shape));
+        for (int i = 0; i < CORNERS; i++) {
+            if (i == CENTRE || far) {
+                cornerLengths[i] = (float) centre.distance();
+                cornerRatios[i] = 1;
+                continue;
+            }
+            int cu = BeamFrame.cornerU(i);
+            int cv = BeamFrame.cornerV(i);
+            Vec3 offset = new Vec3(cu * u[0] + cv * v[0], cu * u[1] + cv * v[1], cu * u[2] + cv * v[2]);
+            Vec3 start = at.origin().add(offset.scale(LENS_HALF));
+            Vec3 direction = a.add(offset.scale(spread)).normalize();
+            BeamTrace.Hit hit = BeamTrace.trace(level, start, direction, range);
+            cornerLengths[i] = (float) hit.distance();
+            cornerRatios[i] = (float) (hit.distance() / Math.max(0.01, centre.distance()));
+            if (hit.hitBlock()) {
+                ends.add(hit.end());
+            }
+        }
+        return ends;
     }
 
     /** Finds the tinted faces again only when the light changed or its spot moved enough to be republished. */
-    private void updateTint(Level level, BeamPose at, BeamTrace.Hit hit, int brightness, int tintRgb, boolean moved) {
-        if (tintRgb < 0 || !hit.hitBlock() || !ClientBeams.isRealWorld(level)) {
+    private void updateTint(Level level, BeamPose at, BeamTrace.Hit hit, List<Vec3> ends, int brightness,
+            int tintRgb, boolean moved) {
+        if (tintRgb < 0 || ends.isEmpty() || !ClientBeams.isRealWorld(level)) {
             clearTint();
             return;
         }
@@ -96,7 +172,11 @@ public final class ClientBeam {
             tint = new ProjectedTint();
         }
         if (moved || tint.faces() == 0 || tintRgb != tintedRgb || brightness != tintedBrightness) {
-            tint.beam(level, at.origin(), at.direction(), shape, hit.end(), tintRgb, brightness / 15f);
+            // The white light the beam leaves round its spot (light block or dynamic light) is tinted too
+            double glowRadius = hit.hitBlock() ? shape.onAxis(hit.distance()) * brightness / 15.0 * GLOW_PER_LEVEL : 0;
+            Vec3 glowCentre = hit.end().subtract(at.direction().scale(0.5));
+            tint.beam(level, at.origin(), at.direction(), shape, ends, glowCentre, glowRadius, tintRgb,
+                    brightness / 15f);
             tintedRgb = tintRgb;
             tintedBrightness = brightness;
         }
@@ -148,6 +228,11 @@ public final class ClientBeam {
     /** How far the beam reached at the last update: to the hit, or its full range. 0 when off. */
     public double length() {
         return length;
+    }
+
+    /** How far corner ray {@code index} ({@link BeamFrame#corner}) reached at the last update. */
+    public float cornerLength(int index) {
+        return length <= 0 ? 0 : cornerLengths[index];
     }
 
     /** Brightness at the last update, 0 to 15; 0 when off. */

@@ -85,4 +85,29 @@ public final class ConeFalloff {
         }
         return onAxis(along) * angular;
     }
+
+    /**
+     * Light at offset (dx, dy, dz) from the beam origin for the square beam the player sees: like
+     * {@link #lightAt} but the core and edge are squares across the axes (ux, uy, uz) and (vx, vy, vz)
+     * (see {@link BeamFrame}), measured by the larger of the two angles off the axis.
+     */
+    public double lightAtSquare(double dx, double dy, double dz, double ax, double ay, double az,
+            double ux, double uy, double uz, double vx, double vy, double vz) {
+        double along = dx * ax + dy * ay + dz * az;
+        if (along <= 0 || along >= range) {
+            return 0;
+        }
+        double across = Math.max(Math.abs(dx * ux + dy * uy + dz * uz), Math.abs(dx * vx + dy * vy + dz * vz));
+        // The cosine of the larger angle off the axis, then the same edge as the round beam
+        double cos = along / Math.sqrt(along * along + across * across);
+        double angular;
+        if (cos >= cosCore) {
+            angular = 1;
+        } else if (cos <= cosEdge) {
+            return 0;
+        } else {
+            angular = (cos - cosEdge) / (cosCore - cosEdge);
+        }
+        return onAxis(along) * angular;
+    }
 }

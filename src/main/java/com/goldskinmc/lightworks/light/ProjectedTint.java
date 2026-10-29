@@ -2,6 +2,7 @@ package com.goldskinmc.lightworks.light;
 
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.LightworksClientConfig;
+import com.goldskinmc.lightworks.beam.BeamFrame;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -9,8 +10,11 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -56,6 +60,8 @@ public final class ProjectedTint {
     /** Lifted off the face so it never fights the block for depth. */
     private static final float LIFT = 0.002f;
     private static final float DAY_FADE = 0.8f;
+    /** The glow round a beam's spot is softer than the spot itself. */
+    private static final float GLOW_WEIGHT = 0.6f;
 
     private static final RenderType TINT = RenderType.create("lightworks_tint", DefaultVertexFormat.POSITION_COLOR,
             VertexFormat.Mode.QUADS, 4096, false, false, RenderType.CompositeState.builder()
@@ -81,31 +87,53 @@ public final class ProjectedTint {
     private float skyExposure;
 
     /**
-     * Tints the faces a beam lights round where it lands.
+     * Tints the faces a beam lights: a square spot (matching the visible beam) round every place one of
+     * its rays landed, and the softer glow its white light leaves round the spot.
      *
      * @param origin     lens position
      * @param axis       unit vector the beam points along
-     * @param end        where the beam stops on a block
+     * @param ends       where the beam's centre, corner and edge rays stopped on blocks
+     * @param glowCentre where the beam's white light sits, just in front of the spot
+     * @param glowRadius how far that light reaches, in blocks (0 for none)
      * @param brightness 0 to 1
      */
-    public void beam(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, Vec3 end, int rgb, float brightness) {
-        double distance = end.distanceTo(origin);
-        double halfAngle = Math.toRadians(shape.coreDegrees() + shape.edgeDegrees());
-        double radius = Math.min(MAX_RADIUS, distance * Math.tan(halfAngle) + 0.5);
-        project(level, origin, end, radius,
-                (x, y, z) -> (float) (shape.lightAt(x - origin.x, y - origin.y, z - origin.z, axis.x, axis.y, axis.z) / 15));
-        show(level, end, rgb, brightness);
+    public void beam(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, List<Vec3> ends, Vec3 glowCentre,
+            double glowRadius, int rgb, float brightness) {
+        double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
+        double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
+        double tan = Math.tan(Math.toRadians(shape.coreDegrees() + shape.edgeDegrees()));
+        List<Region> regions = new ArrayList<>();
+        for (Vec3 end : ends) {
+            // Each ray's own patch: as wide as the cone there, over the square's diagonal
+            double radius = Math.min(MAX_RADIUS, end.distanceTo(origin) * tan * Math.sqrt(2) / BeamFrame.GRID + 0.75);
+            regions.add(new Region(end, radius));
+        }
+        List<Source> sources = new ArrayList<>(2);
+        sources.add(new Source(origin, (x, y, z) -> (float) (shape.lightAtSquare(x - origin.x, y - origin.y,
+                z - origin.z, axis.x, axis.y, axis.z, u[0], u[1], u[2], v[0], v[1], v[2]) / 15)));
+        if (glowRadius > 0.5) {
+            double radius = Math.min(MAX_RADIUS, glowRadius);
+            regions.add(new Region(glowCentre, radius));
+            sources.add(new Source(glowCentre, glowFalloff(glowCentre, radius, GLOW_WEIGHT)));
+        }
+        project(level, regions, sources);
+        show(level, ends.get(0), rgb, brightness);
     }
 
     /** Tints the faces round a signal lamp, fading to nothing {@code radius} blocks away. */
     public void glow(Level level, Vec3 centre, double radius, int rgb, float brightness) {
-        project(level, centre, centre, radius, (x, y, z) -> {
+        project(level, List.of(new Region(centre, radius)), List.of(new Source(centre, glowFalloff(centre, radius, 1))));
+        show(level, centre, rgb, brightness);
+    }
+
+    /** Light round a point, falling off with the square of the distance's fraction of {@code radius}. */
+    private static Falloff glowFalloff(Vec3 centre, double radius, float weight) {
+        return (x, y, z) -> {
             double d = Math.sqrt((x - centre.x) * (x - centre.x) + (y - centre.y) * (y - centre.y)
                     + (z - centre.z) * (z - centre.z));
             double t = Math.max(0, 1 - d / radius);
-            return (float) (t * t);
-        });
-        show(level, centre, rgb, brightness);
+            return (float) (weight * t * t);
+        };
     }
 
     /** Changes how strong the tint is without finding the faces again (a blinking pattern). */
@@ -137,6 +165,14 @@ public final class ProjectedTint {
         float at(double x, double y, double z);
     }
 
+    /** Blocks within {@code radius} of {@code centre} are looked at. */
+    private record Region(Vec3 centre, double radius) {
+    }
+
+    /** A light: a face it can see is tinted by its falloff. */
+    private record Source(Vec3 position, Falloff falloff) {
+    }
+
     private void show(Level level, Vec3 at, int rgb, float brightness) {
         // Brightest channel to 1, so the tint changes the colour without darkening the light
         float r = (rgb >> 16 & 0xFF) / 255f;
@@ -155,31 +191,55 @@ public final class ProjectedTint {
         }
     }
 
-    /** Finds the exposed faces of full blocks within {@code radius} of {@code centre} that see {@code source}. */
-    private void project(Level level, Vec3 source, Vec3 centre, double radius, Falloff falloff) {
+    /**
+     * Finds the exposed faces of full blocks in the regions; each face is tinted by the strongest of the
+     * sources that face it and see it.
+     */
+    private void project(Level level, List<Region> regions, List<Source> sources) {
         faces = 0;
-        int reach = (int) Math.ceil(radius);
-        BlockPos middle = BlockPos.containing(centre);
+        LongOpenHashSet seen = new LongOpenHashSet();
         BlockPos.MutableBlockPos neighbour = new BlockPos.MutableBlockPos();
-        for (BlockPos pos : BlockPos.betweenClosed(middle.offset(-reach, -reach, -reach), middle.offset(reach, reach, reach))) {
-            if (faces >= MAX_FACES) {
-                break;
-            }
-            if (Vec3.atCenterOf(pos).distanceToSqr(centre) > (radius + 1) * (radius + 1)
-                    || !level.getBlockState(pos).isSolidRender(level, pos)) {
-                continue;
-            }
-            for (Direction side : Direction.values()) {
-                neighbour.setWithOffset(pos, side);
-                if (level.getBlockState(neighbour).isSolidRender(level, neighbour)) {
+        List<Falloff> lighting = new ArrayList<>(sources.size());
+        for (Region region : regions) {
+            int reach = (int) Math.ceil(region.radius());
+            BlockPos middle = BlockPos.containing(region.centre());
+            double limit = (region.radius() + 1) * (region.radius() + 1);
+            for (BlockPos pos : BlockPos.betweenClosed(middle.offset(-reach, -reach, -reach),
+                    middle.offset(reach, reach, reach))) {
+                if (faces >= MAX_FACES) {
+                    return;
+                }
+                if (Vec3.atCenterOf(pos).distanceToSqr(region.centre()) > limit || !seen.add(pos.asLong())
+                        || !level.getBlockState(pos).isSolidRender(level, pos)) {
                     continue;
                 }
-                Vec3 faceCentre = Vec3.atCenterOf(pos).add(Vec3.atLowerCornerOf(side.getNormal()).scale(0.5));
-                Vec3 normal = Vec3.atLowerCornerOf(side.getNormal());
-                if (source.subtract(faceCentre).dot(normal) <= 0 || !sees(level, source, faceCentre, normal, pos)) {
-                    continue;
+                for (Direction side : Direction.values()) {
+                    neighbour.setWithOffset(pos, side);
+                    if (level.getBlockState(neighbour).isSolidRender(level, neighbour)) {
+                        continue;
+                    }
+                    Vec3 normal = Vec3.atLowerCornerOf(side.getNormal());
+                    Vec3 faceCentre = Vec3.atCenterOf(pos).add(normal.scale(0.5));
+                    lighting.clear();
+                    for (Source source : sources) {
+                        if (source.position().subtract(faceCentre).dot(normal) > 0
+                                && sees(level, source.position(), faceCentre, normal, pos)) {
+                            lighting.add(source.falloff());
+                        }
+                    }
+                    if (lighting.size() == 1) {
+                        addFace(pos, side, lighting.get(0));
+                    } else if (lighting.size() > 1) {
+                        List<Falloff> both = List.copyOf(lighting);
+                        addFace(pos, side, (x, y, z) -> {
+                            float most = 0;
+                            for (Falloff falloff : both) {
+                                most = Math.max(most, falloff.at(x, y, z));
+                            }
+                            return most;
+                        });
+                    }
                 }
-                addFace(pos, side, falloff);
             }
         }
     }

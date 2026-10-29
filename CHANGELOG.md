@@ -35,6 +35,7 @@ First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 
   beam paths while worn.
 - Players without LambDynamicLights still get light from fixed lights (server light blocks) and see
   every beam; with it, moving lights light the world too.
-- Works with Sodium and Iris shaders (the visible beam is fainter with shaders on by default; client
-  config `beamVisual` / `beamVisualWithShaders`).
+- The visible beam is a square, Minecraft-style truncated pyramid that stops where it lands, also where
+  only part of it hits a wall. Works with Sodium and Iris shaders (fainter with shaders on by default;
+  client config `beamVisual` / `beamVisualWithShaders`).
 - Recipes, tooltips, a Ponder scene for every block, Sable mass data and our own creative tab.
