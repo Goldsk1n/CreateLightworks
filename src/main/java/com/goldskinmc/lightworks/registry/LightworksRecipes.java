@@ -54,7 +54,7 @@ public final class LightworksRecipes {
                 .save(out);
         shaped(LightworksBlocks.WARNING_LIGHT, 2, " G ", "DTD", " I ")
                 .define('G', GLASS).define('D', Tags.Items.DYES_ORANGE).define('T', AllItems.ELECTRON_TUBE)
-                .define('I', IRON_PLATES)
+                .define('I', BRASS_PLATES)
                 .save(out);
         shaped(LightworksBlocks.TAIL_LIGHT, 2, " G ", "DTD", " I ")
                 .define('G', GLASS).define('D', Tags.Items.DYES_RED).define('T', AllItems.ELECTRON_TUBE)
