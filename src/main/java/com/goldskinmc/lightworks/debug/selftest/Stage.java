@@ -13,23 +13,28 @@ import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
 import com.simibubi.create.content.contraptions.glue.SuperGlueEntity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The world a self-test runs in: the joining player's level, positions relative to where the player
- * stood, and everything needed to put the world back afterwards (blocks, time of day, player position,
- * config).
+ * The world a self-test runs in: the joining player's level, positions relative to a test site of its
+ * own, and everything needed to put the world back afterwards (blocks, time of day, player position,
+ * config). The site is far from spawn, on its ground, so builds in the test world never get in the way.
  */
 final class Stage {
     final ServerLevel level;
     final ServerPlayer player;
-    /** Where the player stood on joining; scenarios build relative to it. */
+    /** Distance of the test site from the world's centre, along x and z. */
+    private static final int SITE = 2048;
+
+    /** The first air block above the ground at the test site; scenarios build relative to it. */
     final BlockPos origin;
 
     private final Map<BlockPos, BlockState> savedBlocks = new LinkedHashMap<>();
     private final Vec3 savedPlayerPos;
+    private final boolean savedFlying;
     private final float savedYaw;
     private final float savedPitch;
     private final long savedDayTime;
@@ -39,8 +44,12 @@ final class Stage {
     Stage(ServerPlayer player) {
         this.player = player;
         this.level = player.serverLevel();
-        this.origin = player.blockPosition();
         savedPlayerPos = player.position();
+        savedFlying = player.getAbilities().flying;
+        // Heightmaps only answer for loaded chunks: load (or generate) the site first
+        level.getChunk(SITE >> 4, SITE >> 4);
+        this.origin = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(SITE, 0, SITE));
+        player.teleportTo(level, origin.getX() + 0.5, origin.getY(), origin.getZ() + 0.5, 0, 0);
         savedYaw = player.getYRot();
         savedPitch = player.getXRot();
         savedDayTime = level.getDayTime();
@@ -123,6 +132,8 @@ final class Stage {
         LightworksConfig.setServerLightBlocks(savedServerLightBlocks);
         level.setDayTime(savedDayTime);
         level.getGameRules().getRule(GameRules.RULE_DAYLIGHT).set(savedDaylightCycle, level.getServer());
+        player.getAbilities().flying = savedFlying;
+        player.onUpdateAbilities();
         player.teleportTo(level, savedPlayerPos.x, savedPlayerPos.y, savedPlayerPos.z, savedYaw, savedPitch);
     }
 }

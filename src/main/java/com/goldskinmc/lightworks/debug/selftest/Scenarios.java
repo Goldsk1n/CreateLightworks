@@ -3,6 +3,7 @@ package com.goldskinmc.lightworks.debug.selftest;
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlock;
+import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlockEntity;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
@@ -565,6 +566,7 @@ final class Scenarios {
      * line gives the number of tinted faces.
      */
     static Script colour() {
+        BlockPos[] beaconBox = new BlockPos[1];
         return new Script("colour")
                 .run(stage -> {
                     stage.night();
@@ -597,8 +599,39 @@ final class Scenarios {
                 .waitTicks(40)
                 .shot("colour-0")
                 .run(stage -> {
+                    stage.restoreBlocks();
+                    // The owner's scene: a light-blue beacon in a box of wool walls with open corners
+                    beaconBox[0] = stage.at(0, 0, 8);
+                    BlockPos motor = beaconBox[0];
+                    for (int d = -2; d <= 2; d++) {
+                        for (int y = 0; y <= 2; y++) {
+                            stage.set(motor.offset(d, y, -4), Blocks.WHITE_WOOL.defaultBlockState());
+                            stage.set(motor.offset(d, y, 4), Blocks.WHITE_WOOL.defaultBlockState());
+                            stage.set(motor.offset(-4, y, d), Blocks.WHITE_WOOL.defaultBlockState());
+                            stage.set(motor.offset(4, y, d), Blocks.WHITE_WOOL.defaultBlockState());
+                        }
+                    }
+                    stage.set(motor, AllBlocks.CREATIVE_MOTOR.getDefaultState().setValue(CreativeMotorBlock.FACING, Direction.UP));
+                    setMotorSpeed(stage, motor, 0);
+                    stage.set(motor.above(), LightworksBlocks.ROTATING_BEACON.getDefaultState()
+                            .setValue(RotatingBeaconBlock.FACING, Direction.UP));
+                    if (stage.level.getBlockEntity(motor.above()) instanceof RotatingBeaconBlockEntity beacon) {
+                        beacon.lightState().setColour(DyeColor.LIGHT_BLUE);
+                        beacon.notifyUpdate();
+                    }
+                    stage.hover(0, 7, 3);
+                    SelfTestBridge.focus = Vec3.atCenterOf(motor.above());
+                })
+                .waitTicks(40)
+                .shot("colour-1-beacon-stopped")
+                .run(stage -> setMotorSpeed(stage, beaconBox[0], 8))
+                .waitTicks(37)
+                .shot("colour-2-beacon-turning")
+                .run(stage -> {
+                    setMotorSpeed(stage, beaconBox[0], 0);
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
+                    stage.stand(0, 0);
                 });
     }
 
