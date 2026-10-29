@@ -9,7 +9,7 @@
       "tag": "c:glass_blocks/colorless"
     },
     "I": {
-      "tag": "c:plates/iron"
+      "tag": "c:plates/brass"
     },
     "T": {
       "item": "create:electron_tube"

@@ -94,12 +94,14 @@ OUTWARD = {'north': (2, -1), 'south': (2, 1), 'west': (0, -1), 'east': (0, 1), '
 
 
 def core_face(e, face):
-    """A zero-thickness element holding only {@code face} of e, moved CORE_GAP outward."""
+    """A zero-thickness element holding only {@code face} of e, moved CORE_GAP outward, in e's lens style."""
     axis, sign = OUTWARD[face]
     f, t = list(e['from']), list(e['to'])
     plane = (t if sign > 0 else f)[axis] + sign * CORE_GAP
     f[axis] = t[axis] = plane
-    return {'from': f, 'to': t, 'faces': {face: own('lens_core')}}
+    skin = e['faces'][face]
+    style = dict(skin[2]) if skin[0] == 'own' and skin[1] == 'lens' else {}
+    return {'from': f, 'to': t, 'faces': {face: own('lens_core', **style)}}
 
 
 class Block:
@@ -190,7 +192,9 @@ SEAT = own('seat')
 IRON = own('iron_panel')
 BAR = own('bar')
 ANDESITE = own('andesite_panel')
-LENS = own('lens')
+LENS = own('lens')                   # Create's lamp pane
+FRESNEL_LENS = own('lens', style='fresnel')
+PRISM_LENS = own('lens', style='prism')
 
 
 def plate():
@@ -216,7 +220,7 @@ b.part('head',
        box((4, 13, 4), (12, 15, 12), BRASS_BAND, up=own('bezel_top'), down=BRASS_PLATE),
        box((4, 7, 7), (5, 9, 9), BRASS_PLATE),
        box((11, 7, 7), (12, 9, 9), BRASS_PLATE))
-b.part('lens', box((5, 15, 5), (11, 15.4, 11), LENS))   # lens 7.4/16 from the centre, 6 wide: LightType
+b.part('lens', box((5, 15, 5), (11, 15.4, 11), FRESNEL_LENS))   # lens 7.4/16 from the centre, 6 wide: LightType
 b.finish('base', 'yoke', 'head', 'lens')
 
 # Floodlight: wide flat head with one big lens, on a wide yoke
@@ -231,7 +235,7 @@ b.part('yoke',
 b.part('head',
        box((2, 5.5, 2), (14, 10.5, 14), HOUSING, down=FINS, up=None),
        box((2, 10.5, 2), (14, 11.5, 14), BRASS_BAND, up=own('bezel_top'), down=None))
-b.part('lens', box((2.5, 11.5, 2.5), (13.5, 11.8, 13.5), LENS))   # 3.8/16 from the centre, 11 wide: LightType
+b.part('lens', box((2.5, 11.5, 2.5), (13.5, 11.8, 13.5), PRISM_LENS))   # 3.8/16 from the centre, 11 wide: LightType
 b.finish('base', 'yoke', 'head', 'lens')
 
 # Headlight: compact andesite-rimmed lamp on a stalk, no yoke
@@ -283,33 +287,26 @@ b.part('rotor',
        box((4, 4, 12), (12, 12, 12.5), BRASS_BAND, south=own('bezel_top'), north=None),
        box((4, 4, 3.5), (12, 12, 4), BRASS_BAND, north=own('bezel_top'), south=None))
 b.part('lens',
-       box((5, 5, 12.5), (11, 11, 12.8), LENS),   # 4.8/16 from the centre, 6 wide
-       box((5, 5, 3.2), (11, 11, 3.5), LENS))
+       box((5, 5, 12.5), (11, 11, 12.8), FRESNEL_LENS),   # 4.8/16 from the centre, 6 wide
+       box((5, 5, 3.2), (11, 11, 3.5), FRESNEL_LENS))
 b.finish('base', 'rotor', 'lens')
 
 
-def rim(x0, z0, x1, z1, y0, y1, posts=False):
-    """
-    Four iron bars round a lamp from y0 to y1, without inner faces (the lens fills the inside). With
-    {@code posts} the corners are left to the cage's posts, so no faces lie on top of each other.
-    """
-    c0, c1 = (x0 + 1, x1 - 1) if posts else (x0, x1)
-    return [box((c0, y0, z0), (c1, y1, z0 + 1), BAR, south=None),
-            box((c0, y0, z1 - 1), (c1, y1, z1), BAR, north=None),
+def rim(x0, z0, x1, z1, y0, y1):
+    """Four iron bars round a lamp from y0 to y1, without inner faces (the lens fills the inside)."""
+    return [box((x0, y0, z0), (x1, y1, z0 + 1), BAR, south=None),
+            box((x0, y0, z1 - 1), (x1, y1, z1), BAR, north=None),
             box((x0, y0, z0 + 1), (x0 + 1, y1, z1 - 1), BAR, east=None, north=None, south=None),
             box((x1 - 1, y0, z0 + 1), (x1, y1, z1 - 1), BAR, west=None, north=None, south=None)]
 
 
-# Warning Light: lamp dome in an iron guard cage
-b = Block('warning_light', INDUSTRIAL_IRON)
+# Warning Light: brass lantern, a lamp dome between a brass foot and a brass collar with a knob
+b = Block('warning_light', BRASS_CASING)
 b.part('base',
-       box((4, 0, 4), (12, 2, 12), IRON, down=SEAT),
-       *(box((x, 2, z), (x + 1, 9, z + 1), BAR) for x in (4, 11) for z in (4, 11)),
-       *rim(4, 4, 12, 12, 5, 6, posts=True),
-       box((4, 9, 4), (12, 10, 12), IRON, down=SEAT))
-b.part('lens',
-       box((5, 2, 5), (11, 8, 11), LENS, down=None),
-       box((6, 8, 6), (10, 9, 10), LENS, down=None))
+       box((4, 0, 4), (12, 2, 12), BRASS_BAND, up=own('plate_top'), down=SEAT),
+       box((5, 8, 5), (11, 9, 11), BRASS_BAND, up=BRASS_PLATE, down=None),
+       box((7, 9, 7), (9, 10, 9), BRASS_PLATE, down=None))
+b.part('lens', box((5, 2, 5), (11, 8, 11), own('lens', style='dome'), down=None, up=None))
 b.finish('base', 'lens')
 
 # Tail and Brake Light: flat rectangular lamp in an iron frame

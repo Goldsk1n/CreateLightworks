@@ -2,7 +2,7 @@
   "parent": "block/block",
   "textures": {
     "sheet": "lightworks:block/warning_light",
-    "particle": "create:block/industrial_iron_block"
+    "particle": "create:block/brass_casing"
   },
   "elements": [
     {
@@ -19,10 +19,10 @@
       "faces": {
         "north": {
           "uv": [
-            11.5,
             0.0,
-            14.5,
-            3.0
+            4.0,
+            3.0,
+            7.0
           ],
           "texture": "#sheet"
         }
@@ -42,10 +42,10 @@
       "faces": {
         "south": {
           "uv": [
-            11.5,
             0.0,
-            14.5,
-            3.0
+            4.0,
+            3.0,
+            7.0
           ],
           "texture": "#sheet"
         }
@@ -65,10 +65,10 @@
       "faces": {
         "east": {
           "uv": [
-            11.5,
             0.0,
-            14.5,
-            3.0
+            4.0,
+            3.0,
+            7.0
           ],
           "texture": "#sheet"
         }
@@ -88,148 +88,10 @@
       "faces": {
         "west": {
           "uv": [
-            11.5,
             0.0,
-            14.5,
-            3.0
-          ],
-          "texture": "#sheet"
-        }
-      }
-    },
-    {
-      "from": [
-        5,
-        8.02,
-        5
-      ],
-      "to": [
-        11,
-        8.02,
-        11
-      ],
-      "faces": {
-        "up": {
-          "uv": [
-            11.5,
-            0.0,
-            14.5,
-            3.0
-          ],
-          "texture": "#sheet"
-        }
-      }
-    },
-    {
-      "from": [
-        6,
-        8,
-        5.98
-      ],
-      "to": [
-        10,
-        9,
-        5.98
-      ],
-      "faces": {
-        "north": {
-          "uv": [
-            2.0,
-            6.0,
             4.0,
-            6.5
-          ],
-          "texture": "#sheet"
-        }
-      }
-    },
-    {
-      "from": [
-        6,
-        8,
-        10.02
-      ],
-      "to": [
-        10,
-        9,
-        10.02
-      ],
-      "faces": {
-        "south": {
-          "uv": [
-            2.0,
-            6.0,
-            4.0,
-            6.5
-          ],
-          "texture": "#sheet"
-        }
-      }
-    },
-    {
-      "from": [
-        10.02,
-        8,
-        6
-      ],
-      "to": [
-        10.02,
-        9,
-        10
-      ],
-      "faces": {
-        "east": {
-          "uv": [
-            2.0,
-            6.0,
-            4.0,
-            6.5
-          ],
-          "texture": "#sheet"
-        }
-      }
-    },
-    {
-      "from": [
-        5.98,
-        8,
-        6
-      ],
-      "to": [
-        5.98,
-        9,
-        10
-      ],
-      "faces": {
-        "west": {
-          "uv": [
-            2.0,
-            6.0,
-            4.0,
-            6.5
-          ],
-          "texture": "#sheet"
-        }
-      }
-    },
-    {
-      "from": [
-        6,
-        9.02,
-        6
-      ],
-      "to": [
-        10,
-        9.02,
-        10
-      ],
-      "faces": {
-        "up": {
-          "uv": [
-            2.0,
-            4.0,
-            4.0,
-            6.0
+            3.0,
+            7.0
           ],
           "texture": "#sheet"
         }

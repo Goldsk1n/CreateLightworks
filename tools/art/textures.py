@@ -28,7 +28,7 @@ ANDESITE = ramp('#353b39 #404543 #494c4a #505351 #585b58 #60635f #686c68 #707570
                 '#a8b3ab')
 STEEL = ramp('#17191c #1e2126 #23262b #272b30 #2a2e33 #2c3135 #303639 #34393c #353b3e #3a4043 #444b4c')
 IRON = ramp('#2b2b2e #353438 #3f3e42 #444444 #494848 #4f4f4f #595858 #676161 #757171 #8d8b8b #989797')
-# Lens glass in neutral greys, tinted by the renderer: rim to centre in stepped bands, like Create's lamps
+# Lens glass in neutral greys, tinted by the renderer (see lens())
 GLASS = ramp('#8e8e8e #a6a6a6 #bdbdbd #d2d2d2 #e6e6e6 #f5f5f5 #ffffff')
 CLEAR = (0, 0, 0, 0)
 B = {name: BRASS[i] for i, name in enumerate(
@@ -422,82 +422,142 @@ def andesite_ring(w, h):
 
 # Glass
 
-# Light levels where the glass steps up a tone, by how many pixels the inside of the face spans: small
-# faces get fewer tones, since five tones across three or four pixels can only form a diagonal staircase
-GLASS_STEPS = {8: (0.2, 0.4, 0.62, 0.8), 6: (0.27, 0.52, 0.76), 4: (0.35, 0.68), 0: (0.6,)}
-RIM_LIT, RIM_SHADE = GLASS[4], GLASS[0]   # flat: on glass a fading rim reads as blotches
-HOT = 0.34                               # the dome's highlight, as a share of the face from its upper left
+# Glass tones by role, darkest first. The layout is Create's powered rose quartz pane (brightness:
+# border 71-101, body 101-127, streaks 152-190, glint 238), the spread narrower, since a lit lens is
+# drawn full-bright and must still read as lit once tinted
+RIM_SHADE, RIM_LIT = GLASS[0], GLASS[1]
+BODY_SHADE, BODY_LIT = GLASS[2], GLASS[3]
+STREAK_FAR, STREAK_NEAR, GLINT = GLASS[4], GLASS[5], GLASS[6]
+RIM_CORNER = RIM_SHADE
+STREAK_SHARE = 0.4                       # streak length, as a share of the inside of the face's side
 
 
-def glass_tones(w, h):
+def streak_length(n):
+    """Pixels a glint's streak runs along a side whose inside is n pixels long (the glint not counted)."""
+    return max(1, round(n * STREAK_SHARE)) if n >= 3 else n - 1
+
+
+def glass(w, h):
     """
-    Tone index (into GLASS) of every pixel inside a w x h lens face's rim. The light falls off with the
-    distance from the dome's highlight, up and left of centre, and is cut at fixed levels, so tone edges
-    follow the dome's shape and steps stay even; then jaggies are cleaned (a pixel that differs from three
-    or four of its inside neighbours takes their tone; the highlight is left alone).
+    The pixels of a w x h lens face, as {(x, y): colour}, laid out like a pane of Create's rose quartz
+    lamp: a dim border (darker along the bottom and right, darkest in the corners), a glint on the first
+    pixel inside the upper-left corner with streaks fading along the top and left edges, and a body in
+    two flat tones, the darker one in the lower-right corner (half the face on small faces, a smaller
+    corner on faces with six or more pixels inside, so no long staircase crosses them). Faces with six or more pixels inside
+    get a smaller glint in the lower-right corner, as Create's larger panes and its centre disc do. No
+    rings round a centre: that is pillow shading.
     """
-    inside = [(x, y) for x in range(1, w - 1) for y in range(1, h - 1)]
-    px, py = HOT * (w - 1), HOT * (h - 1)
-
-    def dist(x, y):
-        return math.hypot((x - px) / max(w - 1, 1), (y - py) / max(h - 1, 1))
-
-    far = max(dist(x, y) for x, y in inside)
-    levels = next(v for k, v in GLASS_STEPS.items() if min(w, h) - 2 >= k)
-    base = len(GLASS) - 2 - len(levels)          # the brightest tone is always GLASS[-2]
-    tone = {(x, y): base + sum(1 - dist(x, y) / far >= level for level in levels) for x, y in inside}
-    for _ in range(3):
-        changed = False
-        for x, y in inside:
-            if tone[(x, y)] == len(GLASS) - 2:
-                continue                         # the highlight may be a single pixel, as on Create's panes
-            around = [tone[n] for n in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)) if n in tone]
-            best = max(set(around), key=around.count)
-            if best != tone[(x, y)] and around.count(best) >= 3:
-                tone[(x, y)] = best
-                changed = True
-        if not changed:
-            break
-    return tone
+    iw, ih = w - 2, h - 2
+    px = {}
+    for y in range(1, h - 1):
+        for x in range(1, w - 1):
+            k = (x - 1) / max(iw - 1, 1) + (y - 1) / max(ih - 1, 1)
+            px[(x, y)] = BODY_LIT if k < (1 if min(iw, ih) < 6 else 1.25) else BODY_SHADE
+    for i in range(1, streak_length(iw) + 1):
+        px[(1 + i, 1)] = STREAK_NEAR if i <= (streak_length(iw) + 1) // 2 else STREAK_FAR
+    for i in range(1, streak_length(ih) + 1):
+        px[(1, 1 + i)] = STREAK_NEAR if i <= (streak_length(ih) + 1) // 2 else STREAK_FAR
+    px[(1, 1)] = GLINT
+    if min(iw, ih) >= 6:
+        px[(w - 2, h - 2)] = STREAK_NEAR
+        px[(w - 3, h - 2)] = px[(w - 2, h - 3)] = STREAK_FAR
+    glass_border(px, w, h)
+    return px
 
 
-def lens(w, h):
+def glass_border(px, w, h):
+    """A lens face's dim border: lighter along the top and left, darkest in the corners."""
+    for x in range(w):
+        px[(x, 0)], px[(x, h - 1)] = RIM_LIT, RIM_SHADE
+    for y in range(h):
+        px[(0, y)], px[(w - 1, y)] = RIM_LIT, RIM_SHADE
+    for corner in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
+        px[corner] = RIM_CORNER
+
+
+def fresnel_glass(w, h):
     """
-    Lens glass shaded like Create's lamp panes: a dome lit from the upper left, in ramp steps, inside a
-    rim that is lit along the top and left and dark along the bottom and right (one tone per side, like
-    Create's lamp panes). Tinted by the renderer; the hot spot is lens_core's.
+    A Fresnel lens (Searchlight, beacon): square rings two pixels apart round a flat centre, each lit on
+    its upper-left half and shaded on its lower-right half like Create's recessed rings, and the pane's
+    glint in the upper-left corner. The outermost ring runs just inside the border.
     """
+    iw, ih = w - 2, h - 2
+    cx, cy = (w - 1) / 2, (h - 1) / 2
+    px = {}
+    for y in range(1, h - 1):
+        for x in range(1, w - 1):
+            q = math.floor(max(abs(x - cx), abs(y - cy)) + 0.5)      # ring number, 0 at the centre
+            if q >= 1 and q % 2 == (min(iw, ih) // 2) % 2:
+                px[(x, y)] = STREAK_FAR if (x - cx) + (y - cy) < 0 else BODY_SHADE
+            else:
+                px[(x, y)] = BODY_LIT
+    px[(1, 1)] = GLINT
+    glass_border(px, w, h)
+    return px
+
+
+PRISM_CELLS = {3: ((5, 4, 3), (4, 3, 3), (3, 3, 2)), 2: ((5, 3), (3, 2))}
+
+
+def prism_glass(w, h):
+    """
+    A prismatic lens (Floodlight): a grid of small cells (three pixels from six inside, else two), each
+    with its own glint at the upper left and shade at the lower right, like the many little panes of a
+    floodlight's prism glass.
+    """
+    s = 3 if min(w, h) - 2 >= 6 else 2
+    px = {(x, y): GLASS[PRISM_CELLS[s][(y - 1) % s][(x - 1) % s]]
+          for y in range(1, h - 1) for x in range(1, w - 1)}
+    glass_border(px, w, h)
+    return px
+
+
+def dome_glass(w, h):
+    """
+    A lamp dome lit from above (Warning Light): rows stepping a tone darker from the top down, the right
+    edge a tone darker still, and a glint in the upper-left corner.
+    """
+    rows = (STREAK_NEAR, STREAK_FAR, BODY_LIT, BODY_SHADE)
+    px = {}
+    for y in range(1, h - 1):
+        k = min(len(rows) - 1, (y - 1) * len(rows) // max(h - 2, 1))
+        for x in range(1, w - 1):
+            px[(x, y)] = rows[min(len(rows) - 1, k + (1 if x == w - 2 else 0))]
+    px[(1, 1)] = GLINT
+    glass_border(px, w, h)
+    return px
+
+
+GLASS_STYLES = {'pane': glass, 'fresnel': fresnel_glass, 'prism': prism_glass, 'dome': dome_glass}
+
+
+def lens(w, h, style='pane'):
+    """Lens glass in one of GLASS_STYLES (Create's lamp pane by default). Tinted by the renderer."""
     if min(w, h) <= 2:
-        return canvas(w, h, GLASS[2])
+        return canvas(w, h, BODY_LIT)
     img = canvas(w, h)
-    tone = glass_tones(w, h)
-    for (x, y), t in tone.items():
-        put(img, x, y, GLASS[t])
-    paint(img, [(x, 0) for x in range(w)], RIM_LIT, 0)
-    paint(img, [(0, y) for y in range(h)], RIM_LIT, 1)
-    paint(img, [(x, h - 1) for x in range(w)], RIM_SHADE, 2)
-    paint(img, [(w - 1, y) for y in range(h)], RIM_SHADE, 3)
-    put(img, w - 1, 0, GLASS[2])
-    put(img, 0, h - 1, GLASS[2])
+    for (x, y), colour in GLASS_STYLES[style](w, h).items():
+        put(img, x, y, colour)
     return img
 
 
-def lens_core(w, h):
+def lens_core(w, h, style='pane'):
     """
-    The glow drawn over a lit lens, warmer and whiter than the tinted glass: clear but for the brightest
-    spot of the glass, up and left of centre (one pixel on faces of five or six, four from seven, with a
-    dimmer five round them from eight). Faces four pixels or less across get none: their glass alone
-    carries the light.
+    The glow drawn over a lit lens, warmer and whiter than the tinted glass: clear but for the upper-left
+    glint (from five pixels across) and, from eight, a dimmer glow on what catches the light in the
+    lens's style (the pane's streaks near the glint, the Fresnel rings' lit halves, each prism cell's
+    glint, the dome's top row; the last two from five pixels). Faces four pixels or less across get none:
+    their glass alone carries the light.
     """
     img = canvas(w, h)
     if min(w, h) <= 4:
         return img
-    inner = 1 if min(w, h) <= 6 else 4
-    outer = 5 if min(w, h) >= 8 else 0
-    px, py = HOT * (w - 1), HOT * (h - 1)
-    spots = sorted((math.hypot(x - px, y - py), x, y) for x in range(1, w - 1) for y in range(1, h - 1))
-    for i, (_, x, y) in enumerate(spots[:inner + outer]):
-        put(img, x, y, GLASS[-1] if i < inner else GLASS[-3])
+    glow = {'pane': STREAK_NEAR, 'fresnel': STREAK_FAR, 'prism': GLASS[5], 'dome': STREAK_NEAR}[style]
+    if min(w, h) >= 8 or style in ('prism', 'dome'):
+        for (x, y), colour in GLASS_STYLES[style](w, h).items():
+            if colour == glow and 0 < x < w - 1 and 0 < y < h - 1 and (style != 'pane' or x + y < w):
+                put(img, x, y, GLASS[-3])     # the pane's far glint stays unlit
+    put(img, 1, 1, GLASS[-1])
     return img
 
 
