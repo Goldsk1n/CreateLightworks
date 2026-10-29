@@ -10,17 +10,18 @@ import net.neoforged.neoforge.client.event.ModelEvent;
 
 /**
  * Models drawn by our renderers rather than as block models: moving parts (heads, yokes, rotors) and
- * lenses, which glow. Each is a JSON model under {@code models/block/<block>/<part>.json}. Registered
+ * lenses, which glow, each with a {@code lens_core} drawn over it while lit. Each is a JSON model under {@code models/block/<block>/<part>.json}. Registered
  * from {@code LightworksClient}.
  */
 public final class Partials {
     private static final String[] PATHS = {
-            "searchlight/yoke", "searchlight/head", "searchlight/lens",
-            "floodlight/yoke", "floodlight/head", "floodlight/lens",
-            "headlight/head", "headlight/lens",
+            "searchlight/yoke", "searchlight/head", "searchlight/lens", "searchlight/lens_core",
+            "floodlight/yoke", "floodlight/head", "floodlight/lens", "floodlight/lens_core",
+            "headlight/head", "headlight/lens", "headlight/lens_core",
             "pan_tilt_head/turntable",
-            "rotating_beacon/rotor", "rotating_beacon/lens",
-            "warning_light/lens", "tail_light/lens", "navigation_light/lens",
+            "rotating_beacon/rotor", "rotating_beacon/lens", "rotating_beacon/lens_core",
+            "warning_light/lens", "warning_light/lens_core", "tail_light/lens", "tail_light/lens_core",
+            "navigation_light/lens", "navigation_light/lens_core",
     };
     private static final Map<String, ModelResourceLocation> MODELS = new LinkedHashMap<>();
 

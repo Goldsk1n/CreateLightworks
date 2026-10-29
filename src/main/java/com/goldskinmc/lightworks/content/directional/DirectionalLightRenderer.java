@@ -65,7 +65,7 @@ public class DirectionalLightRenderer implements BlockEntityRenderer<Directional
         MountFrame.toCorner(poseStack);
         PartRenderer.solid(poseStack, buffers, Partials.get(name + "/head"), packedLight);
         if (lit >= 0) {
-            PartRenderer.lens(poseStack, buffers, Partials.get(name + "/lens"), rgb, lit, packedLight);
+            PartRenderer.lens(poseStack, buffers, name + "/lens", rgb, lit, packedLight);
         }
         poseStack.popPose();
     }
@@ -78,7 +78,7 @@ public class DirectionalLightRenderer implements BlockEntityRenderer<Directional
         MountFrame.yaw(poseStack, yaw);
         MountFrame.tilt(poseStack, elevation);
         MountFrame.toCorner(poseStack);
-        PartRenderer.lens(poseStack, buffers, Partials.get(type.name() + "/lens"), rgb, lit, packedLight);
+        PartRenderer.lens(poseStack, buffers, type.name() + "/lens", rgb, lit, packedLight);
         poseStack.popPose();
     }
 

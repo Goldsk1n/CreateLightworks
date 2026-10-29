@@ -1,77 +1,66 @@
 {
   "parent": "block/block",
   "textures": {
-    "brass": "lightworks:block/light_brass",
-    "metal": "lightworks:block/light_metal",
-    "rim": "lightworks:block/rim_top",
-    "particle": "lightworks:block/light_metal"
+    "sheet": "lightworks:block/searchlight",
+    "particle": "create:block/brass_casing"
   },
   "elements": [
     {
       "from": [
-        4.5,
+        5,
         4,
-        4.5
+        5
       ],
       "to": [
-        11.5,
+        11,
         13,
-        11.5
+        11
       ],
       "faces": {
         "north": {
           "uv": [
-            4.5,
-            3,
-            11.5,
-            12
+            12.0,
+            0.0,
+            15.0,
+            4.5
           ],
-          "texture": "#metal"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
-            4.5,
-            3,
-            11.5,
-            12
+            12.0,
+            0.0,
+            15.0,
+            4.5
           ],
-          "texture": "#metal"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            4.5,
-            3,
-            11.5,
-            12
+            12.0,
+            0.0,
+            15.0,
+            4.5
           ],
-          "texture": "#metal"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            4.5,
-            3,
-            11.5,
-            12
+            12.0,
+            0.0,
+            15.0,
+            4.5
           ],
-          "texture": "#metal"
-        },
-        "up": {
-          "uv": [
-            4.5,
-            4.5,
-            11.5,
-            11.5
-          ],
-          "texture": "#metal"
+          "texture": "#sheet"
         },
         "down": {
           "uv": [
-            4.5,
-            4.5,
-            11.5,
-            11.5
+            4.0,
+            10.0,
+            7.0,
+            13.0
           ],
-          "texture": "#metal"
+          "texture": "#sheet"
         }
       }
     },
@@ -89,125 +78,57 @@
       "faces": {
         "north": {
           "uv": [
-            4,
-            1,
-            12,
-            3
+            6.0,
+            14.0,
+            10.0,
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
-            4,
-            1,
-            12,
-            3
+            6.0,
+            14.0,
+            10.0,
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            4,
-            1,
-            12,
-            3
+            6.0,
+            14.0,
+            10.0,
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            4,
-            1,
-            12,
-            3
+            6.0,
+            14.0,
+            10.0,
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "up": {
           "uv": [
-            4,
-            4,
-            12,
-            12
+            0.0,
+            6.0,
+            4.0,
+            10.0
           ],
-          "texture": "#rim"
+          "texture": "#sheet"
         },
         "down": {
           "uv": [
-            4,
-            4,
-            12,
-            12
+            4.0,
+            6.0,
+            8.0,
+            10.0
           ],
-          "texture": "#brass"
-        }
-      }
-    },
-    {
-      "from": [
-        5.5,
-        3,
-        5.5
-      ],
-      "to": [
-        10.5,
-        4,
-        10.5
-      ],
-      "faces": {
-        "north": {
-          "uv": [
-            5.5,
-            12,
-            10.5,
-            13
-          ],
-          "texture": "#metal"
-        },
-        "south": {
-          "uv": [
-            5.5,
-            12,
-            10.5,
-            13
-          ],
-          "texture": "#metal"
-        },
-        "east": {
-          "uv": [
-            5.5,
-            12,
-            10.5,
-            13
-          ],
-          "texture": "#metal"
-        },
-        "west": {
-          "uv": [
-            5.5,
-            12,
-            10.5,
-            13
-          ],
-          "texture": "#metal"
-        },
-        "up": {
-          "uv": [
-            5.5,
-            5.5,
-            10.5,
-            10.5
-          ],
-          "texture": "#metal"
-        },
-        "down": {
-          "uv": [
-            5.5,
-            5.5,
-            10.5,
-            10.5
-          ],
-          "texture": "#metal"
+          "texture": "#sheet"
         }
       }
     },
@@ -218,70 +139,70 @@
         7
       ],
       "to": [
-        4.5,
+        5,
         9,
         9
       ],
       "faces": {
         "north": {
           "uv": [
+            11.0,
+            14.0,
             11.5,
-            7,
-            12,
-            9
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
-            4,
-            7,
-            4.5,
-            9
+            11.0,
+            14.0,
+            11.5,
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            7,
-            7,
-            9,
-            9
+            10.0,
+            14.0,
+            11.0,
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            7,
-            7,
-            9,
-            9
+            10.0,
+            14.0,
+            11.0,
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "up": {
           "uv": [
-            4,
-            7,
-            4.5,
-            9
+            11.0,
+            14.0,
+            11.5,
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "down": {
           "uv": [
-            4,
-            7,
-            4.5,
-            9
+            11.0,
+            14.0,
+            11.5,
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         }
       }
     },
     {
       "from": [
-        11.5,
+        11,
         7,
         7
       ],
@@ -293,57 +214,57 @@
       "faces": {
         "north": {
           "uv": [
-            4,
-            7,
-            4.5,
-            9
+            11.0,
+            14.0,
+            11.5,
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
+            11.0,
+            14.0,
             11.5,
-            7,
-            12,
-            9
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            7,
-            7,
-            9,
-            9
+            10.0,
+            14.0,
+            11.0,
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            7,
-            7,
-            9,
-            9
+            10.0,
+            14.0,
+            11.0,
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "up": {
           "uv": [
+            11.0,
+            14.0,
             11.5,
-            7,
-            12,
-            9
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         },
         "down": {
           "uv": [
+            11.0,
+            14.0,
             11.5,
-            7,
-            12,
-            9
+            15.0
           ],
-          "texture": "#brass"
+          "texture": "#sheet"
         }
       }
     }

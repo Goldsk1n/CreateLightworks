@@ -1,10 +1,9 @@
 {
   "parent": "block/block",
   "textures": {
-    "beacon_casing": "lightworks:block/beacon_casing",
-    "casing_plain": "lightworks:block/casing_plain",
-    "shaft": "lightworks:block/shaft_input",
-    "particle": "lightworks:block/beacon_casing"
+    "sheet": "lightworks:block/rotating_beacon",
+    "c0": "create:block/brass_gearbox",
+    "particle": "create:block/brass_casing"
   },
   "elements": [
     {
@@ -21,57 +20,199 @@
       "faces": {
         "north": {
           "uv": [
-            1,
-            12,
-            15,
-            16
+            0.0,
+            11.0,
+            7.0,
+            13.0
           ],
-          "texture": "#beacon_casing"
+          "texture": "#sheet"
         },
         "south": {
           "uv": [
-            1,
-            12,
-            15,
-            16
+            0.0,
+            11.0,
+            7.0,
+            13.0
           ],
-          "texture": "#beacon_casing"
+          "texture": "#sheet"
         },
         "east": {
           "uv": [
-            1,
-            12,
-            15,
-            16
+            0.0,
+            11.0,
+            7.0,
+            13.0
           ],
-          "texture": "#beacon_casing"
+          "texture": "#sheet"
         },
         "west": {
           "uv": [
-            1,
-            12,
-            15,
-            16
+            0.0,
+            11.0,
+            7.0,
+            13.0
           ],
-          "texture": "#beacon_casing"
+          "texture": "#sheet"
         },
         "up": {
           "uv": [
+            0.0,
+            0.0,
+            7.0,
+            7.0
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "from": [
+        1,
+        0,
+        1
+      ],
+      "to": [
+        15,
+        0.95,
+        2
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            0.0,
+            13.0,
+            7.0,
+            13.475
+          ],
+          "texture": "#sheet"
+        },
+        "down": {
+          "uv": [
             1,
-            1,
+            14,
             15,
             15
           ],
-          "texture": "#casing_plain"
+          "texture": "#c0"
+        }
+      }
+    },
+    {
+      "from": [
+        1,
+        0,
+        14
+      ],
+      "to": [
+        15,
+        0.95,
+        15
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            13.0,
+            7.0,
+            13.475
+          ],
+          "texture": "#sheet"
         },
         "down": {
           "uv": [
             1,
             1,
             15,
-            15
+            2
           ],
-          "texture": "#shaft"
+          "texture": "#c0"
+        }
+      }
+    },
+    {
+      "from": [
+        1,
+        0,
+        2
+      ],
+      "to": [
+        2,
+        0.95,
+        14
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            7.0,
+            13.0,
+            13.0,
+            13.475
+          ],
+          "texture": "#sheet"
+        },
+        "down": {
+          "uv": [
+            1,
+            2,
+            2,
+            14
+          ],
+          "texture": "#c0"
+        }
+      }
+    },
+    {
+      "from": [
+        14,
+        0,
+        2
+      ],
+      "to": [
+        15,
+        0.95,
+        14
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            7.0,
+            13.0,
+            13.0,
+            13.475
+          ],
+          "texture": "#sheet"
+        },
+        "down": {
+          "uv": [
+            14,
+            2,
+            15,
+            14
+          ],
+          "texture": "#c0"
+        }
+      }
+    },
+    {
+      "from": [
+        2,
+        0.95,
+        2
+      ],
+      "to": [
+        14,
+        1.0,
+        14
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            2,
+            2,
+            14,
+            14
+          ],
+          "texture": "#c0"
         }
       }
     }
