@@ -79,6 +79,7 @@ final class Scenarios {
         ALL.put("cleanup", Scenarios::cleanup);
         ALL.put("ponder", Scenarios::ponder);
         ALL.put("gallery", Scenarios::gallery);
+        ALL.put("closeup", Scenarios::closeup);
     }
 
     private Scenarios() {
@@ -548,6 +549,34 @@ final class Scenarios {
             SelfTestBridge.focus = null;
             stage.restoreBlocks();
         });
+    }
+
+    /**
+     * Close-up at night from the side: a Searchlight, a Floodlight and a stopped Rotating Beacon, all
+     * shining east; the beam should start flush on each lens and be the lens's size.
+     */
+    static Script closeup() {
+        return new Script("closeup")
+                .run(stage -> {
+                    stage.night();
+                    BlockPos searchlight = stage.at(0, 0, 4);
+                    stage.set(searchlight, searchlight(Direction.UP));
+                    stage.lightAt(searchlight).aimAlong(new Vec3(1, 0, 0));
+                    BlockPos floodlight = stage.at(0, 0, 6);
+                    stage.set(floodlight.west(), Blocks.STONE.defaultBlockState());
+                    stage.set(floodlight, LightworksBlocks.FLOODLIGHT.getDefaultState()
+                            .setValue(DirectionalLightBlock.FACING, Direction.EAST));
+                    stage.set(stage.at(0, 0, 8), LightworksBlocks.ROTATING_BEACON.getDefaultState()
+                            .setValue(RotatingBeaconBlock.FACING, Direction.UP));
+                    stage.hover(-1.5, 1.2, 1.5);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(1, 0, 5));
+                })
+                .waitTicks(40)
+                .shot("closeup-0")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
     }
 
     private static BlockState navigationLight(Direction facing, String colour) {

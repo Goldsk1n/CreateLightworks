@@ -41,7 +41,6 @@ public class RotatingBeaconBlockEntity extends KineticBlockEntity implements Bea
     /** Beams leave the rotor level with the mount. */
     static final float ELEVATION = 0;
     private static final int RETRACE_INTERVAL_TICKS = 5;
-    private static final double LENS_RADIUS = 0.5;
 
     private final LightType type = LightType.ROTATING_BEACON;
     private final ConeFalloff shape = Objects.requireNonNull(type.beam());
@@ -225,7 +224,7 @@ public class RotatingBeaconBlockEntity extends KineticBlockEntity implements Bea
     final class Beam implements BeamSource {
         final float offset;
         final ServerBeamLight serverLight;
-        final ClientBeam clientBeam = new ClientBeam(shape);
+        final ClientBeam clientBeam = new ClientBeam(shape, (float) type.lensHalf());
         @Nullable
         private Vec3 tracedDirection;
         private int tracedBrightness = -1;
@@ -244,7 +243,7 @@ public class RotatingBeaconBlockEntity extends KineticBlockEntity implements Bea
         }
 
         Vec3 origin(float partialTick) {
-            return Vec3.atCenterOf(worldPosition).add(direction(partialTick).scale(LENS_RADIUS));
+            return Vec3.atCenterOf(worldPosition).add(direction(partialTick).scale(type.lensDistance()));
         }
 
         private BeamPose moving(BeamPose pose) {

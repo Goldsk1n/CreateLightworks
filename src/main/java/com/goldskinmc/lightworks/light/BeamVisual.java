@@ -35,6 +35,7 @@ public final class BeamVisual {
     private static final double NARROW_SPREAD = Math.tan(Math.toRadians(10));
     /** How much of the beam's brightness is lost over its full range, on top of its falloff. */
     private static final float HAZE = 0.6f;
+    private static final float GLASS_LIFT = 0.01f;
     /** The closed lens end is fainter than the sides, which overlap along the view. */
     private static final float CAP_ALPHA = 0.5f;
     /**
@@ -78,6 +79,8 @@ public final class BeamVisual {
         Vector3f u = new Vector3f((float) su[0], (float) su[1], (float) su[2]);
         Vector3f v = new Vector3f((float) sv[0], (float) sv[1], (float) sv[2]);
         float spread = (float) Math.tan(ClientBeam.visibleHalfAngle(shape));
+        // Starts on the lens glass, lifted just off it so the closed end never fights the glass for depth
+        lens = new Vector3f(axis).mul(GLASS_LIFT).add(lens);
         // A wide beam spreads the same light over more air, so its haze is fainter than a narrow one's
         alpha *= (float) Math.min(1, Math.sqrt(NARROW_SPREAD / spread));
 
@@ -88,7 +91,7 @@ public final class BeamVisual {
         float[] farAlpha = new float[corners];
         for (int i = 0; i < corners; i++) {
             Vector3f offset = new Vector3f(u).mul(BeamFrame.cornerU(i)).add(new Vector3f(v).mul(BeamFrame.cornerV(i)));
-            near[i] = new Vector3f(offset).mul(ClientBeam.LENS_HALF).add(lens);
+            near[i] = new Vector3f(offset).mul(beam.lensHalf()).add(lens);
             Vector3f direction = new Vector3f(offset).mul(spread).add(axis).normalize();
             float length = beam.cornerLength(i);
             far[i] = new Vector3f(direction).mul(length).add(near[i]);

@@ -32,8 +32,6 @@ public final class ClientBeam {
     private static final double MIN_DIRECTION_DOT = 0.99985;
     /** Longest beam outside the real world (Ponder scenes), so beams stay inside the scene. */
     private static final double PREVIEW_RANGE = 8;
-    /** Half the width of the lens, in blocks: where the visible beam starts. */
-    public static final float LENS_HALF = 0.3f;
     /** Moving lights further from the camera than this trace only their centre (corners would not show). */
     private static final double CORNER_TRACE_DISTANCE = 48;
     /**
@@ -47,6 +45,8 @@ public final class ClientBeam {
     private static final double GLOW_PER_LEVEL = 0.5;
 
     private final ConeFalloff shape;
+    /** Half the lens's width, in blocks: the square the beam starts as, flush on the glass. */
+    private final float lensHalf;
     @Nullable
     private DynamicSpot spot;
     @Nullable
@@ -64,8 +64,13 @@ public final class ClientBeam {
     private int brightness;
     private float skyExposure;
 
-    public ClientBeam(ConeFalloff shape) {
+    public ClientBeam(ConeFalloff shape, float lensHalf) {
         this.shape = shape;
+        this.lensHalf = lensHalf;
+    }
+
+    public float lensHalf() {
+        return lensHalf;
     }
 
     public ConeFalloff shape() {
@@ -149,7 +154,7 @@ public final class ClientBeam {
             int cu = BeamFrame.cornerU(i);
             int cv = BeamFrame.cornerV(i);
             Vec3 offset = new Vec3(cu * u[0] + cv * v[0], cu * u[1] + cv * v[1], cu * u[2] + cv * v[2]);
-            Vec3 start = at.origin().add(offset.scale(LENS_HALF));
+            Vec3 start = at.origin().add(offset.scale(lensHalf));
             Vec3 direction = a.add(offset.scale(spread)).normalize();
             BeamTrace.Hit hit = BeamTrace.trace(level, start, direction, range);
             cornerLengths[i] = (float) hit.distance();

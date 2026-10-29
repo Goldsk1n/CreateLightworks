@@ -21,8 +21,7 @@ import org.joml.Vector3f;
 public final class MovingBeam implements BeamSource {
     /** Blocks per tick along the beam below which a headlight keeps its current front/rear state. */
     public static final double MIN_MOTION = 0.005;
-    /** The lens sits this far from the block's centre, along the beam. */
-    private static final double LENS_RADIUS = 0.5;
+
 
     private final MovementContext context;
     private final LightType type;
@@ -43,13 +42,13 @@ public final class MovingBeam implements BeamSource {
         this.context = context;
         this.type = type;
         this.state = state;
-        this.beam = new ClientBeam(Objects.requireNonNull(type.beam()));
+        this.beam = new ClientBeam(Objects.requireNonNull(type.beam()), (float) type.lensHalf());
         this.facing = facing;
         this.yaw = yaw;
         this.elevation = elevation;
         double[] d = Aim.direction(facing.getStepX(), facing.getStepY(), facing.getStepZ(), yaw, elevation);
         this.localDirection = new Vec3(d[0], d[1], d[2]);
-        this.lastPose = ContraptionHost.toWorld(context, localDirection);
+        this.lastPose = ContraptionHost.toWorld(context, localDirection, type.lensDistance());
     }
 
     public void tick() {
@@ -59,7 +58,7 @@ public final class MovingBeam implements BeamSource {
     }
 
     private void update() {
-        BeamPose pose = ContraptionHost.toWorld(context, localDirection);
+        BeamPose pose = ContraptionHost.toWorld(context, localDirection, type.lensDistance());
         lastPose = pose;
         // A redstone signal at assembly overrides the automatic swap: then it is lit both ways
         if (type.followsMotion() && state.signal() == 0 && context.motion != null) {
@@ -83,7 +82,7 @@ public final class MovingBeam implements BeamSource {
 
     /** Lens centre in the block's own coordinates, for drawing inside the contraption. */
     public Vector3f localLens() {
-        return new Vector3f(0.5f).add(localAxis().mul((float) LENS_RADIUS));
+        return new Vector3f(0.5f).add(localAxis().mul((float) type.lensDistance()));
     }
 
     public Vector3f localAxis() {
@@ -117,7 +116,7 @@ public final class MovingBeam implements BeamSource {
 
     @Override
     public BeamPose renderBeam(float partialTick) {
-        return ContraptionHost.toWorldForRender(context, localDirection, partialTick);
+        return ContraptionHost.toWorldForRender(context, localDirection, type.lensDistance(), partialTick);
     }
 
     @Override
