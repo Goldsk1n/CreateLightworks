@@ -1,6 +1,7 @@
 package com.goldskinmc.lightworks.light;
 
 import com.goldskinmc.lightworks.LightworksConfig;
+import com.goldskinmc.lightworks.beam.BeamFrame;
 import com.goldskinmc.lightworks.beam.BeamSpot;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
 import net.minecraft.core.BlockPos;
@@ -19,6 +20,8 @@ import org.jetbrains.annotations.Nullable;
 public final class BeamTrace {
     /** Start the ray just past the lens, so it never hits the light's own block. */
     private static final double START_OFFSET = 0.01;
+    /** Edge rays landing nearer than this (blocks) do not count as where the beam lands. */
+    private static final double MIN_LANDING = 0.6;
 
     private BeamTrace() {
     }
@@ -51,6 +54,98 @@ public final class BeamTrace {
     /** How far a beam of this shape reaches: its own range, capped by the server's {@code maxBeamRange}. */
     public static double range(ConeFalloff shape) {
         return Math.min(shape.range(), LightworksConfig.maxBeamRange());
+    }
+
+    /** Where part of a beam landed: the ray that hit, its direction and the light there (0 to 15 at full brightness). */
+    public record Landing(Hit hit, Vec3 direction, double light) {
+    }
+
+    /** Half-angle of the visible square beam, in radians: halfway into the soft edge, where the lit spot visibly ends. */
+    public static double visibleHalfAngle(ConeFalloff shape) {
+        return Math.toRadians(shape.coreDegrees() + shape.edgeDegrees() / 2);
+    }
+
+    /**
+     * Start and direction of the beam's corner or edge ray {@code index} ({@link BeamFrame#corner}): from the
+     * lens's own corner, spreading at the visible half-angle.
+     *
+     * @param u the beam's side axis and {@code v} its other cross axis ({@link BeamFrame})
+     */
+    public static Vec3[] cornerRay(int index, Vec3 origin, Vec3 axis, double[] u, double[] v, double spread,
+            double lensHalf) {
+        int cu = BeamFrame.cornerU(index);
+        int cv = BeamFrame.cornerV(index);
+        Vec3 offset = new Vec3(cu * u[0] + cv * v[0], cu * u[1] + cv * v[1], cu * u[2] + cv * v[2]);
+        return new Vec3[] {origin.add(offset.scale(lensHalf)), axis.add(offset.scale(spread)).normalize()};
+    }
+
+    /**
+     * Light where a corner or edge ray lands {@code distance} blocks out, 0 to 15 at full brightness: the
+     * beam's strength at its visible edge (halfway into the soft edge). Measured on the ray itself, not from
+     * the lens centre, because the rays start at the lens's own corners and a narrow beam's would otherwise
+     * fall just outside its light cone near the lens.
+     */
+    public static double edgeLight(ConeFalloff shape, double distance) {
+        return rayLight(shape, distance, 1);
+    }
+
+    /** As {@link #edgeLight}, for a ray {@code fraction} of the way from the centre to the visible edge. */
+    private static double rayLight(ConeFalloff shape, double distance, double fraction) {
+        double across = fraction * Math.tan(visibleHalfAngle(shape));
+        return shape.onAxis(distance) * shape.lightAt(across, 0, 1, 0, 0, 1) / shape.onAxis(1e-3);
+    }
+
+    /**
+     * Where a beam whose centre ray hit nothing still lands: the nearest of its corner and edge rays that
+     * hits a block, with the (soft-edge, so weaker) light there; null when none does (open sky).
+     */
+    public static @Nullable Landing edgeLanding(BlockGetter level, Vec3 origin, Vec3 axis, ConeFalloff shape,
+            double lensHalf, double range) {
+        double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
+        double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
+        double spread = Math.tan(visibleHalfAngle(shape));
+        Landing nearest = null;
+        for (int i = 0; i < BeamFrame.GRID * BeamFrame.GRID; i++) {
+            if (i == BeamFrame.corner(0, 0)) {
+                continue;
+            }
+            Vec3[] ray = cornerRay(i, origin, axis, u, v, spread, lensHalf);
+            Hit hit = trace(level, ray[0], ray[1], range);
+            if (landsUsefully(hit) && (nearest == null || hit.distance() < nearest.hit().distance())) {
+                nearest = new Landing(hit, ray[1], edgeLight(shape, hit.distance()));
+            }
+        }
+        return nearest != null ? nearest : halfLanding(level, origin, axis, shape, lensHalf, range);
+    }
+
+    /**
+     * Where a beam lands along the four rays halfway between its centre and its edges (in its full-strength
+     * core): for a wide beam whose edges touch the ground right at the lens and miss everything else, like a
+     * Floodlight aimed level on the ground. Null when none lands.
+     */
+    public static @Nullable Landing halfLanding(BlockGetter level, Vec3 origin, Vec3 axis, ConeFalloff shape,
+            double lensHalf, double range) {
+        double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
+        double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
+        double spread = Math.tan(visibleHalfAngle(shape)) / 2;
+        Landing nearest = null;
+        for (int i : new int[] {BeamFrame.corner(-1, 0), BeamFrame.corner(1, 0), BeamFrame.corner(0, -1),
+                BeamFrame.corner(0, 1)}) {
+            Vec3[] ray = cornerRay(i, origin, axis, u, v, spread, lensHalf / 2);
+            Hit hit = trace(level, ray[0], ray[1], range);
+            if (landsUsefully(hit) && (nearest == null || hit.distance() < nearest.hit().distance())) {
+                nearest = new Landing(hit, ray[1], rayLight(shape, hit.distance(), 0.5));
+            }
+        }
+        return nearest;
+    }
+
+    /**
+     * True for a ray that hit something at least {@value #MIN_LANDING} blocks out: nearer, the light would sit
+     * inside the light's own block (a wide beam's edge touching the block it stands on).
+     */
+    public static boolean landsUsefully(Hit hit) {
+        return hit.hitBlock() && hit.distance() >= MIN_LANDING;
     }
 
     public static Hit trace(BlockGetter level, Vec3 origin, Vec3 direction, double range) {

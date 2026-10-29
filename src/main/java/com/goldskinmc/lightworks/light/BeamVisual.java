@@ -93,7 +93,7 @@ public final class BeamVisual {
         double[] sv = BeamFrame.up(axis.x, axis.y, axis.z, su);
         Vector3f u = new Vector3f((float) su[0], (float) su[1], (float) su[2]);
         Vector3f v = new Vector3f((float) sv[0], (float) sv[1], (float) sv[2]);
-        float spread = (float) Math.tan(ClientBeam.visibleHalfAngle(shape));
+        float spread = (float) Math.tan(BeamTrace.visibleHalfAngle(shape));
         // Starts on the lens glass, lifted just off it so the closed end never fights the glass for depth
         lens = new Vector3f(axis).mul(GLASS_LIFT).add(lens);
         // A wide beam spreads the same light over more air, so its haze is fainter than a narrow one's
