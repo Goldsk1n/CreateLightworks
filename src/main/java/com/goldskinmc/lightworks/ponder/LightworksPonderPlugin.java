@@ -28,6 +28,6 @@ public class LightworksPonderPlugin implements PonderPlugin {
     public void registerSharedText(SharedTextRegistrationHelper helper) {
         helper.registerSharedText("aim", "Right-click with a Wrench to aim it where you are looking. Placing it aims it the same way");
         helper.registerSharedText("redstone", "Redstone dims it: the stronger the signal, the dimmer the light, and a full signal turns it off");
-        helper.registerSharedText("dye", "Right-click with a dye to tint its lens and beam. The light it casts stays white");
+        helper.registerSharedText("dye", "Right-click with a dye to colour its lens, its beam and the light it casts");
     }
 }

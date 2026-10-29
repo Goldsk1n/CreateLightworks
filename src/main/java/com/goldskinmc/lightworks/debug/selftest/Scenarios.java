@@ -2,23 +2,23 @@ package com.goldskinmc.lightworks.debug.selftest;
 
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.LightworksConfig;
+import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
-import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlock;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
 import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
 import com.goldskinmc.lightworks.content.signal.WarningPattern;
+import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.light.BeamTrace;
-import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllItems;
 import com.simibubi.create.content.contraptions.IControlContraption.MovementMode;
 import com.simibubi.create.content.contraptions.glue.SuperGlueEntity;
-import com.simibubi.create.content.contraptions.piston.MechanicalPistonBlock;
 import com.simibubi.create.content.contraptions.piston.MechanicalPistonBlock.PistonState;
+import com.simibubi.create.content.contraptions.piston.MechanicalPistonBlock;
 import com.simibubi.create.content.kinetics.base.DirectionalAxisKineticBlock;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.motor.CreativeMotorBlock;
@@ -34,19 +34,19 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
-import net.minecraft.world.level.block.WeightedPressurePlateBlock;
-import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.block.WeightedPressurePlateBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.ModList;
 
@@ -55,7 +55,7 @@ final class Scenarios {
     static final Map<String, Supplier<Script>> ALL = new LinkedHashMap<>();
     /** What {@code -Pselftest=true} runs. */
     static final String DEFAULT =
-            "fixed,aim,floodlight,pantilt,beacon,warning,navigation,goggles,vehicle,bearing,piston,vehicle-fast";
+            "fixed,aim,floodlight,pantilt,beacon,warning,navigation,goggles,colour,vehicle,bearing,piston,vehicle-fast";
 
     static {
         ALL.put("fixed", Scenarios::fixed);
@@ -66,6 +66,7 @@ final class Scenarios {
         ALL.put("warning", Scenarios::warning);
         ALL.put("navigation", Scenarios::navigation);
         ALL.put("goggles", Scenarios::goggles);
+        ALL.put("colour", Scenarios::colour);
         ALL.put("vehicle", () -> vehicle("vehicle", 0.1, 100, true));
         // Create's default train top speed, 28 blocks a second: how far the spot trails at train speeds
         ALL.put("vehicle-fast", () -> vehicle("vehicle-fast", 1.4, 40, false));
@@ -555,6 +556,50 @@ final class Scenarios {
             }
         }
         return state;
+    }
+
+    /**
+     * Coloured light, at night on white wool: a red-dyed Searchlight on a wool wall, a blue-dyed Floodlight
+     * on the wool floor, and a Tail Light (red), a starboard Navigation Light (green) and a Warning Light
+     * (amber) each beside the wall. The wool takes their colours ({@code ProjectedTint}); the shot's log
+     * line gives the number of tinted faces.
+     */
+    static Script colour() {
+        return new Script("colour")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(0, -2);
+                    for (int x = -6; x <= 6; x++) {
+                        for (int z = 2; z <= 10; z++) {
+                            stage.set(stage.at(x, -1, z), Blocks.WHITE_WOOL.defaultBlockState());
+                        }
+                        for (int y = 0; y <= 4; y++) {
+                            stage.set(stage.at(x, y, 10), Blocks.WHITE_WOOL.defaultBlockState());
+                        }
+                    }
+                    BlockPos red = stage.at(-3, 0, 3);
+                    stage.set(red, searchlight(Direction.UP));
+                    stage.lightAt(red).aimAlong(Vec3.atCenterOf(stage.at(-3, 2, 10)).subtract(Vec3.atCenterOf(red)));
+                    stage.lightAt(red).lightState().setColour(DyeColor.RED);
+                    stage.lightAt(red).notifyUpdate();
+                    BlockPos blue = stage.at(3, 4, 4);
+                    stage.set(blue.above(), Blocks.WHITE_WOOL.defaultBlockState());
+                    stage.set(blue, LightworksBlocks.FLOODLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.DOWN));
+                    stage.lightAt(blue).lightState().setColour(DyeColor.BLUE);
+                    stage.lightAt(blue).notifyUpdate();
+                    stage.set(stage.at(-5, 0, 9), LightworksBlocks.TAIL_LIGHT.getDefaultState()
+                            .setValue(SignalLampBlock.FACING, Direction.UP));
+                    stage.set(stage.at(0, 0, 9), navigationLight(Direction.UP, "starboard"));
+                    stage.set(stage.at(5, 0, 9), LightworksBlocks.WARNING_LIGHT.getDefaultState()
+                            .setValue(SignalLampBlock.FACING, Direction.UP));
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 1, 8));
+                })
+                .waitTicks(40)
+                .shot("colour-0")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
     }
 
     /**

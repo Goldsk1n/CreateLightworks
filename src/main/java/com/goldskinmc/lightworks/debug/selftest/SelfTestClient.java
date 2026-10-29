@@ -9,6 +9,7 @@ import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.light.BeamSource;
 import com.goldskinmc.lightworks.light.BeamTrace;
 import com.goldskinmc.lightworks.light.ClientBeams;
+import com.goldskinmc.lightworks.light.ProjectedTint;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
@@ -322,8 +323,8 @@ public final class SelfTestClient {
         }
         String name = SelfTestBridge.shotName;
         NativeImage image = Screenshot.takeScreenshot(mc.getMainRenderTarget());
-        Lightworks.LOGGER.info(String.format("[selftest] shot %s: centre brightness %.1f, whole frame %.1f (0-255)",
-                name, meanLuma(image, 6), meanLuma(image, 1)));
+        Lightworks.LOGGER.info(String.format("[selftest] shot %s: centre brightness %.1f, whole frame %.1f (0-255), "
+                        + "%d tinted faces", name, meanLuma(image, 6), meanLuma(image, 1), ProjectedTint.activeFaces()));
         save(image, name);
         shotHandled = requested;
         shotWaited = 0;

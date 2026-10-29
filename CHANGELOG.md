@@ -27,7 +27,10 @@ First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 
   vehicles, measured within 1 block of the drawn beam at 28 blocks a second.
 - Redstone dims every light (15 − signal); server config `invertRedstone` makes them light only when
   powered. On contraptions the signal is read at assembly, and Contraption Controls switch lights.
-- Dye any light to tint its lens and beam (cosmetic: the light it casts stays white).
+- Dye any light to colour its lens, its beam and the light it casts: a red Searchlight paints a red
+  spot. Signal lamps colour the blocks round them too (amber, red, green). Drawn by the mod itself, so it
+  works with the vanilla renderer and Sodium; off under Iris shader packs, and switchable with the client
+  config `colouredLight`. Block light itself stays white (Minecraft has no coloured block light).
 - Engineer's Goggles show a light's state, brightness, aim, where its beam lands and its colour, and draw
   beam paths while worn.
 - Players without LambDynamicLights still get light from fixed lights (server light blocks) and see

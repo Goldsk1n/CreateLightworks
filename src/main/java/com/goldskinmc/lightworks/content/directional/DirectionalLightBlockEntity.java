@@ -65,6 +65,7 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
     @Nullable
     private Vec3 tracedDirection;
     private int tracedBrightness = -1;
+    private int tracedTint = -1;
     private boolean tracedMoving;
     private boolean retraceDue = true;
     /**
@@ -271,14 +272,15 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
     private void updateBeam() {
         BeamPose beam = tickBeam();
         int brightness = brightness();
+        int tint = lightState().colour() == null ? -1 : lightState().rgb(lightType());
         boolean changed = !beam.direction().equals(tracedDirection) || brightness != tracedBrightness
-                || beam.moving() != tracedMoving;
+                || beam.moving() != tracedMoving || tint != tracedTint;
         // On a vehicle the beam moves every tick; a fixed one is re-traced when it changes or periodically
         if (!beam.moving() && !retraceDue && !changed) {
             return;
         }
         if (level.isClientSide) {
-            clientBeam.update(level, beam, beam.moving() ? renderBeam(0.5f) : beam, brightness);
+            clientBeam.update(level, beam, beam.moving() ? renderBeam(0.5f) : beam, brightness, tint);
         } else if (LightworksConfig.serverLightBlocks() && !beam.moving()) {
             BeamTrace.Hit hit = BeamTrace.trace(level, beam.origin(), beam.direction(), BeamTrace.range(shape));
             serverLight.update(level, worldPosition, hit, beam.direction(), lightLevelAt(hit));
@@ -288,6 +290,7 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         }
         tracedDirection = beam.direction();
         tracedBrightness = brightness;
+        tracedTint = tint;
         tracedMoving = beam.moving();
         retraceDue = false;
     }

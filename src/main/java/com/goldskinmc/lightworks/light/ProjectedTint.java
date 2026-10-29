@@ -1,0 +1,278 @@
+package com.goldskinmc.lightworks.light;
+
+import com.goldskinmc.lightworks.Lightworks;
+import com.goldskinmc.lightworks.LightworksClientConfig;
+import com.goldskinmc.lightworks.beam.ConeFalloff;
+import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderStateShard;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import org.joml.Matrix4f;
+
+/**
+ * Coloured light painted onto the world. Minecraft's block light and LambDynamicLights are colourless, so
+ * a dyed beam, or a signal lamp, tints the block faces it lights: each face gets a layer of the light's
+ * colour, multiplied over what is already drawn and fading the way the light does, drawn after the world
+ * every frame (like the visible beam, it needs no client mod and works with Sodium). Shader packs
+ * replace the blending, so it is off while one is on (client config {@code colouredLight}).
+ * <p>
+ * The lit faces are found in world space when the light changes (a moving light: when its spot has
+ * moved), only on faces that see the light, so a tint never shows through a wall. Client thread only.
+ */
+@EventBusSubscriber(modid = Lightworks.MOD_ID, value = Dist.CLIENT)
+public final class ProjectedTint {
+    private static final Set<ProjectedTint> ACTIVE = new LinkedHashSet<>();
+    /** Squares per face side: the falloff is sampled at their corners, so the tint fades smoothly. */
+    private static final int GRID = 4;
+    private static final int FLOATS_PER_FACE = (GRID + 1) * (GRID + 1) * 4;
+    /** Largest tinted patch, in blocks from its centre; wider cones are cut off here. */
+    private static final double MAX_RADIUS = 6;
+    private static final int MAX_FACES = 400;
+    /** How far the colour can go: at 1 a lit white block takes the light's colour exactly. */
+    private static final float STRENGTH = 0.85f;
+    /** Lifted off the face so it never fights the block for depth. */
+    private static final float LIFT = 0.002f;
+    private static final float DAY_FADE = 0.8f;
+
+    private static final RenderType TINT = RenderType.create("lightworks_tint", DefaultVertexFormat.POSITION_COLOR,
+            VertexFormat.Mode.QUADS, 4096, false, false, RenderType.CompositeState.builder()
+                    .setShaderState(RenderStateShard.POSITION_COLOR_SHADER)
+                    .setTransparencyState(new RenderStateShard.TransparencyStateShard("lightworks_multiply", () -> {
+                        RenderSystem.enableBlend();
+                        RenderSystem.blendFunc(GlStateManager.SourceFactor.DST_COLOR, GlStateManager.DestFactor.ZERO);
+                    }, () -> {
+                        RenderSystem.disableBlend();
+                        RenderSystem.defaultBlendFunc();
+                    }))
+                    .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                    .setCullState(RenderStateShard.NO_CULL)
+                    .createCompositeState(false));
+
+    /** Per face: (GRID + 1)^2 corners of x, y, z and light 0 to 1. */
+    private float[] corners = new float[0];
+    private int faces;
+    private float red;
+    private float green;
+    private float blue;
+    private float strength;
+    private float skyExposure;
+
+    /**
+     * Tints the faces a beam lights round where it lands.
+     *
+     * @param origin     lens position
+     * @param axis       unit vector the beam points along
+     * @param end        where the beam stops on a block
+     * @param brightness 0 to 1
+     */
+    public void beam(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, Vec3 end, int rgb, float brightness) {
+        double distance = end.distanceTo(origin);
+        double halfAngle = Math.toRadians(shape.coreDegrees() + shape.edgeDegrees());
+        double radius = Math.min(MAX_RADIUS, distance * Math.tan(halfAngle) + 0.5);
+        project(level, origin, end, radius,
+                (x, y, z) -> (float) (shape.lightAt(x - origin.x, y - origin.y, z - origin.z, axis.x, axis.y, axis.z) / 15));
+        show(level, end, rgb, brightness);
+    }
+
+    /** Tints the faces round a signal lamp, fading to nothing {@code radius} blocks away. */
+    public void glow(Level level, Vec3 centre, double radius, int rgb, float brightness) {
+        project(level, centre, centre, radius, (x, y, z) -> {
+            double d = Math.sqrt((x - centre.x) * (x - centre.x) + (y - centre.y) * (y - centre.y)
+                    + (z - centre.z) * (z - centre.z));
+            double t = Math.max(0, 1 - d / radius);
+            return (float) (t * t);
+        });
+        show(level, centre, rgb, brightness);
+    }
+
+    /** Changes how strong the tint is without finding the faces again (a blinking pattern). */
+    public void setBrightness(float brightness) {
+        strength = brightness;
+    }
+
+    /** Stops drawing until the next {@link #beam} or {@link #glow}. */
+    public void clear() {
+        ACTIVE.remove(this);
+        faces = 0;
+    }
+
+    public int faces() {
+        return faces;
+    }
+
+    /** Every tinted face being drawn: the self-test logs it. */
+    public static int activeFaces() {
+        int total = 0;
+        for (ProjectedTint tint : ACTIVE) {
+            total += tint.faces;
+        }
+        return total;
+    }
+
+    @FunctionalInterface
+    private interface Falloff {
+        float at(double x, double y, double z);
+    }
+
+    private void show(Level level, Vec3 at, int rgb, float brightness) {
+        // Brightest channel to 1, so the tint changes the colour without darkening the light
+        float r = (rgb >> 16 & 0xFF) / 255f;
+        float g = (rgb >> 8 & 0xFF) / 255f;
+        float b = (rgb & 0xFF) / 255f;
+        float max = Math.max(0.01f, Math.max(r, Math.max(g, b)));
+        red = r / max;
+        green = g / max;
+        blue = b / max;
+        strength = brightness;
+        skyExposure = level.getBrightness(LightLayer.SKY, BlockPos.containing(at)) / 15f;
+        if (faces > 0) {
+            ACTIVE.add(this);
+        } else {
+            ACTIVE.remove(this);
+        }
+    }
+
+    /** Finds the exposed faces of full blocks within {@code radius} of {@code centre} that see {@code source}. */
+    private void project(Level level, Vec3 source, Vec3 centre, double radius, Falloff falloff) {
+        faces = 0;
+        int reach = (int) Math.ceil(radius);
+        BlockPos middle = BlockPos.containing(centre);
+        BlockPos.MutableBlockPos neighbour = new BlockPos.MutableBlockPos();
+        for (BlockPos pos : BlockPos.betweenClosed(middle.offset(-reach, -reach, -reach), middle.offset(reach, reach, reach))) {
+            if (faces >= MAX_FACES) {
+                break;
+            }
+            if (Vec3.atCenterOf(pos).distanceToSqr(centre) > (radius + 1) * (radius + 1)
+                    || !level.getBlockState(pos).isSolidRender(level, pos)) {
+                continue;
+            }
+            for (Direction side : Direction.values()) {
+                neighbour.setWithOffset(pos, side);
+                if (level.getBlockState(neighbour).isSolidRender(level, neighbour)) {
+                    continue;
+                }
+                Vec3 faceCentre = Vec3.atCenterOf(pos).add(Vec3.atLowerCornerOf(side.getNormal()).scale(0.5));
+                Vec3 normal = Vec3.atLowerCornerOf(side.getNormal());
+                if (source.subtract(faceCentre).dot(normal) <= 0 || !sees(level, source, faceCentre, normal, pos)) {
+                    continue;
+                }
+                addFace(pos, side, falloff);
+            }
+        }
+    }
+
+    /** True when nothing stands between the light and the face. */
+    private static boolean sees(Level level, Vec3 source, Vec3 faceCentre, Vec3 normal, BlockPos pos) {
+        Vec3 target = faceCentre.add(normal.scale(0.05));
+        BlockHitResult hit = level.clip(new ClipContext(source, target, ClipContext.Block.VISUAL,
+                ClipContext.Fluid.NONE, CollisionContext.empty()));
+        return hit.getType() == HitResult.Type.MISS || hit.getBlockPos().equals(pos);
+    }
+
+    private void addFace(BlockPos pos, Direction side, Falloff falloff) {
+        // Two axes across the face and the plane it sits in, lifted off the block
+        Direction.Axis axis = side.getAxis();
+        double plane = (side.getAxisDirection() == Direction.AxisDirection.POSITIVE ? 1 + LIFT : -LIFT)
+                + pos.get(axis);
+        Direction.Axis u = axis == Direction.Axis.X ? Direction.Axis.Y : Direction.Axis.X;
+        Direction.Axis v = axis == Direction.Axis.Z ? Direction.Axis.Y : Direction.Axis.Z;
+        int base = faces * FLOATS_PER_FACE;
+        if (corners.length < base + FLOATS_PER_FACE) {
+            corners = Arrays.copyOf(corners, Math.max(FLOATS_PER_FACE * 8, corners.length * 2));
+        }
+        float lit = 0;
+        int i = base;
+        for (int a = 0; a <= GRID; a++) {
+            for (int b = 0; b <= GRID; b++) {
+                double[] p = new double[3];
+                p[axis.ordinal()] = plane;
+                p[u.ordinal()] = pos.get(u) + (double) a / GRID;
+                p[v.ordinal()] = pos.get(v) + (double) b / GRID;
+                float light = falloff.at(p[0], p[1], p[2]);
+                corners[i++] = (float) p[0];
+                corners[i++] = (float) p[1];
+                corners[i++] = (float) p[2];
+                corners[i++] = light;
+                lit = Math.max(lit, light);
+            }
+        }
+        if (lit > 0.01f) {
+            faces++;
+        }
+    }
+
+    @SubscribeEvent
+    public static void onRenderLevel(RenderLevelStageEvent event) {
+        // Shader packs replace the blending, which would turn the tint into glaring patches
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES || ACTIVE.isEmpty()
+                || !LightworksClientConfig.colouredLight()) {
+            return;
+        }
+        Vec3 camera = event.getCamera().getPosition();
+        PoseStack poseStack = event.getPoseStack();
+        MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
+        VertexConsumer out = buffers.getBuffer(TINT);
+        float day = BeamVisual.daylight();
+        poseStack.pushPose();
+        poseStack.translate(-camera.x, -camera.y, -camera.z);
+        Matrix4f pose = poseStack.last().pose();
+        for (ProjectedTint tint : ACTIVE) {
+            float amount = STRENGTH * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
+            if (amount > 0.01f) {
+                tint.draw(out, pose, amount);
+            }
+        }
+        poseStack.popPose();
+        buffers.endBatch(TINT);
+    }
+
+    private void draw(VertexConsumer out, Matrix4f pose, float amount) {
+        int row = GRID + 1;
+        for (int f = 0; f < faces; f++) {
+            int base = f * FLOATS_PER_FACE;
+            for (int a = 0; a < GRID; a++) {
+                for (int b = 0; b < GRID; b++) {
+                    corner(out, pose, base + (a * row + b) * 4, amount);
+                    corner(out, pose, base + ((a + 1) * row + b) * 4, amount);
+                    corner(out, pose, base + ((a + 1) * row + b + 1) * 4, amount);
+                    corner(out, pose, base + (a * row + b + 1) * 4, amount);
+                }
+            }
+        }
+    }
+
+    /** One corner: white (no change) where unlit, the light's colour where fully lit. */
+    private void corner(VertexConsumer out, Matrix4f pose, int i, float amount) {
+        float k = amount * corners[i + 3];
+        out.addVertex(pose, corners[i], corners[i + 1], corners[i + 2])
+                .setColor(1 - k * (1 - red), 1 - k * (1 - green), 1 - k * (1 - blue), 1f);
+    }
+
+    @SubscribeEvent
+    public static void onLeaveWorld(ClientPlayerNetworkEvent.LoggingOut event) {
+        ACTIVE.clear();
+    }
+}

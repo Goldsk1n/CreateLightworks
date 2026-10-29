@@ -18,6 +18,7 @@ public final class LightworksClientConfig {
     public static final ModConfigSpec SPEC;
     private static final ModConfigSpec.EnumValue<BeamVisual> BEAM_VISUAL;
     private static final ModConfigSpec.EnumValue<BeamVisual> BEAM_VISUAL_WITH_SHADERS;
+    private static final ModConfigSpec.BooleanValue COLOURED_LIGHT;
     private static final ModConfigSpec.BooleanValue DEBUG_OVERLAY;
 
     static {
@@ -30,6 +31,11 @@ public final class LightworksClientConfig {
                 .comment("The same while an Iris shader pack is on; shader packs often add their own glow.")
                 .translation("lightworks.configuration.beamVisualWithShaders")
                 .defineEnum("beamVisualWithShaders", BeamVisual.FAINT);
+        COLOURED_LIGHT = builder
+                .comment("Dyed lights and signal lamps tint the blocks they light with their colour. Off while an",
+                        "Iris shader pack is on: shader packs light the world their own way.")
+                .translation("lightworks.configuration.colouredLight")
+                .define("colouredLight", true);
         DEBUG_OVERLAY = builder
                 .comment("With the F3 screen open, draw every beam from lens to hit and show details of the light",
                         "under the crosshair.")
@@ -47,6 +53,11 @@ public final class LightworksClientConfig {
             return BeamVisual.FULL.alpha;
         }
         return (Shaders.inUse() ? BEAM_VISUAL_WITH_SHADERS : BEAM_VISUAL).get().alpha;
+    }
+
+    /** Whether dyed lights and signal lamps tint the world (never under a shader pack). */
+    public static boolean colouredLight() {
+        return (!SPEC.isLoaded() || COLOURED_LIGHT.get()) && !Shaders.inUse();
     }
 
     public static boolean debugOverlay() {

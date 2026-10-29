@@ -30,6 +30,10 @@ public final class ClientBeam {
     @Nullable
     private DynamicSpot spot;
     @Nullable
+    private ProjectedTint tint;
+    private int tintedRgb = -1;
+    private int tintedBrightness;
+    @Nullable
     private BeamSpot lastSpot;
     private double length;
     private int brightness;
@@ -51,8 +55,10 @@ public final class ClientBeam {
      *              differently (Sable vehicles lag a tick behind, bearings extrapolate ahead), so this
      *              comes from the host's own render pose.
      * @param brightness 0 (off) to 15; scales the spot and the cosmetic beam
+     * @param tintRgb    a dyed light's colour, 0xRRGGBB, painted onto what the beam lights
+     *                   ({@link ProjectedTint}); -1 for an undyed light, whose light stays white
      */
-    public void update(Level level, BeamPose beam, BeamPose drawn, int brightness) {
+    public void update(Level level, BeamPose beam, BeamPose drawn, int brightness, int tintRgb) {
         if (!ClientBeams.enabled() || brightness <= 0) {
             off();
             return;
@@ -72,10 +78,35 @@ public final class ClientBeam {
         // Open sky at the lens: daylight washes the visible beam out there (Ponder scenes never)
         skyExposure = ClientBeams.isRealWorld(level)
                 ? level.getBrightness(LightLayer.SKY, BlockPos.containing(at.origin())) / 15f : 0;
-        if (worthPublishing(lastSpot, next)) {
+        boolean moved = worthPublishing(lastSpot, next);
+        if (moved) {
             lastSpot = next;
             spot.set(next);
         }
+        updateTint(level, at, hit, brightness, tintRgb, moved);
+    }
+
+    /** Finds the tinted faces again only when the light changed or its spot moved enough to be republished. */
+    private void updateTint(Level level, BeamPose at, BeamTrace.Hit hit, int brightness, int tintRgb, boolean moved) {
+        if (tintRgb < 0 || !hit.hitBlock() || !ClientBeams.isRealWorld(level)) {
+            clearTint();
+            return;
+        }
+        if (tint == null) {
+            tint = new ProjectedTint();
+        }
+        if (moved || tint.faces() == 0 || tintRgb != tintedRgb || brightness != tintedBrightness) {
+            tint.beam(level, at.origin(), at.direction(), shape, hit.end(), tintRgb, brightness / 15f);
+            tintedRgb = tintRgb;
+            tintedBrightness = brightness;
+        }
+    }
+
+    private void clearTint() {
+        if (tint != null) {
+            tint.clear();
+        }
+        tintedRgb = -1;
     }
 
     private static boolean worthPublishing(@Nullable BeamSpot current, @Nullable BeamSpot next) {
@@ -93,6 +124,7 @@ public final class ClientBeam {
         if (spot != null) {
             spot.set(null);
         }
+        clearTint();
     }
 
     /** Removes the dynamic light for good. */
@@ -101,6 +133,8 @@ public final class ClientBeam {
             spot.remove();
             spot = null;
         }
+        clearTint();
+        tint = null;
         lastSpot = null;
         length = 0;
         brightness = 0;
