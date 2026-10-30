@@ -1,6 +1,7 @@
 package com.goldskinmc.lightworks.content.directional;
 
 import com.goldskinmc.lightworks.beam.PanTilt;
+import com.goldskinmc.lightworks.content.LightType;
 import com.google.common.collect.ImmutableList;
 import com.simibubi.create.foundation.blockEntity.behaviour.BehaviourType;
 import com.simibubi.create.foundation.blockEntity.behaviour.CenteredSideValueBoxTransform;
@@ -26,10 +27,9 @@ import net.minecraft.world.phys.Vec3;
 /**
  * One of a directional light's two value boards, Pan or Tilt, set like Create's Valve Handle: hold
  * right-click on its value box and pick a row (which way) and a value (how far). Pan has rows ⟲ and ⟳,
- * tilt ↑ and ↓ (only the one that points away from a floor or ceiling). The boxes sit side by side on each
- * side face, near the mount, where the yoke and stalk do not swing. The values live in the light (its
- * {@link PanTilt}), not in this behaviour, and the boards are hidden on a Pan-Tilt Head, which aims the
- * light instead.
+ * tilt ↑ and ↓ (only the one that points away from a floor or ceiling). Two boxes sit on each side face
+ * ({@link Slot}). The values live in the light (its {@link PanTilt}), not in this behaviour, and the boards
+ * are hidden on a Pan-Tilt Head, which aims the light instead.
  */
 public class AimBoard extends ScrollValueBehaviour {
     public static final BehaviourType<AimBoard> PAN = new BehaviourType<>("lightworks_pan");
@@ -43,7 +43,8 @@ public class AimBoard extends ScrollValueBehaviour {
     private final boolean pan;
 
     AimBoard(DirectionalLightBlockEntity light, boolean pan) {
-        super(Component.translatable(pan ? "lightworks.aim.pan" : "lightworks.aim.tilt"), light, new Slot(pan));
+        super(Component.translatable(pan ? "lightworks.aim.pan" : "lightworks.aim.tilt"), light,
+                new Slot(pan, (DirectionalLightBlock) light.getBlockState().getBlock()));
         this.light = light;
         this.pan = pan;
         onlyActiveWhen(() -> light.head() == null);
@@ -128,31 +129,52 @@ public class AimBoard extends ScrollValueBehaviour {
     }
 
     /**
-     * Value box positions: on every side face (not the mount or the front), a quarter block toward the
-     * mount, pan on the left and tilt on the right as seen facing that side.
+     * Value box positions: the same on every light, two boxes stacked on every side face from the mount, pan
+     * first. They are drawn clear of the head however it is aimed, which can be off the outline or the block,
+     * while a click lands on the outline, so a click counts by where it is across the face, anywhere on the
+     * box's square. On the Floodlight and Headlight the top of the tilt box stands above the outline.
      */
     static class Slot extends CenteredSideValueBoxTransform {
-        private final boolean pan;
+        /** Box size, in blocks: two fill the Searchlight's 15.5 pixel height. */
+        private static final float SIZE = 7.75f / 16;
+        /** From the block centre to where a box is drawn, past the moving parts' furthest corner, in blocks. */
+        private static final double CLEAR_OF_HEAD = 9.25 / 16;
+        /** The same for the Headlight, whose head is small: 7.23 pixels, so its boxes stay on the block. */
+        private static final double CLEAR_OF_SMALL_HEAD = 7.5 / 16;
 
-        Slot(boolean pan) {
+        private final double out;
+        private final double along;
+
+        Slot(boolean pan, DirectionalLightBlock block) {
             super((state, side) -> side.getAxis() != state.getValue(DirectionalLightBlock.FACING).getAxis());
-            this.pan = pan;
+            out = block.lightType() == LightType.HEADLIGHT ? CLEAR_OF_SMALL_HEAD : CLEAR_OF_HEAD;
+            along = pan ? SIZE / 2 : SIZE * 1.5;
+            scale = SIZE;
         }
 
         @Override
         public Vec3 getLocalOffset(LevelAccessor level, BlockPos pos, BlockState state) {
             Direction mount = state.getValue(DirectionalLightBlock.FACING);
-            Direction side = getSide();
-            Vec3 out = Vec3.atLowerCornerOf(side.getNormal());
+            Vec3 side = Vec3.atLowerCornerOf(getSide().getNormal());
             Vec3 up = Vec3.atLowerCornerOf(mount.getNormal());
-            Vec3 left = out.cross(up);
-            return new Vec3(0.5, 0.5, 0.5).add(out.scale(7.5 / 16)).add(up.scale(-4 / 16.0))
-                    .add(left.scale(pan ? 4 / 16.0 : -4 / 16.0));
+            return new Vec3(0.5, 0.5, 0.5).add(side.scale(out)).add(up.scale(along - 0.5));
+        }
+
+        @Override
+        public boolean testHit(LevelAccessor level, BlockPos pos, BlockState state, Vec3 localHit) {
+            if (!isSideActive(state, getSide())) {
+                return false;
+            }
+            Vec3 d = localHit.subtract(getLocalOffset(level, pos, state));
+            double half = SIZE / 2;
+            Direction.Axis depth = getSide().getAxis();
+            return (depth == Direction.Axis.X || Math.abs(d.x) < half) && (depth == Direction.Axis.Y || Math.abs(d.y) < half)
+                    && (depth == Direction.Axis.Z || Math.abs(d.z) < half);
         }
 
         @Override
         public float getScale() {
-            return 0.4f;
+            return SIZE;
         }
     }
 }
