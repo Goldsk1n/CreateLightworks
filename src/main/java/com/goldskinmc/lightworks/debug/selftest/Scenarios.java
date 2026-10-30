@@ -13,6 +13,7 @@ import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.light.ProjectedTint;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
+import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
 import com.goldskinmc.lightworks.content.signal.WarningPattern;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.host.BeamPose;
@@ -92,6 +93,10 @@ final class Scenarios {
         // Not in the default set: heavier, or one-off
         ALL.put("load", () -> load("load", false));
         ALL.put("load-mix", () -> load("load-mix", true));
+        ALL.put("load-lamps-steady", () -> loadLamps("load-lamps-steady", WarningPattern.STEADY));
+        ALL.put("load-lamps-blink", () -> loadLamps("load-lamps-blink", WarningPattern.BLINK));
+        ALL.put("load-lamps-strobe", () -> loadLamps("load-lamps-strobe", WarningPattern.STROBE));
+        ALL.put("load-lamps-steady2", () -> loadLamps("load-lamps-steady2", WarningPattern.STEADY));
         ALL.put("cleanup", Scenarios::cleanup);
         ALL.put("ponder", Scenarios::ponder);
         ALL.put("gallery", Scenarios::gallery);
@@ -1323,6 +1328,51 @@ final class Scenarios {
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
                 });
+    }
+
+    /**
+     * 50 Warning Lights in one pattern on a Sable vehicle, hovering and flying. A blinking lamp changes its block
+     * state for its block light, which relights and rebuilds its section: compare the patterns' server ticks and
+     * frame times against steady, run first and last because timings drift on one machine.
+     */
+    static Script loadLamps(String name, WarningPattern pattern) {
+        Script script = new Script(name);
+        if (!ModList.get().isLoaded("sable")) {
+            return script.run(stage -> stage.log("%s: skipped, Sable is not installed", name));
+        }
+        BlockPos[] deck = new BlockPos[1];
+        script.run(stage -> {
+                    stage.night();
+                    stage.stand(0, -10);
+                    deck[0] = stage.at(0, 8, 6);
+                    for (int x = -4; x <= 5; x++) {
+                        for (int z = -2; z <= 2; z++) {
+                            stage.set(deck[0].offset(x, 0, z), Blocks.OAK_PLANKS.defaultBlockState());
+                            BlockPos lamp = deck[0].offset(x, 1, z);
+                            stage.set(lamp, LightworksBlocks.WARNING_LIGHT.getDefaultState()
+                                    .setValue(SignalLampBlock.FACING, Direction.UP));
+                            if (stage.level.getBlockEntity(lamp) instanceof SignalLampBlockEntity entity) {
+                                entity.setPattern(pattern);
+                            }
+                        }
+                    }
+                    BlockPos from = deck[0].offset(-4, 0, -2);
+                    BlockPos to = deck[0].offset(5, 1, 2);
+                    stage.run("sable paused true");
+                    stage.run("sable assemble area " + from.getX() + " " + from.getY() + " " + from.getZ() + " "
+                            + to.getX() + " " + to.getY() + " " + to.getZ());
+                    SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 3, 6)).add(0.5, 0, 0.5);
+                })
+                .waitTicks(60);
+        measure(script, name + "-hovering", 200, (stage, i) -> {
+        });
+        measure(script, name + "-flying", 200, (stage, i) -> stage.run("sable physics translation @l add 0.1 0 0 global"));
+        return script.run(stage -> {
+            stage.run("sable remove @l");
+            stage.run("sable paused false");
+            SelfTestBridge.focus = null;
+            stage.restoreBlocks();
+        }).waitTicks(40);
     }
 
     /** Runs {@code each} for {@code ticks} ticks and logs what our block entities cost the server meanwhile. */
