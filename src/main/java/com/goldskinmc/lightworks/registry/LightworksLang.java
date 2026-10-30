@@ -78,13 +78,16 @@ public final class LightworksLang {
         add("lightworks.goggles.hint.redstone_inverted", "Redstone lights it; brighter the stronger");
         add("lightworks.goggles.hint.pan_tilt", "Shaft pans the light on top; redstone tilts it 6° a level");
         add("lightworks.goggles.hint.beacon", "Shaft speed sets the sweep");
-        add("lightworks.goggles.hint.pattern", "Scroll the value box to change the pattern");
+        add("lightworks.goggles.hint.pattern", "Hold R-click on the box to change the pattern");
         add("lightworks.goggles.hint.navigation", "Wrench: change the side colour");
         add("lightworks.warning_light.pattern", "Pattern");
-        add("create.lightworks.warning_pattern.steady", "Steady");
-        add("create.lightworks.warning_pattern.blink", "Blink");
-        add("create.lightworks.warning_pattern.pulse", "Pulse");
-        add("create.lightworks.warning_pattern.flash", "Flash");
+        // Create 6.0.0 looks option names up with a "create." prefix, 6.0.10 without: both must exist
+        for (String prefix : new String[] {"", "create."}) {
+            add(prefix + "lightworks.warning_pattern.steady", "Steady");
+            add(prefix + "lightworks.warning_pattern.blink", "Blink");
+            add(prefix + "lightworks.warning_pattern.pulse", "Pulse");
+            add(prefix + "lightworks.warning_pattern.flash", "Flash");
+        }
         add("lightworks.configuration.invertRedstone", "Invert redstone");
         add("lightworks.configuration.maxBeamRange", "Longest beam");
         add("lightworks.configuration.beamVisual", "Visible beam");

@@ -2,9 +2,9 @@ package com.goldskinmc.lightworks.content.directional;
 
 import com.goldskinmc.lightworks.beam.PanTilt;
 import com.goldskinmc.lightworks.content.LightType;
+import com.goldskinmc.lightworks.content.SideValueBox;
 import com.google.common.collect.ImmutableList;
 import com.simibubi.create.foundation.blockEntity.behaviour.BehaviourType;
-import com.simibubi.create.foundation.blockEntity.behaviour.CenteredSideValueBoxTransform;
 import com.simibubi.create.foundation.blockEntity.behaviour.ValueSettingsBoard;
 import com.simibubi.create.foundation.blockEntity.behaviour.ValueSettingsFormatter;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
@@ -130,11 +130,10 @@ public class AimBoard extends ScrollValueBehaviour {
 
     /**
      * Value box positions: the same on every light, two boxes stacked on every side face from the mount, pan
-     * first. They are drawn clear of the head however it is aimed, which can be off the outline or the block,
-     * while a click lands on the outline, so a click counts by where it is across the face, anywhere on the
-     * box's square. On the Floodlight and Headlight the top of the tilt box stands above the outline.
+     * first. They are drawn clear of the head however it is aimed, which can be off the outline or the block.
+     * On the Floodlight and Headlight the top of the tilt box stands above the outline.
      */
-    static class Slot extends CenteredSideValueBoxTransform {
+    static class Slot extends SideValueBox {
         /** Box size, in blocks: two fill the Searchlight's 15.5 pixel height. */
         private static final float SIZE = 7.75f / 16;
         /** From the block centre to where a box is drawn, past the moving parts' furthest corner, in blocks. */
@@ -158,18 +157,6 @@ public class AimBoard extends ScrollValueBehaviour {
             Vec3 side = Vec3.atLowerCornerOf(getSide().getNormal());
             Vec3 up = Vec3.atLowerCornerOf(mount.getNormal());
             return new Vec3(0.5, 0.5, 0.5).add(side.scale(out)).add(up.scale(along - 0.5));
-        }
-
-        @Override
-        public boolean testHit(LevelAccessor level, BlockPos pos, BlockState state, Vec3 localHit) {
-            if (!isSideActive(state, getSide())) {
-                return false;
-            }
-            Vec3 d = localHit.subtract(getLocalOffset(level, pos, state));
-            double half = SIZE / 2;
-            Direction.Axis depth = getSide().getAxis();
-            return (depth == Direction.Axis.X || Math.abs(d.x) < half) && (depth == Direction.Axis.Y || Math.abs(d.y) < half)
-                    && (depth == Direction.Axis.Z || Math.abs(d.z) < half);
         }
 
         @Override

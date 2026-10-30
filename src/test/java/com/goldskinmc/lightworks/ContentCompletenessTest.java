@@ -46,6 +46,18 @@ class ContentCompletenessTest {
         }
     }
 
+    /** Create 6.0.0 finds option names under "create.<key>", 6.0.10 under the key itself. */
+    @Test
+    void warningPatternsAreNamedForEveryCreateVersion() throws IOException {
+        String lang = Files.readString(ASSETS.resolve("lang/en_us.json"));
+        List<String> missing = new ArrayList<>();
+        for (String pattern : List.of("steady", "blink", "pulse", "flash")) {
+            requireKey(lang, "lightworks.warning_pattern." + pattern, missing);
+            requireKey(lang, "create.lightworks.warning_pattern." + pattern, missing);
+        }
+        assertTrue(missing.isEmpty(), "Missing: " + missing);
+    }
+
     private static void requireKey(String lang, String key, List<String> missing) {
         if (!lang.contains("\"" + key + "\":")) {
             missing.add(key);

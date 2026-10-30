@@ -117,7 +117,7 @@
   "lightworks.goggles.hint.navigation": "Wrench: change the side colour",
   "lightworks.goggles.hint.on_head": "Aimed by the Pan-Tilt Head below",
   "lightworks.goggles.hint.pan_tilt": "Shaft pans the light on top; redstone tilts it 6° a level",
-  "lightworks.goggles.hint.pattern": "Scroll the value box to change the pattern",
+  "lightworks.goggles.hint.pattern": "Hold R-click on the box to change the pattern",
   "lightworks.goggles.hint.redstone": "Redstone dims it; 15 turns it off",
   "lightworks.goggles.hint.redstone_inverted": "Redstone lights it; brighter the stronger",
   "lightworks.goggles.moving_beam_only": "beam only; LambDynamicLights lights the ground",
@@ -185,5 +185,9 @@
   "lightworks.ponder.warning_light.text_2": "Scroll its value panel to pick a pattern: steady, blink, pulse or flash",
   "lightworks.ponder.warning_light.text_3": "The light it casts follows the pattern too, like a redstone lamp on a clock",
   "lightworks.ponder.warning_light.text_4": "Right-click with a dye to change its colour",
-  "lightworks.warning_light.pattern": "Pattern"
+  "lightworks.warning_light.pattern": "Pattern",
+  "lightworks.warning_pattern.blink": "Blink",
+  "lightworks.warning_pattern.flash": "Flash",
+  "lightworks.warning_pattern.pulse": "Pulse",
+  "lightworks.warning_pattern.steady": "Steady"
 }
