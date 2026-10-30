@@ -6,6 +6,7 @@ import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlockEntity;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlockEntity;
+import com.goldskinmc.lightworks.content.signal.EdgeLightBlock;
 import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
 import com.goldskinmc.lightworks.content.signal.WarningPattern;
@@ -61,6 +62,8 @@ final class LightworksScenes {
         scenes.forComponents(LightworksBlocks.TAIL_LIGHT).addStoryBoard("tail_light", LightworksScenes::tailLight, LIGHTS);
         scenes.forComponents(LightworksBlocks.NAVIGATION_LIGHT)
                 .addStoryBoard("navigation_light", LightworksScenes::navigationLight, LIGHTS);
+        scenes.forComponents(LightworksBlocks.EDGE_LIGHT)
+                .addStoryBoard("edge_light", LightworksScenes::edgeLight, LIGHTS);
     }
 
     static void registerTags(PonderTagRegistrationHelper<ResourceLocation> helper) {
@@ -79,7 +82,8 @@ final class LightworksScenes {
                 .add(LightworksBlocks.WARNING_LIGHT)
                 .add(LightworksBlocks.HEADLIGHT)
                 .add(LightworksBlocks.TAIL_LIGHT)
-                .add(LightworksBlocks.NAVIGATION_LIGHT);
+                .add(LightworksBlocks.NAVIGATION_LIGHT)
+                .add(LightworksBlocks.EDGE_LIGHT);
         tags.addToTag(AllCreatePonderTags.KINETIC_APPLIANCES)
                 .add(LightworksBlocks.PAN_TILT_HEAD)
                 .add(LightworksBlocks.ROTATING_BEACON);
@@ -445,6 +449,65 @@ final class LightworksScenes {
                 .placeNearTarget()
                 .pointAt(top);
         scene.idle(80);
+        scene.markAsFinished();
+    }
+
+    static void edgeLight(SceneBuilder builder, SceneBuildingUtil util) {
+        CreateSceneBuilder scene = new CreateSceneBuilder(builder);
+        scene.title("edge_light", "Edge Lights");
+        scene.configureBasePlate(0, 0, Layouts.Edge.SIZE);
+        scene.showBasePlate();
+        scene.idle(10);
+        scene.world().showSection(util.select().fromTo(Layouts.Edge.STRIP_FROM, Layouts.Edge.STRIP_TO), Direction.DOWN);
+        scene.idle(10);
+        for (int i = 0; i < Layouts.Edge.LEFT.length; i++) {
+            scene.world().showSection(util.select().position(Layouts.Edge.LEFT[i]), Direction.DOWN);
+            scene.world().showSection(util.select().position(Layouts.Edge.RIGHT[i]), Direction.DOWN);
+            scene.idle(5);
+        }
+        scene.idle(10);
+
+        BlockPos left = Layouts.Edge.LEFT[1];
+        scene.overlay().showText(80)
+                .attachKeyFrame()
+                .text("Edge Lights mark the sides of runways, taxiways and platforms, and read clearly from the air")
+                .placeNearTarget()
+                .pointAt(util.vector().topOf(left));
+        scene.idle(90);
+        scene.overlay().showText(70)
+                .text("Vehicles and players pass over them")
+                .placeNearTarget()
+                .pointAt(util.vector().topOf(Layouts.Edge.RIGHT[1]));
+        scene.idle(80);
+
+        scene.overlay().showControls(util.vector().topOf(left), Pointing.DOWN, 40).rightClick()
+                .withItem(new ItemStack(Items.BLUE_DYE));
+        scene.idle(7);
+        for (BlockPos pos : Layouts.Edge.LEFT) {
+            scene.world().modifyBlock(pos, state -> state.setValue(EdgeLightBlock.COLOUR, DyeColor.BLUE), false);
+        }
+        for (BlockPos pos : Layouts.Edge.RIGHT) {
+            scene.world().modifyBlock(pos, state -> state.setValue(EdgeLightBlock.COLOUR, DyeColor.BLUE), false);
+        }
+        scene.overlay().showText(80)
+                .attachKeyFrame()
+                .text("Right-click with a dye to colour its lens")
+                .placeNearTarget()
+                .pointAt(util.vector().topOf(left));
+        scene.idle(90);
+
+        for (BlockPos pos : Layouts.Edge.LEFT) {
+            scene.world().modifyBlock(pos, state -> state.setValue(EdgeLightBlock.BRIGHTNESS, 0), false);
+        }
+        for (BlockPos pos : Layouts.Edge.RIGHT) {
+            scene.world().modifyBlock(pos, state -> state.setValue(EdgeLightBlock.BRIGHTNESS, 0), false);
+        }
+        scene.overlay().showText(80)
+                .attachKeyFrame()
+                .sharedText("redstone")
+                .placeNearTarget()
+                .pointAt(util.vector().topOf(left));
+        scene.idle(90);
         scene.markAsFinished();
     }
 

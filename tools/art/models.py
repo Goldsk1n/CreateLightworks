@@ -93,6 +93,15 @@ CORE_GAP = 0.02
 OUTWARD = {'north': (2, -1), 'south': (2, 1), 'west': (0, -1), 'east': (0, 1), 'down': (1, -1), 'up': (1, 1)}
 
 
+def glowing(e):
+    """
+    Marks an element of a block's own model as a lens: full-bright and tinted by the block's colour handler,
+    so it glows on contraptions and vehicles with no renderer. For lamps placed by the hundred.
+    """
+    e['glow'] = True
+    return e
+
+
 def core_face(e, face):
     """A zero-thickness element holding only {@code face} of e, moved CORE_GAP outward, in e's lens style."""
     axis, sign = OUTWARD[face]
@@ -142,12 +151,18 @@ class Block:
                         rect = [u * scale, v * scale, (u + w) * scale, (v + h) * scale]
                         used['sheet'] = f'lightworks:block/{self.name}'
                         faces[face] = {'uv': [round(c, 4) for c in rect], 'texture': '#sheet'}
+                        if e.get('glow'):
+                            faces[face]['tintindex'] = 0
                     else:
                         key = create_keys[s[1]]
                         used[key] = s[1]
                         faces[face] = {'uv': [round(c, 4) for c in uv(face, e['from'], e['to'])],
                                        'texture': '#' + key}
-                out.append({'from': e['from'], 'to': e['to'], 'faces': faces})
+                element = {'from': e['from'], 'to': e['to'], 'faces': faces}
+                if e.get('glow'):
+                    element['shade'] = False
+                    element['neoforge_data'] = {'block_light': 15, 'sky_light': 15}
+                out.append(element)
             used['particle'] = self.particle
             return {'parent': 'block/block', 'textures': used, 'elements': out}
 
@@ -328,5 +343,14 @@ b.part('lens',
        box((6, 2, 6), (10, 5, 10), LENS, down=None),
        box((7, 5, 7), (9, 5.5, 9), LENS, down=None))
 b.finish('base', 'lens')
+
+# Edge Light: a low lens on a flat iron foot, one baked model (see glowing)
+b = Block('edge_light', INDUSTRIAL_IRON)
+b.part('base',
+       box((5, 0, 5), (11, 1, 11), IRON, down=SEAT),
+       glowing(box((6, 1, 6), (10, 3, 10), LENS, down=None)))
+# Drawn over it in Ponder scenes only, which light every block alike (EdgeLightRenderer)
+b.part('lens', box((6, 1, 6), (10, 3, 10), LENS, down=None))
+b.finish('base')
 
 print('models and sheets written to', ASSETS)

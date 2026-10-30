@@ -62,6 +62,15 @@ final class Layouts {
         static final BlockPos LAMP = new BlockPos(2, 1, 2);
     }
 
+    /** 7x7 plate: a strip of road between two rows of markers, with a lever beside one. */
+    static final class Edge {
+        static final int SIZE = 7;
+        static final BlockPos STRIP_FROM = new BlockPos(2, 1, 0);
+        static final BlockPos STRIP_TO = new BlockPos(4, 1, 6);
+        static final BlockPos[] LEFT = {new BlockPos(1, 1, 1), new BlockPos(1, 1, 3), new BlockPos(1, 1, 5)};
+        static final BlockPos[] RIGHT = {new BlockPos(5, 1, 1), new BlockPos(5, 1, 3), new BlockPos(5, 1, 5)};
+    }
+
     /** 7x7 plate: a deck heading south, away from the camera, with port, starboard and stern lights. */
     static final class Navigation {
         static final int SIZE = 7;

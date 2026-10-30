@@ -107,7 +107,7 @@ def load_model(file):
         for face, d in e.get('faces', {}).items():
             faces[face] = dict(uv=d.get('uv') or default_uv(face, e['from'], e['to']),
                                texture=resolve(d['texture']), rotation=d.get('rotation', 0))
-        out.append(dict(f=e['from'], t=e['to'], faces=faces, shade=e.get('shade', True)))
+        out.append(dict(f=e['from'], t=e['to'], faces=faces, shade=e.get('shade', True), glow='neoforge_data' in e))
     return out
 
 

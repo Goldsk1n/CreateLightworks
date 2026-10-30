@@ -143,6 +143,10 @@ public final class LightworksLang {
                 behaviour("When placed", "Facing your left it turns _red_, facing your right _green_, otherwise _white_."),
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
                 action("When R-clicked with a Wrench", "Cycles red, green and white."));
+        tooltip("edge_light", "A low _marker_ for runway, taxiway and platform edges, bright enough to read from the air. Vehicles and players pass over it, and hundreds cost next to nothing.",
+                behaviour("When placed", "Glows _white_ and gives a little block light."),
+                behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
+                action("When R-clicked with Dye", "Changes its colour. It does not colour the blocks round it."));
     }
 
     private record Line(boolean action, String condition, String text) {

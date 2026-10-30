@@ -9,6 +9,7 @@ import com.goldskinmc.lightworks.beam.PanTilt;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
+import com.goldskinmc.lightworks.content.signal.EdgeLightBlock;
 import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.light.ProjectedTint;
@@ -39,6 +40,7 @@ import com.simibubi.create.content.kinetics.motor.CreativeMotorBlock;
 import com.simibubi.create.content.kinetics.motor.CreativeMotorBlockEntity;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
@@ -50,6 +52,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -72,7 +75,7 @@ final class Scenarios {
     static final Map<String, Supplier<Script>> ALL = new LinkedHashMap<>();
     /** What {@code -Pselftest=true} runs. */
     static final String DEFAULT =
-            "fixed,aim,floodlight,pantilt,beacon,warning,navigation,goggles,colour,vehicle,bearing,piston,vehicle-fast";
+            "fixed,aim,floodlight,pantilt,beacon,warning,navigation,edge,goggles,colour,vehicle,bearing,piston,vehicle-fast";
 
     static {
         ALL.put("fixed", Scenarios::fixed);
@@ -93,6 +96,8 @@ final class Scenarios {
         // Not in the default set: heavier, or one-off
         ALL.put("load", () -> load("load", false));
         ALL.put("load-mix", () -> load("load-mix", true));
+        ALL.put("edge", Scenarios::edge);
+        ALL.put("load-edge", Scenarios::loadEdge);
         ALL.put("load-lamps-steady", () -> loadLamps("load-lamps-steady", WarningPattern.STEADY));
         ALL.put("load-lamps-blink", () -> loadLamps("load-lamps-blink", WarningPattern.BLINK));
         ALL.put("load-lamps-strobe", () -> loadLamps("load-lamps-strobe", WarningPattern.STROBE));
@@ -489,7 +494,7 @@ final class Scenarios {
      */
     static Script ponder() {
         String plan = String.join(",", Stream.of("searchlight", "floodlight", "pan_tilt_head", "rotating_beacon",
-                "warning_light", "headlight", "tail_light", "navigation_light")
+                "warning_light", "headlight", "tail_light", "navigation_light", "edge_light")
                 .map(block -> Lightworks.MOD_ID + ":" + block).toList());
         return new Script("ponder")
                 .run(stage -> {
@@ -533,6 +538,7 @@ final class Scenarios {
                             .setValue(RotatingBeaconBlock.FACING, Direction.UP));
                     stage.set(d.offset(2, 1, 0), LightworksBlocks.WARNING_LIGHT.getDefaultState()
                             .setValue(SignalLampBlock.FACING, Direction.UP));
+                    stage.set(d.offset(4, 1, 0), LightworksBlocks.EDGE_LIGHT.getDefaultState());
                     stage.set(d.offset(0, 0, -2), LightworksBlocks.FLOODLIGHT.getDefaultState()
                             .setValue(DirectionalLightBlock.FACING, Direction.NORTH));
                     stage.lightAt(d.offset(0, 0, -2)).aimAlong(new Vec3(0, -0.7, -1));
@@ -1028,7 +1034,14 @@ final class Scenarios {
                 })
                 .waitTicks(30)
                 .shot("goggles-0-searchlight")
-                .run(stage -> SelfTestBridge.focus = Vec3.atCenterOf(at[1]).add(0, -0.2, 0))
+                .run(stage -> {
+                    // A notch where the centre ray lands: the Beam line should still name the stone round it
+                    stage.set(stage.at(2, 1, 10), Blocks.AIR.defaultBlockState());
+                    List<Component> lines = new ArrayList<>();
+                    stage.lightAt(at[0]).addToGoggleTooltip(lines, false);
+                    stage.log("goggles: with a notch at the centre ray: %s", lines.get(lines.size() - 2).getString().trim());
+                    SelfTestBridge.focus = Vec3.atCenterOf(at[1]).add(0, -0.2, 0);
+                })
                 .waitTicks(10)
                 .shot("goggles-1-warning")
                 .run(stage -> {
@@ -1328,6 +1341,130 @@ final class Scenarios {
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
                 });
+    }
+
+    /**
+     * Edge Lights: a dyed row at night, then the lens's full-bright glow on the moves, since it comes from the
+     * baked model: on a bearing's arm (Create contraption) and on a Sable vehicle if installed. The lenses should
+     * glow in every shot and the moving ones keep their colours.
+     */
+    static Script edge() {
+        DyeColor[] colours = {DyeColor.WHITE, DyeColor.BLUE, DyeColor.GREEN, DyeColor.RED, DyeColor.YELLOW};
+        BlockPos[] motor = new BlockPos[1];
+        Script script = new Script("edge")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(0, -4);
+                    for (int x = -6; x <= 6; x++) {
+                        stage.set(stage.at(x, 0, 4), LightworksBlocks.EDGE_LIGHT.getDefaultState()
+                                .setValue(EdgeLightBlock.COLOUR, colours[Math.floorMod(x, colours.length)]));
+                    }
+                    // Mounted on every side of one block: each lens should point straight out of its face
+                    BlockPos mount = stage.at(0, 2, 6);
+                    stage.set(mount, Blocks.STONE.defaultBlockState());
+                    for (Direction side : Direction.values()) {
+                        if (side != Direction.SOUTH) {
+                            stage.set(mount.relative(side), LightworksBlocks.EDGE_LIGHT.getDefaultState()
+                                    .setValue(EdgeLightBlock.FACING, side));
+                        }
+                    }
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 1, 4));
+                })
+                .waitTicks(40)
+                .shot("edge-0-row")
+                .run(stage -> {
+                    stage.restoreBlocks();
+                    stage.hover(-1, 9, 4);
+                    motor[0] = stage.at(0, 5, 8);
+                    BlockPos bearing = motor[0].above();
+                    stage.reserve(bearing.offset(-4, 0, -4), bearing.offset(4, 3, 4));
+                    for (int x = 0; x <= 3; x++) {
+                        stage.set(bearing.offset(x, 1, 0), Blocks.OAK_PLANKS.defaultBlockState());
+                        stage.set(bearing.offset(x, 2, 0), LightworksBlocks.EDGE_LIGHT.getDefaultState()
+                                .setValue(EdgeLightBlock.COLOUR, colours[x]));
+                    }
+                    stage.level.addFreshEntity(new SuperGlueEntity(stage.level,
+                            AABB.encapsulatingFullBlocks(bearing.above(), bearing.offset(3, 2, 0))));
+                    stage.set(bearing, AllBlocks.MECHANICAL_BEARING.getDefaultState()
+                            .setValue(DirectionalKineticBlock.FACING, Direction.UP));
+                    SelfTestBridge.focus = Vec3.atCenterOf(bearing.above());
+                })
+                .waitTicks(20)
+                .run(stage -> {
+                    stage.set(motor[0], AllBlocks.CREATIVE_MOTOR.getDefaultState()
+                            .setValue(CreativeMotorBlock.FACING, Direction.UP));
+                    setMotorSpeed(stage, motor[0], 8);
+                })
+                .waitTicks(40)
+                .shot("edge-1-bearing")
+                .run(stage -> {
+                    setMotorSpeed(stage, motor[0], 0);
+                    stage.discardContraptions(motor[0], 6);
+                    stage.restoreBlocks();
+                    stage.discardContraptions(motor[0], 6);
+                });
+        if (!ModList.get().isLoaded("sable")) {
+            return script.run(stage -> {
+                SelfTestBridge.focus = null;
+                stage.log("edge: vehicle part skipped, Sable is not installed");
+            });
+        }
+        return script.run(stage -> {
+                    BlockPos deck = stage.at(0, 6, 6);
+                    stage.hover(0, 10, 1);
+                    for (int x = -4; x <= 4; x++) {
+                        for (int z = -1; z <= 1; z++) {
+                            stage.set(deck.offset(x, 0, z), Blocks.OAK_PLANKS.defaultBlockState());
+                        }
+                        stage.set(deck.offset(x, 1, -1), LightworksBlocks.EDGE_LIGHT.getDefaultState()
+                                .setValue(EdgeLightBlock.COLOUR, colours[Math.floorMod(x, colours.length)]));
+                        stage.set(deck.offset(x, 1, 1), LightworksBlocks.EDGE_LIGHT.getDefaultState()
+                                .setValue(EdgeLightBlock.COLOUR, colours[Math.floorMod(x, colours.length)]));
+                    }
+                    BlockPos from = deck.offset(-4, 0, -1);
+                    BlockPos to = deck.offset(4, 1, 1);
+                    stage.run("sable paused true");
+                    stage.run("sable assemble area " + from.getX() + " " + from.getY() + " " + from.getZ() + " "
+                            + to.getX() + " " + to.getY() + " " + to.getZ());
+                    SelfTestBridge.focus = Vec3.atCenterOf(deck);
+                })
+                .waitTicks(40)
+                .shot("edge-2-vehicle")
+                .run(stage -> {
+                    stage.run("sable remove @l");
+                    stage.run("sable paused false");
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * 200 Edge Lights in two long rows on the ground, against the same ground empty: their frame and tick
+     * cost, which should be small enough not to matter.
+     */
+    static Script loadEdge() {
+        Script script = new Script("load-edge")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(0, -8);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 0, 8));
+                })
+                .waitTicks(60);
+        measure(script, "load-edge-without", 200, (stage, i) -> {
+        });
+        script.run(stage -> {
+            for (int i = 0; i < 100; i++) {
+                stage.set(stage.at(-25 + i / 2, 0, 4 + (i % 2) * 8), LightworksBlocks.EDGE_LIGHT.getDefaultState());
+                stage.set(stage.at(-25 + i / 2, 0, 6 + (i % 2) * 8), LightworksBlocks.EDGE_LIGHT.getDefaultState()
+                        .setValue(EdgeLightBlock.COLOUR, DyeColor.BLUE));
+            }
+        }).waitTicks(60);
+        measure(script, "load-edge-with-200", 200, (stage, i) -> {
+        });
+        return script.shot("load-edge-200").run(stage -> {
+            SelfTestBridge.focus = null;
+            stage.restoreBlocks();
+        });
     }
 
     /**

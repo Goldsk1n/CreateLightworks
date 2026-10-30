@@ -8,8 +8,10 @@ import com.goldskinmc.lightworks.content.directional.DirectionalLightRenderer;
 import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlockEntity;
 import com.goldskinmc.lightworks.content.beacon.RotatingBeaconRenderer;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlockEntity;
+import com.goldskinmc.lightworks.content.signal.EdgeLightBlockEntity;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
+import com.goldskinmc.lightworks.content.signal.EdgeLightRenderer;
 import com.goldskinmc.lightworks.content.signal.SignalLampRenderer;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadRenderer;
 import com.goldskinmc.lightworks.light.BeamLightBlockEntity;
@@ -42,6 +44,12 @@ public final class LightworksBlockEntities {
             LightworksBlocks.TAIL_LIGHT);
     public static final BlockEntityEntry<SignalLampBlockEntity> NAVIGATION_LIGHT = signal("navigation_light",
             LightworksBlocks.NAVIGATION_LIGHT);
+
+    public static final BlockEntityEntry<EdgeLightBlockEntity> EDGE_LIGHT = REGISTRATE
+            .blockEntity("edge_light", EdgeLightBlockEntity::new)
+            .renderer(() -> EdgeLightRenderer::new)
+            .validBlocks(LightworksBlocks.EDGE_LIGHT)
+            .register();
 
     public static final BlockEntityEntry<BeamLightBlockEntity> BEAM_LIGHT = REGISTRATE
             .<BeamLightBlockEntity>blockEntity("beam_light", (type, pos, state) -> new BeamLightBlockEntity(pos, state))

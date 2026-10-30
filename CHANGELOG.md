@@ -7,19 +7,23 @@ First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 
 ### Blocks
 
 - **Searchlight**: a long, narrow beam that lights the block it points at (full to 32 blocks, dark by 48).
-  Aims where you look when placed; right-click with a Wrench to aim it again.
-- **Floodlight**: a wide, short cone (full to 12 blocks, dark by 20) for lighting an area.
+  Placed level, facing away from you; hold right-click on its Pan and Tilt boxes to aim it, to the degree.
+- **Floodlight**: a wide, short cone (full to 12 blocks, dark by 20) for lighting an area; standing still it
+  lights several spots, so it follows notches and uneven walls.
 - **Pan-Tilt Head**: kinetic mount under a Searchlight or Floodlight. Shaft rotation pans it, an analog
   redstone signal tilts it 6° per level.
 - **Rotating Beacon**: two opposite beams that sweep round with shaft speed; lights where they land once
   stopped.
-- **Warning Light**: amber lamp with steady, blink, pulse and flash patterns (value panel); the light it
-  casts follows the pattern.
+- **Warning Light**: amber lamp with steady, blink, opposite blink, pulse, double flash and strobe patterns,
+  always or only at night (value box); the light it casts follows the pattern.
 - **Headlight**: forward beam for vehicles. On a moving contraption, train or Sable vehicle only the
   Headlights facing the way it travels light up, so they swap when it reverses. Powered at assembly, a
   Headlight stays lit both ways.
 - **Tail and Brake Light**: red lamp that brightens for a second when its vehicle slows down.
 - **Navigation Light**: red, green or white marker, coloured by how it is placed; the Wrench cycles it.
+- **Edge Light**: low marker for runways, taxiways and platforms. Dye colours its lens, redstone dims it, you can
+  walk and roll over it, and it moves with contraptions and Sable vehicles. Nothing ticks, so it can be placed by
+  the hundred; a recipe makes eight.
 
 ### Everywhere
 
@@ -28,7 +32,7 @@ First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 
 - Redstone dims every light (15 − signal); server config `invertRedstone` makes them light only when
   powered. On contraptions the signal is read at assembly, and Contraption Controls switch lights.
 - Dye any light to colour its lens, its beam and the light it casts: a red Searchlight paints a red
-  spot. Signal lamps colour the blocks round them too (amber, red, green), placed or on a moving
+  spot, and overlapping colours add up: red and green make yellow. Signal lamps colour the blocks round them too (amber, red, green), placed or on a moving
   contraption, train or Sable vehicle. Drawn by the mod itself, so it
   works with the vanilla renderer and Sodium; off under Iris shader packs, and switchable with the client
   config `colouredLight`. Block light itself stays white (Minecraft has no coloured block light).
