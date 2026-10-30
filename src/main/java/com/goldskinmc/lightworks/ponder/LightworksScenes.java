@@ -113,11 +113,12 @@ final class LightworksScenes {
                 .pointAt(top);
         scene.idle(80);
 
-        scene.overlay().showControls(top, Pointing.DOWN, 40).rightClick().withItem(AllItems.WRENCH.asStack());
+        Vec3 boards = util.vector().blockSurface(light, Direction.WEST).add(0, -0.25, 0);
+        scene.overlay().showControls(boards, Pointing.LEFT, 40).rightClick();
         scene.idle(7);
         aim(scene, util, light, Direction.UP,
-                PonderSchematics.face(Layouts.Searchlight.TARGET_AFTER_WRENCH, Direction.WEST));
-        scene.overlay().showText(80).attachKeyFrame().sharedText("aim").placeNearTarget().pointAt(top);
+                PonderSchematics.face(Layouts.Searchlight.TARGET_AFTER_AIM, Direction.WEST));
+        scene.overlay().showText(80).attachKeyFrame().sharedText("aim").placeNearTarget().pointAt(boards);
         scene.idle(90);
 
         BlockPos lever = Layouts.Searchlight.LEVER;
@@ -179,11 +180,12 @@ final class LightworksScenes {
         scene.idle(90);
 
         Vec3 front = util.vector().topOf(light);
-        scene.overlay().showControls(front, Pointing.DOWN, 40).rightClick().withItem(AllItems.WRENCH.asStack());
+        Vec3 boards = front.add(-0.25, 0, 0);
+        scene.overlay().showControls(boards, Pointing.DOWN, 40).rightClick();
         scene.idle(7);
         aim(scene, util, light, Direction.EAST,
-                PonderSchematics.face(Layouts.Floodlight.TARGET_AFTER_WRENCH, Direction.UP));
-        scene.overlay().showText(80).attachKeyFrame().sharedText("aim").placeNearTarget().pointAt(front);
+                PonderSchematics.face(Layouts.Floodlight.TARGET_AFTER_AIM, Direction.UP));
+        scene.overlay().showText(80).attachKeyFrame().sharedText("aim").placeNearTarget().pointAt(boards);
         scene.idle(90);
         scene.overlay().showText(80)
                 .text("It always points away from the face it is mounted on")

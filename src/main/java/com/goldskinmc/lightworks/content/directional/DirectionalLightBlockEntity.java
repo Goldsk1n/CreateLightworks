@@ -3,6 +3,7 @@ package com.goldskinmc.lightworks.content.directional;
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.beam.Aim;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
+import com.goldskinmc.lightworks.beam.PanTilt;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.compat.DynamicLights;
 import com.goldskinmc.lightworks.content.LightGoggles;
@@ -51,6 +52,9 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
     /** Head angles written for contraption copies, which cannot see the head. */
     static final String HEAD_YAW = "HeadYaw";
     static final String HEAD_ELEVATION = "HeadElevation";
+    /** The values last set on the Pan and Tilt boards, kept because a wall light's aim rounds them. */
+    private static final String BOARD_PAN = "BoardPan";
+    private static final String BOARD_TILT = "BoardTilt";
     /** How often the beam is re-traced to notice blocks placed or removed in its path. */
     private static final int RETRACE_INTERVAL_TICKS = 5;
 
@@ -75,6 +79,9 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
     private float[] headAngles;
     /** Headlight on a Sable vehicle, client only: last seen moving the way it points. */
     private boolean leading = true;
+    /** The Pan and Tilt boards' last values, or null; used while they still give the stored aim. */
+    @Nullable
+    private PanTilt board;
 
     public DirectionalLightBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState blockState) {
         super(type, pos, blockState);
@@ -86,6 +93,8 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
 
     @Override
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {
+        behaviours.add(new AimBoard(this, true));
+        behaviours.add(new AimBoard(this, false));
     }
 
     public LightType lightType() {
@@ -122,6 +131,38 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
     public boolean aimAlong(Vec3 look) {
         Direction facing = mountFacing();
         return setAim(Aim.fromDirection(facing.getStepX(), facing.getStepY(), facing.getStepZ(), look.x, look.y, look.z));
+    }
+
+    /** The aim as the Pan and Tilt boards show it. */
+    public PanTilt panTilt() {
+        Direction f = mountFacing();
+        if (board != null && board.matches(f.getStepX(), f.getStepY(), f.getStepZ(), state.aim())) {
+            return board;
+        }
+        return PanTilt.of(f.getStepX(), f.getStepY(), f.getStepZ(), state.aim());
+    }
+
+    /** Aims the light from board values, limited to what its mount allows. The server syncs it to clients. */
+    public void setPanTilt(PanTilt value) {
+        Direction f = mountFacing();
+        PanTilt limited = value.clamp(f.getStepY());
+        boolean boardChanged = !limited.equals(board);
+        board = limited;
+        if (!setAim(limited.toAim(f.getStepX(), f.getStepY(), f.getStepZ())) && boardChanged) {
+            // Pan moved while the light points straight up or down: same beam, new board value
+            setChanged();
+            if (level != null && !level.isClientSide) {
+                sendData();
+            }
+        }
+    }
+
+    /**
+     * The aim a newly placed light starts with: level, and on a floor or ceiling turned the way the
+     * player faces ({@code heading}, a horizontal direction); on a wall straight out.
+     */
+    public void aimLevel(Direction heading) {
+        setPanTilt(mountFacing().getAxis().isVertical() ? new PanTilt((int) heading.toYRot() - 180, 0) : PanTilt.LEVEL);
     }
 
     /** The Pan-Tilt Head this light is mounted on, or null. */
@@ -393,11 +434,14 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
             LightGoggles.line(tooltip, state.signal() == 0 ? "headlight_auto" : "headlight_manual", ChatFormatting.AQUA);
         }
         PanTiltHeadBlockEntity head = head();
-        float[] angles = aimAngles(0);
         if (head != null) {
-            LightGoggles.line(tooltip, "aim_head", ChatFormatting.AQUA, Math.round(angles[1]), Math.round(angles[0]));
+            float[] angles = aimAngles(0);
+            Direction f = mountFacing();
+            PanTilt byHead = PanTilt.of(f.getStepX(), f.getStepY(), f.getStepZ(),
+                    new Aim(Math.round(angles[0]), Math.round(angles[1])));
+            LightGoggles.line(tooltip, "aim_head", ChatFormatting.AQUA, pan(byHead), tilt(byHead));
         } else {
-            LightGoggles.line(tooltip, "aim", ChatFormatting.AQUA, state.aim().elevation(), state.aim().yaw());
+            LightGoggles.line(tooltip, "aim", ChatFormatting.AQUA, pan(panTilt()), tilt(panTilt()));
         }
         if (state.on() && brightness() > 0 && level != null) {
             BeamPose beam = tickBeam();
@@ -425,10 +469,22 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         return true;
     }
 
+    private static String pan(PanTilt aim) {
+        return (aim.pan() < 0 ? "⟲ " : "⟳ ") + Math.abs(aim.pan()) + "°";
+    }
+
+    private static String tilt(PanTilt aim) {
+        return (aim.tilt() < 0 ? "↓ " : "↑ ") + Math.abs(aim.tilt()) + "°";
+    }
+
     @Override
     protected void write(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
         super.write(tag, registries, clientPacket);
         state.write(tag);
+        if (board != null) {
+            tag.putInt(BOARD_PAN, board.pan());
+            tag.putInt(BOARD_TILT, board.tilt());
+        }
         if (!clientPacket) {
             serverLight.save(tag);
             if (headAngles != null) {
@@ -442,6 +498,7 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
     protected void read(CompoundTag tag, HolderLookup.Provider registries, boolean clientPacket) {
         super.read(tag, registries, clientPacket);
         state.read(tag);
+        board = tag.contains(BOARD_TILT) ? new PanTilt(tag.getInt(BOARD_PAN), tag.getInt(BOARD_TILT)) : null;
         if (!clientPacket) {
             serverLight.load(tag);
         }

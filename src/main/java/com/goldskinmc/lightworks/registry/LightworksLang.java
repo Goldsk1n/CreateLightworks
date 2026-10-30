@@ -27,10 +27,12 @@ public final class LightworksLang {
         add("lightworks.goggles.off_unpowered", "no redstone signal (inverted redstone)");
         add("lightworks.goggles.signal.label", "Redstone signal:");
         add("lightworks.goggles.signal", "%s");
+        add("lightworks.aim.pan", "Pan");
+        add("lightworks.aim.tilt", "Tilt");
         add("lightworks.goggles.aim.label", "Aim:");
-        add("lightworks.goggles.aim", "%s° up, %s° round");
+        add("lightworks.goggles.aim", "pan %s, tilt %s");
         add("lightworks.goggles.aim_head.label", "Aim:");
-        add("lightworks.goggles.aim_head", "%s° up, %s° round, by the Pan-Tilt Head");
+        add("lightworks.goggles.aim_head", "pan %s, tilt %s, by the Pan-Tilt Head");
         add("lightworks.goggles.beam_hit.label", "Beam:");
         add("lightworks.goggles.beam_hit", "lands on %s %s blocks away, light %s");
         add("lightworks.goggles.beam_miss.label", "Beam:");
@@ -69,7 +71,7 @@ public final class LightworksLang {
         add("lightworks.navigation.port", "port (red)");
         add("lightworks.navigation.starboard", "starboard (green)");
         add("lightworks.navigation.stern", "stern (white)");
-        add("lightworks.goggles.hint.aim", "Wrench: aim where you look");
+        add("lightworks.goggles.hint.aim", "Hold R-click on Pan or Tilt to aim");
         add("lightworks.goggles.hint.on_head", "Aimed by the Pan-Tilt Head below");
         add("lightworks.goggles.hint.dye", "Dye: colour the lens, beam and light");
         add("lightworks.goggles.hint.redstone", "Redstone dims it; 15 turns it off");
@@ -100,19 +102,19 @@ public final class LightworksLang {
      */
     private static void tooltips() {
         tooltip("searchlight", "A long, narrow _beam_ that lights the block it points at: full out to _32 blocks_, dark by 48. Keeps landing where it points on contraptions, trains and Sable vehicles.",
-                behaviour("When placed", "Aims where you are looking. Mount it on a _Pan-Tilt Head_ to sweep it round."),
+                behaviour("When placed", "Points _level_, away from you. Mount it on a _Pan-Tilt Head_ to sweep it round."),
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
-                action("When R-clicked with a Wrench", "Aims it where you are looking."),
+                action("When R-click is held on Pan or Tilt", "Turns it round, or tilts it up and down."),
                 action("When R-clicked with Dye", "Colours the lens, the beam and the light it casts."));
         tooltip("floodlight", "A wide _cone_ for lighting an area: bright out to _12 blocks_, dark by 20. Mount it high and aim it down.",
-                behaviour("When placed", "Aims where you are looking, away from the face it is mounted on."),
+                behaviour("When placed", "Points _level_: away from you on a floor or ceiling, straight out of a wall."),
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
-                action("When R-clicked with a Wrench", "Aims it where you are looking."),
+                action("When R-click is held on Pan or Tilt", "Turns it round, or tilts it up and down."),
                 action("When R-clicked with Dye", "Colours the lens, the beam and the light it casts."));
         tooltip("headlight", "A forward _beam_ for vehicles. On a moving contraption, train or Sable vehicle it lights only while _leading_, so Headlights at both ends swap over when it reverses.",
                 behaviour("When powered at assembly", "Stays lit _both ways_, dimmed by the signal."),
-                behaviour("When placed", "Always lit: a Searchlight with a shorter, wider beam."),
-                action("When R-clicked with a Wrench", "Aims it where you are looking."),
+                behaviour("When placed", "Always lit: a Searchlight with a shorter, wider beam, pointing _level_."),
+                action("When R-click is held on Pan or Tilt", "Turns it round, or tilts it up and down."),
                 action("When R-clicked with Dye", "Colours the lens, the beam and the light it casts."));
         tooltip("pan_tilt_head", "A kinetic mount for a _Searchlight_ or _Floodlight_ placed on top of it.",
                 behaviour("When rotated", "_Pans_ the light round, as fast as the shaft turns."),

@@ -46,8 +46,11 @@ public final class LightworksGameTests {
         helper.succeed();
     }
 
-    /** Reference for the light scenarios: block light around a source settles within a few ticks. */
-    @GameTest(template = EMPTY)
+    /**
+     * Reference for the light scenarios: block light around a source settles. It takes real time, and game
+     * test ticks are short (see S1 in {@link BeamLightGameTests}), hence the long timeout.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 1000)
     public static void blockLightProbeReadsLightLevels(GameTestHelper helper) {
         BlockPos source = new BlockPos(2, 2, 2);
         helper.setBlock(source, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15));

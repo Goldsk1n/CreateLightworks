@@ -1,6 +1,7 @@
 package com.goldskinmc.lightworks.gametest;
 
 import com.goldskinmc.lightworks.Lightworks;
+import com.goldskinmc.lightworks.content.directional.AimBoard;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
@@ -24,6 +25,20 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 @PrefixGameTestTemplate(false)
 public final class DyeGameTests {
     private DyeGameTests() {
+    }
+
+    /** Dye skips the Pan and Tilt boxes so the click reaches the light; other items still open the boards. */
+    @GameTest(template = "empty")
+    public static void dyeClicksPassTheAimBoards(GameTestHelper helper) {
+        BlockPos pos = new BlockPos(2, 1, 2);
+        helper.setBlock(pos, LightworksBlocks.SEARCHLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.UP));
+        DirectionalLightBlockEntity light = helper.getBlockEntity(pos);
+        for (AimBoard board : new AimBoard[] {light.getBehaviour(AimBoard.PAN), light.getBehaviour(AimBoard.TILT)}) {
+            helper.assertTrue(board.bypassesInput(new ItemStack(Items.RED_DYE)), "dye stops at a box");
+            helper.assertFalse(board.bypassesInput(new ItemStack(Items.STICK)), "other items skip the box");
+            helper.assertFalse(board.bypassesInput(ItemStack.EMPTY), "an empty hand skips the box");
+        }
+        helper.succeed();
     }
 
     @GameTest(template = "empty")

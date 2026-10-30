@@ -37,8 +37,9 @@ import org.jetbrains.annotations.Nullable;
  * {@link LightType}. {@link #FACING} is the side it is mounted on (pointing away from the surface it was
  * placed against); the block entity stores where the beam points relative to that mount.
  * <p>
- * Aim is "point where I look": placing the light, or right-clicking it with a Wrench, aims it along the
- * player's look direction. A sneaking Wrench picks it up as usual.
+ * A light is placed level: on a floor or ceiling turned the way the player faces, on a wall straight out.
+ * From there it is aimed on its Pan and Tilt value boards ({@link AimBoard}). A Wrench does nothing but
+ * pick it up when sneaking, as usual.
  */
 public class DirectionalLightBlock extends DirectionalBlock implements IBE<DirectionalLightBlockEntity>, IWrenchable {
     private final LightType lightType;
@@ -76,28 +77,19 @@ public class DirectionalLightBlock extends DirectionalBlock implements IBE<Direc
         return defaultBlockState().setValue(FACING, context.getClickedFace());
     }
 
-    /** Placement aims the light where the player looks, like the Wrench. */
+    /** Placed level, facing away from the player (see {@link DirectionalLightBlockEntity#aimLevel}). */
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
         if (placer != null) {
-            withBlockEntityDo(level, pos, light -> light.aimAlong(placer.getLookAngle()));
+            withBlockEntityDo(level, pos, light -> light.aimLevel(placer.getDirection()));
         }
     }
 
+    /** Aim is set on the value boards; turning the block would only take it off its mount. */
     @Override
     public InteractionResult onWrenched(BlockState state, UseOnContext context) {
-        Player player = context.getPlayer();
-        if (player == null) {
-            return InteractionResult.PASS;
-        }
-        Level level = context.getLevel();
-        withBlockEntityDo(level, context.getClickedPos(), light -> {
-            if (light.aimAlong(player.getLookAngle()) && !level.isClientSide) {
-                IWrenchable.playRotateSound(level, context.getClickedPos());
-            }
-        });
-        return InteractionResult.SUCCESS;
+        return InteractionResult.PASS;
     }
 
     /** Dyes tint the lens and beam. */
