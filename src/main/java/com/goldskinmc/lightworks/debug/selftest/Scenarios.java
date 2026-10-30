@@ -9,6 +9,7 @@ import com.goldskinmc.lightworks.beam.PanTilt;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
+import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlockEntity;
 import com.goldskinmc.lightworks.content.signal.EdgeLightBlock;
 import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
 import com.goldskinmc.lightworks.debug.Timer;
@@ -52,6 +53,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
@@ -75,13 +77,14 @@ final class Scenarios {
     static final Map<String, Supplier<Script>> ALL = new LinkedHashMap<>();
     /** What {@code -Pselftest=true} runs. */
     static final String DEFAULT =
-            "fixed,aim,floodlight,pantilt,beacon,warning,navigation,edge,goggles,colour,vehicle,bearing,piston,vehicle-fast";
+            "fixed,aim,floodlight,pantilt,beacon,warning,navigation,edge,sweep,goggles,colour,vehicle,bearing,piston,vehicle-fast";
 
     static {
         ALL.put("fixed", Scenarios::fixed);
         ALL.put("aim", Scenarios::aim);
         ALL.put("floodlight", Scenarios::floodlight);
         ALL.put("pantilt", Scenarios::panTilt);
+        ALL.put("sweep", Scenarios::sweep);
         ALL.put("beacon", Scenarios::beacon);
         ALL.put("warning", Scenarios::warning);
         ALL.put("navigation", Scenarios::navigation);
@@ -326,6 +329,70 @@ final class Scenarios {
                 .shot("pantilt-1-stopped")
                 .run(stage -> {
                     SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * A Searchlight on a Pan-Tilt Head sweeping 45 degrees either way at 16 RPM (4.8 degrees a tick): the head's
+     * pan should stay within 45 of where it started and reach both ends, with the spot following on the client
+     * at every reversal. Then the box shown, and back to a full circle: the pan should go past 45.
+     */
+    static Script sweep() {
+        BlockPos[] at = new BlockPos[3];
+        float[] range = {0, 0};
+        Script script = new Script("sweep")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(0, -4);
+                    at[0] = stage.at(0, 9, 8);
+                    at[1] = at[0].below();
+                    at[2] = at[0].below(2);
+                    stage.set(at[1], LightworksBlocks.PAN_TILT_HEAD.getDefaultState()
+                            .setValue(PanTiltHeadBlock.FACING, Direction.DOWN));
+                    stage.set(at[2], searchlight(Direction.DOWN));
+                    stage.set(at[1].east().below(), Blocks.GLASS.defaultBlockState());
+                    stage.set(at[1].east(), Blocks.LIGHT_WEIGHTED_PRESSURE_PLATE.defaultBlockState()
+                            .setValue(WeightedPressurePlateBlock.POWER, 10));
+                    stage.set(at[0], AllBlocks.CREATIVE_MOTOR.getDefaultState()
+                            .setValue(CreativeMotorBlock.FACING, Direction.DOWN));
+                    ((PanTiltHeadBlockEntity) stage.level.getBlockEntity(at[1]))
+                            .getBehaviour(ScrollValueBehaviour.TYPE).setValue(9);
+                    setMotorSpeed(stage, at[0], 16);
+                    SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 0, 8)).add(0.5, 0, 0.5);
+                })
+                // Time for the tilt to reach the plate's signal
+                .waitTicks(30)
+                .run(stage -> {
+                    SelfTestBridge.probeGroundY = stage.origin.getY();
+                    SelfTestBridge.probeAxis = Vec3.atCenterOf(at[2]);
+                    SelfTestBridge.probe = "sweep";
+                    SelfTestBridge.recording = "sweep";
+                });
+        for (int i = 0; i < 120; i++) {
+            script.waitTicks(1).run(stage -> {
+                float yaw = Mth.wrapDegrees(((PanTiltHeadBlockEntity) stage.level.getBlockEntity(at[1])).yaw(0));
+                range[0] = Math.min(range[0], yaw);
+                range[1] = Math.max(range[1], yaw);
+            });
+        }
+        return script.run(stage -> {
+                    SelfTestBridge.recording = null;
+                    SelfTestBridge.probe = null;
+                    SelfTestBridge.probeAxis = null;
+                    stage.log("sweep: pan went from %.1f to %.1f (expected about -45 to 45)", range[0], range[1]);
+                    SelfTestBridge.showGui = true;
+                    SelfTestBridge.valueBoard = at[1];
+                    SelfTestBridge.focus = Vec3.atCenterOf(at[1]);
+                    stage.hover(3, 8, 5);
+                })
+                .waitTicks(20)
+                .shot("sweep-0-board")
+                .run(stage -> {
+                    SelfTestBridge.valueBoard = null;
+                    SelfTestBridge.showGui = false;
+                    SelfTestBridge.focus = null;
+                    setMotorSpeed(stage, at[0], 0);
                     stage.restoreBlocks();
                 });
     }

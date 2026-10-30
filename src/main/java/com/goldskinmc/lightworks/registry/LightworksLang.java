@@ -54,6 +54,8 @@ public final class LightworksLang {
         add("lightworks.goggles.pan_tilt", "%s° round, %s° up");
         add("lightworks.goggles.tilt_signal.label", "Redstone signal:");
         add("lightworks.goggles.tilt_signal", "%s, tilts to %s°");
+        add("lightworks.goggles.sweep.label", "Sweep:");
+        add("lightworks.goggles.sweep", "%s");
         add("lightworks.goggles.beacon_turning.label", "Rotor:");
         add("lightworks.goggles.beacon_turning", "turning, beams sweep round");
         add("lightworks.goggles.beacon_stopped.label", "Rotor:");
@@ -77,6 +79,11 @@ public final class LightworksLang {
         add("lightworks.goggles.hint.redstone", "Redstone dims it; 15 turns it off");
         add("lightworks.goggles.hint.redstone_inverted", "Redstone lights it; brighter the stronger");
         add("lightworks.goggles.hint.pan_tilt", "Shaft pans the light on top; redstone tilts it 6° a level");
+        add("lightworks.goggles.hint.sweep", "Hold R-click on the box to set how far it sweeps back and forth");
+        add("lightworks.pan_tilt_head.sweep", "Sweep");
+        add("lightworks.pan_tilt_head.arc_row", "Arc");
+        add("lightworks.pan_tilt_head.sweep_off", "Off");
+        add("lightworks.pan_tilt_head.arc", "±%s°");
         add("lightworks.goggles.hint.beacon", "Shaft speed sets the sweep");
         add("lightworks.goggles.hint.pattern", "Hold R-click on the box to pick the pattern, and always or night only");
         add("lightworks.goggles.hint.navigation", "Wrench: change the side colour");
@@ -125,7 +132,8 @@ public final class LightworksLang {
                 action("When R-clicked with Dye", "Colours the lens, the beam and the light it casts."));
         tooltip("pan_tilt_head", "A kinetic mount for a _Searchlight_ or _Floodlight_ placed on top of it.",
                 behaviour("When rotated", "_Pans_ the light round, as fast as the shaft turns."),
-                behaviour("When powered by Redstone", "_Tilts_ the light up 6° per signal level, straight up at 15."));
+                behaviour("When powered by Redstone", "_Tilts_ the light up 6° per signal level, straight up at 15."),
+                action("When R-click is held on the box", "Makes it _sweep_ back and forth, this far either way of where it points now."));
         tooltip("rotating_beacon", "Two opposite _beams_ that sweep round with the shaft: a rotating warning beacon for towers, airships and trains.",
                 behaviour("When rotated", "The beams turn _as fast as the shaft_."),
                 behaviour("When stopped", "Lights where the beams land, like two fixed Searchlights."),

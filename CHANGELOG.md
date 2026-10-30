@@ -11,7 +11,8 @@ First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 
 - **Floodlight**: a wide, short cone (full to 12 blocks, dark by 20) for lighting an area; standing still it
   lights several spots, so it follows notches and uneven walls.
 - **Pan-Tilt Head**: kinetic mount under a Searchlight or Floodlight. Shaft rotation pans it, an analog
-  redstone signal tilts it 6° per level.
+  redstone signal tilts it 6° per level. Its value box makes it sweep back and forth, up to 180° either way of
+  where it points when set.
 - **Rotating Beacon**: two opposite beams that sweep round with shaft speed; lights where they land once
   stopped.
 - **Warning Light**: amber lamp with steady, blink, opposite blink, pulse, double flash and strobe patterns,

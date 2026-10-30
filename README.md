@@ -12,7 +12,7 @@ trains and [Create Aeronautics](https://modrinth.com/mod/create-aeronautics) veh
 | --- | --- | --- |
 | Searchlight | Long, narrow beam: full to 32 blocks, dark by 48 | Pan and Tilt boards, redstone, dye |
 | Floodlight | Wide cone: full to 12 blocks, dark by 20; lights several spots when fixed | Pan and Tilt boards, redstone, dye |
-| Pan-Tilt Head | Kinetic mount: shaft pans the light on top, analog redstone tilts it 6° per level | Shaft speed, redstone |
+| Pan-Tilt Head | Kinetic mount: shaft pans the light on top, full circle or sweeping back and forth; analog redstone tilts it 6° per level | Shaft speed, redstone, value box |
 | Rotating Beacon | Two opposite beams sweeping with shaft speed | Shaft speed, redstone, dye |
 | Warning Light | Amber lamp: steady, blink, opposite blink, pulse, double flash or strobe, always or only at night | Value box, redstone, dye |
 | Headlight | Forward beam; on a moving vehicle only the leading ones light | Redstone at assembly keeps it lit both ways |
