@@ -7,13 +7,17 @@ import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
 import com.goldskinmc.lightworks.content.signal.WarningPattern;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
+import com.simibubi.create.foundation.blockEntity.behaviour.ValueSettingsBehaviour;
+import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
 import java.util.HashSet;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -60,6 +64,55 @@ public final class SignalLampGameTests {
             helper.assertTrue(seen.contains(0) && seen.contains(12), "expected the light to go 12 and 0, saw " + seen);
             helper.succeed();
         });
+    }
+
+    /** Opposite Blink is lit exactly when Blink is not, and a strobe flashes once a second without relighting. */
+    @GameTest(template = EMPTY)
+    public static void patternsKeepTheirTiming(GameTestHelper helper) {
+        for (long t = 0; t < 100; t++) {
+            helper.assertTrue(WarningPattern.BLINK.at(t, 0) + WarningPattern.OPPOSITE_BLINK.at(t, 0) == 1,
+                    "blink and opposite blink should take turns at tick " + t);
+            helper.assertTrue(WarningPattern.STROBE.blockLight(t) == WarningPattern.STROBE.blockLight(0),
+                    "a strobe's block light should stay steady");
+        }
+        int flashes = 0;
+        for (long t = 0; t < 200; t++) {
+            if (WarningPattern.STROBE.at(t, 0) > 0 && WarningPattern.STROBE.at(t + 19, 0) == 0) {
+                flashes++;
+            }
+        }
+        helper.assertTrue(flashes == 10, "expected 10 flashes in 10 seconds, counted " + flashes);
+        helper.succeed();
+    }
+
+    /** Night only: dark by day, lit by night, and the board's lower row sets it; it is saved and synced. */
+    @GameTest(template = EMPTY, timeoutTicks = 60)
+    public static void nightOnlyLampFollowsTheClock(GameTestHelper helper) {
+        BlockPos lamp = new BlockPos(2, 1, 2);
+        helper.setBlock(lamp, LightworksBlocks.WARNING_LIGHT.getDefaultState().setValue(SignalLampBlock.FACING, Direction.UP));
+        SignalLampBlockEntity entity = helper.getBlockEntity(lamp);
+        entity.getBehaviour(ScrollValueBehaviour.TYPE).setValueSettings(null,
+                new ValueSettingsBehaviour.ValueSettings(1, WarningPattern.STEADY.ordinal()), false);
+        helper.assertTrue(entity.lightState().nightOnly(), "the lower row should set night only");
+
+        HolderLookup.Provider registries = helper.getLevel().registryAccess();
+        BlockEntity loaded = BlockEntity.loadStatic(entity.getBlockPos(), entity.getBlockState(),
+                entity.saveWithFullMetadata(registries), registries);
+        helper.assertTrue(loaded instanceof SignalLampBlockEntity copy && copy.lightState().nightOnly(), "night only lost when saved");
+        SignalLampBlockEntity client = new SignalLampBlockEntity(entity.getType(), entity.getBlockPos(), entity.getBlockState());
+        client.handleUpdateTag(entity.getUpdateTag(registries), registries);
+        helper.assertTrue(client.lightState().nightOnly(), "night only missing from the client update");
+
+        long before = helper.getLevel().getDayTime();
+        helper.startSequence()
+                .thenExecute(() -> helper.getLevel().setDayTime(1000))
+                .thenWaitUntil(() -> helper.assertTrue(helper.getBlockState(lamp).getValue(SignalLampBlock.LIGHT) == 0,
+                        "a night-only lamp should be dark by day"))
+                .thenExecute(() -> helper.getLevel().setDayTime(18000))
+                .thenWaitUntil(() -> helper.assertTrue(helper.getBlockState(lamp).getValue(SignalLampBlock.LIGHT) == 12,
+                        "a night-only lamp should shine at night"))
+                .thenExecute(() -> helper.getLevel().setDayTime(before))
+                .thenSucceed();
     }
 
     /** Facing the placer's left is port (red), their right starboard (green), anything else stern (white). */

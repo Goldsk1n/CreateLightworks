@@ -51,7 +51,7 @@ class ContentCompletenessTest {
     void warningPatternsAreNamedForEveryCreateVersion() throws IOException {
         String lang = Files.readString(ASSETS.resolve("lang/en_us.json"));
         List<String> missing = new ArrayList<>();
-        for (String pattern : List.of("steady", "blink", "pulse", "flash")) {
+        for (String pattern : List.of("steady", "blink", "opposite_blink", "pulse", "double_flash", "strobe")) {
             requireKey(lang, "lightworks.warning_pattern." + pattern, missing);
             requireKey(lang, "create.lightworks.warning_pattern." + pattern, missing);
         }

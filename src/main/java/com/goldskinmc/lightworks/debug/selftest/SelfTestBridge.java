@@ -1,6 +1,7 @@
 package com.goldskinmc.lightworks.debug.selftest;
 
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.core.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -34,6 +35,10 @@ final class SelfTestBridge {
     /** While set, the client records frame times under this name and reports them when it changes. */
     @Nullable
     static volatile String frameStats;
+
+    /** While set, the client shows the value board of the block entity here, as a player holding its box does. */
+    @Nullable
+    static volatile BlockPos valueBoard;
 
     /** Screenshot requests: the client takes shot {@code shotRequested} and then sets {@code shotDone}. */
     static volatile int shotRequested;

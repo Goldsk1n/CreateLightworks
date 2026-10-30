@@ -92,7 +92,8 @@ public class SignalLampMovement implements MovementBehaviour {
             return;
         }
         float intensity = context.disabled ? 0 : SignalLampBlockEntity.intensity(type, moving.state.brightness(),
-                WarningPattern.of(moving.state.pattern()), moving.brake.braking(), context.world.getGameTime(), 0);
+                WarningPattern.of(moving.state.pattern()), shining(context, moving), moving.brake.braking(),
+                context.world.getGameTime(), 0);
         int rgb = rgb(context, moving);
         if (moving.glowAt == null || moving.glowAt.distanceToSqr(at) > GLOW_MOVE * GLOW_MOVE || rgb != moving.glowRgb) {
             moving.glow.glow(context.world, at, Math.min(MAX_MOVING_RADIUS, SignalLampBlockEntity.glowRadius(type)), rgb,
@@ -103,6 +104,10 @@ public class SignalLampMovement implements MovementBehaviour {
             moving.glow.setBrightness(intensity);
         }
         moving.glow.keepAlive(context.world);
+    }
+
+    private static boolean shining(MovementContext context, Moving moving) {
+        return !moving.state.nightOnly() || SignalLampBlockEntity.isDark(context.world);
     }
 
     private int rgb(MovementContext context, Moving moving) {
@@ -125,8 +130,8 @@ public class SignalLampMovement implements MovementBehaviour {
         Moving moving = moving(context);
         float partialTick = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
         float intensity = context.disabled ? 0 : SignalLampBlockEntity.intensity(type, moving.state.brightness(),
-                WarningPattern.of(moving.state.pattern()), moving.brake.braking(), context.world.getGameTime(),
-                partialTick);
+                WarningPattern.of(moving.state.pattern()), shining(context, moving), moving.brake.braking(),
+                context.world.getGameTime(), partialTick);
         int rgb = rgb(context, moving);
         int worldLight = context.position == null ? LightTexture.FULL_BRIGHT
                 : LevelRenderer.getLightColor(context.world, BlockPos.containing(context.position));

@@ -13,6 +13,9 @@ import com.goldskinmc.lightworks.light.ProjectedTint;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.simibubi.create.content.contraptions.AbstractContraptionEntity;
+import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
+import com.simibubi.create.foundation.blockEntity.behaviour.ValueSettingsScreen;
+import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,6 +31,7 @@ import net.createmod.ponder.foundation.ui.PonderUI;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.core.BlockPos;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -150,6 +154,16 @@ public final class SelfTestClient {
         }
         if (active) {
             mc.options.hideGui = !SelfTestBridge.showGui;
+            BlockPos board = SelfTestBridge.valueBoard;
+            if (board == null && mc.screen instanceof ValueSettingsScreen) {
+                mc.setScreen(null);
+            } else if (board != null && !(mc.screen instanceof ValueSettingsScreen) && mc.level != null
+                    && mc.level.getBlockEntity(board) instanceof SmartBlockEntity entity) {
+                ScrollValueBehaviour behaviour = entity.getBehaviour(ScrollValueBehaviour.TYPE);
+                mc.setScreen(new ValueSettingsScreen(board, behaviour.createBoard(mc.player, null),
+                        behaviour.getValueSettings(), settings -> {
+                        }, behaviour.netId()));
+            }
         }
         if (SelfTestBridge.beamsOff != beamsOff) {
             beamsOff = SelfTestBridge.beamsOff;

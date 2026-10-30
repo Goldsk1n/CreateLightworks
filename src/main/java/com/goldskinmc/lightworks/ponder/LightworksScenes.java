@@ -414,14 +414,20 @@ final class LightworksScenes {
         pattern(scene, lamp, WarningPattern.BLINK);
         scene.overlay().showText(80)
                 .attachKeyFrame()
-                .text("Scroll its value panel to pick a pattern: steady, blink, pulse or flash")
+                .text("Hold right-click on its box to pick a pattern: steady, blink, opposite blink, pulse, double flash or strobe")
                 .placeNearTarget()
                 .pointAt(util.vector().blockSurface(lamp, Direction.WEST));
         scene.idle(70);
         pattern(scene, lamp, WarningPattern.PULSE);
         scene.idle(60);
-        pattern(scene, lamp, WarningPattern.FLASH);
+        pattern(scene, lamp, WarningPattern.DOUBLE_FLASH);
         scene.idle(60);
+        pattern(scene, lamp, WarningPattern.STROBE);
+        scene.overlay().showText(70)
+                .text("The board's lower row runs the same patterns only at night")
+                .placeNearTarget()
+                .pointAt(util.vector().blockSurface(lamp, Direction.WEST));
+        scene.idle(80);
 
         scene.overlay().showText(80)
                 .text("The light it casts follows the pattern too, like a redstone lamp on a clock")

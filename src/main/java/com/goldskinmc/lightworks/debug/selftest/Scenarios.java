@@ -389,13 +389,13 @@ final class Scenarios {
      * lower than the steady one's 11) and each pattern's lens over 30 ticks.
      */
     static Script warning() {
-        BlockPos[] lamps = new BlockPos[4];
+        BlockPos[] lamps = new BlockPos[6];
         return new Script("warning")
                 .run(stage -> {
                     stage.night();
                     stage.stand(0, 0);
-                    for (int i = 0; i < 4; i++) {
-                        lamps[i] = stage.at(-3 + 2 * i, 0, 4);
+                    for (int i = 0; i < lamps.length; i++) {
+                        lamps[i] = stage.at(-5 + 2 * i, 0, 4);
                         stage.set(lamps[i], LightworksBlocks.WARNING_LIGHT.getDefaultState()
                                 .setValue(SignalLampBlock.FACING, Direction.UP));
                         if (stage.level.getBlockEntity(lamps[i]) instanceof SmartBlockEntity lamp) {
@@ -428,6 +428,14 @@ final class Scenarios {
                 .run(stage -> SelfTestBridge.recording = null)
                 .shot("warning-0")
                 .run(stage -> {
+                    SelfTestBridge.showGui = true;
+                    SelfTestBridge.valueBoard = lamps[1];
+                })
+                .waitTicks(20)
+                .shot("warning-1-board")
+                .run(stage -> {
+                    SelfTestBridge.valueBoard = null;
+                    SelfTestBridge.showGui = false;
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
                 });
