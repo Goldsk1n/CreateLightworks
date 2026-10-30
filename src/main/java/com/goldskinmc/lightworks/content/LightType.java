@@ -1,5 +1,6 @@
 package com.goldskinmc.lightworks.content;
 
+import com.goldskinmc.lightworks.beam.BeamRays;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,9 +15,10 @@ import org.jetbrains.annotations.Nullable;
  * @param lensDistance how far the lens glass is from the block centre (the head's pivot), in blocks: the
  *                     beam starts there, flush on the glass
  * @param lensHalf     half the lens's width, in blocks: the beam starts this wide
+ * @param rays         which of the beam's rays place light on a fixed light
  */
 public record LightType(String name, @Nullable ConeFalloff beam, Kind kind, int colour, int placedLight,
-        double lensDistance, double lensHalf) {
+        double lensDistance, double lensHalf, BeamRays rays) {
     public enum Kind {
         /** Points where it is aimed (Searchlight, Floodlight). */
         BEAM,
@@ -38,22 +40,22 @@ public record LightType(String name, @Nullable ConeFalloff beam, Kind kind, int 
 
     /** Long narrow beam: full brightness to 32 blocks, dark at 48. */
     public static final LightType SEARCHLIGHT = new LightType("searchlight",
-            new ConeFalloff(6, 4, 32, 48, 15), Kind.BEAM, WARM_WHITE, 0, 7.4 / 16, 3 / 16.0);
+            new ConeFalloff(6, 4, 32, 48, 15), Kind.BEAM, WARM_WHITE, 0, 7.4 / 16, 3 / 16.0, BeamRays.SINGLE);
     /** Wide short cone: 30 degree core, full brightness to 12 blocks, dark at 20. */
     public static final LightType FLOODLIGHT = new LightType("floodlight",
-            new ConeFalloff(30, 15, 12, 20, 15), Kind.BEAM, WARM_WHITE, 0, 3.8 / 16, 5.5 / 16);
+            new ConeFalloff(30, 15, 12, 20, 15), Kind.BEAM, WARM_WHITE, 0, 3.8 / 16, 5.5 / 16, new BeamRays(3, 3));
     /** Vehicle beam: wide and short, full brightness to 12 blocks, dark at 20. */
     public static final LightType HEADLIGHT = new LightType("headlight",
-            new ConeFalloff(18, 12, 12, 20, 15), Kind.HEADLIGHT, WARM_WHITE, 0, 4.8 / 16, 3 / 16.0);
+            new ConeFalloff(18, 12, 12, 20, 15), Kind.HEADLIGHT, WARM_WHITE, 0, 4.8 / 16, 3 / 16.0, new BeamRays(3, 1));
     /** Each of the beacon's two beams: medium width, full brightness to 20 blocks, dark at 32. */
     public static final LightType ROTATING_BEACON = new LightType("rotating_beacon",
-            new ConeFalloff(5, 4, 20, 32, 15), Kind.BEACON, 0xFFF4DC, 0, 4.8 / 16, 3 / 16.0);
+            new ConeFalloff(5, 4, 20, 32, 15), Kind.BEACON, 0xFFF4DC, 0, 4.8 / 16, 3 / 16.0, BeamRays.SINGLE);
     public static final LightType WARNING_LIGHT = new LightType("warning_light",
-            null, Kind.WARNING, 0xFFA21A, 12, 0, 0);
+            null, Kind.WARNING, 0xFFA21A, 12, 0, 0, BeamRays.SINGLE);
     public static final LightType TAIL_LIGHT = new LightType("tail_light",
-            null, Kind.TAIL, 0xFF2418, 6, 0, 0);
+            null, Kind.TAIL, 0xFF2418, 6, 0, 0, BeamRays.SINGLE);
     public static final LightType NAVIGATION_LIGHT = new LightType("navigation_light",
-            null, Kind.NAVIGATION, 0xFFFFFF, 6, 0, 0);
+            null, Kind.NAVIGATION, 0xFFFFFF, 6, 0, 0, BeamRays.SINGLE);
 
     public boolean hasBeam() {
         return beam != null;

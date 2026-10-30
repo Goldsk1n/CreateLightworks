@@ -166,8 +166,12 @@ public final class ClientBeam {
                 }
             }
         }
-        if (landing == null && !centre.hitBlock() && !far) {
-            landing = BeamTrace.halfLanding(level, at.origin(), a, shape, lensHalf, range);
+        if (!centre.hitBlock() && !far) {
+            // Through a gap: the full-strength inner rays come before the weaker edge
+            BeamTrace.Landing inner = BeamTrace.halfLanding(level, at.origin(), a, shape, lensHalf, range);
+            if (inner != null) {
+                landing = inner;
+            }
         }
         return ends;
     }

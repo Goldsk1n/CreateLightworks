@@ -2,15 +2,20 @@ package com.goldskinmc.lightworks.gametest;
 
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
+import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.light.BeamLightBlock;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ObserverBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -108,6 +113,75 @@ public final class BeamLightGameTests {
                 .thenExecute(() -> helper.destroyBlock(light))
                 .thenExecuteAfter(1, () -> helper.assertFalse(isBeamLight(helper, spot), "light outlived its Searchlight"))
                 .thenSucceed();
+    }
+
+    /**
+     * A wide beam through a hole in a wall: the wall round the hole stays lit at full strength, and the light
+     * through the hole lands behind it, as a real floodlight's would. Before, the beam's one light left the wall.
+     */
+    @GameTest(template = EMPTY_LONG, timeoutTicks = 200)
+    public static void floodlightLightsARoundAHole(GameTestHelper helper) {
+        BlockPos light = new BlockPos(0, 2, 2);
+        for (int y = 0; y < 5; y++) {
+            for (int z = 0; z < 5; z++) {
+                if (y != 2 || z != 2) {
+                    helper.setBlock(new BlockPos(6, y, z), Blocks.STONE);
+                }
+            }
+        }
+        BlockPos behind = new BlockPos(12, 2, 2);
+        helper.setBlock(behind, Blocks.STONE);
+        helper.setBlock(light, LightworksBlocks.FLOODLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.EAST));
+        helper.succeedWhen(() -> {
+            helper.assertTrue(isBeamLight(helper, behind.west()), "no light behind the hole");
+            int onWall = 0;
+            for (BlockPos pos : BlockPos.betweenClosed(new BlockPos(5, 0, 0), new BlockPos(5, 4, 4))) {
+                if (isBeamLight(helper, pos) && helper.getBlockState(pos).getValue(BeamLightBlock.LEVEL) == 15) {
+                    onWall++;
+                }
+            }
+            helper.assertTrue(onWall >= 2, "expected the wall round the hole to stay lit at full strength, found " + onWall);
+        });
+    }
+
+    /** All of a wide beam's lights go when it is broken, and are saved with it. */
+    @GameTest(template = EMPTY_LONG, timeoutTicks = 200)
+    public static void floodlightKeepsAndRemovesAllItsLights(GameTestHelper helper) {
+        BlockPos light = new BlockPos(0, 2, 2);
+        for (int y = 0; y < 5; y++) {
+            for (int z = 0; z < 5; z++) {
+                // Solid, this near a wall the rays land too close together and share one light
+                if (y != 2 || z != 2) {
+                    helper.setBlock(new BlockPos(6, y, z), Blocks.STONE);
+                }
+            }
+        }
+        helper.setBlock(light, LightworksBlocks.FLOODLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.EAST));
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(beamLights(helper).size() >= 2, "expected several lights"))
+                .thenExecute(() -> {
+                    DirectionalLightBlockEntity floodlight = helper.getBlockEntity(light);
+                    HolderLookup.Provider registries = helper.getLevel().registryAccess();
+                    BlockEntity loaded = BlockEntity.loadStatic(floodlight.getBlockPos(), floodlight.getBlockState(),
+                            floodlight.saveWithFullMetadata(registries), registries);
+                    for (BlockPos pos : beamLights(helper)) {
+                        helper.assertTrue(loaded instanceof DirectionalLightBlockEntity copy
+                                && copy.ownsBeamLight(helper.absolutePos(pos)), "light at " + pos + " forgotten when saved");
+                    }
+                })
+                .thenExecute(() -> helper.destroyBlock(light))
+                .thenExecuteAfter(1, () -> helper.assertTrue(beamLights(helper).isEmpty(), "lights outlived their Floodlight"))
+                .thenSucceed();
+    }
+
+    private static List<BlockPos> beamLights(GameTestHelper helper) {
+        List<BlockPos> found = new ArrayList<>();
+        for (BlockPos pos : BlockPos.betweenClosed(new BlockPos(1, 0, 0), new BlockPos(5, 4, 4))) {
+            if (isBeamLight(helper, pos)) {
+                found.add(pos.immutable());
+            }
+        }
+        return found;
     }
 
     /** A beam light whose owner is gone removes itself on its next check. */
