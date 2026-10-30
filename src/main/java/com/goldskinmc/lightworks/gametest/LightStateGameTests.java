@@ -10,6 +10,7 @@ import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity
 import com.goldskinmc.lightworks.light.BeamLightBlock;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.simibubi.create.content.contraptions.StructureTransform;
+import com.simibubi.create.foundation.blockEntity.behaviour.ValueBoxTransform;
 import com.simibubi.create.foundation.blockEntity.behaviour.ValueSettingsPacket;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -29,6 +30,7 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.WeightedPressurePlateBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -223,6 +225,45 @@ public final class LightStateGameTests {
         new BoardPacket(light.getBlockPos(), 1, 45, light.getBehaviour(AimBoard.PAN).netId()).applyTo(light);
         helper.assertTrue(light.panTilt().equals(new PanTilt(45, 30)), "the pan board gave " + light.panTilt());
         helper.succeed();
+    }
+
+    /** A click on the light's outline, straight in front of a box, reaches it: every light, mount, side and box. */
+    @GameTest(template = EMPTY)
+    public static void everyAimBoxCanBeClicked(GameTestHelper helper) {
+        BlockPos pos = new BlockPos(2, 2, 2);
+        BlockPos world = helper.absolutePos(pos);
+        for (BlockState light : new BlockState[] {LightworksBlocks.SEARCHLIGHT.getDefaultState(),
+                LightworksBlocks.FLOODLIGHT.getDefaultState(), LightworksBlocks.HEADLIGHT.getDefaultState()}) {
+            for (Direction mount : Direction.values()) {
+                BlockState state = light.setValue(DirectionalLightBlock.FACING, mount);
+                helper.setBlock(pos, state);
+                DirectionalLightBlockEntity be = helper.getBlockEntity(pos);
+                for (Direction side : Direction.values()) {
+                    if (side.getAxis() == mount.getAxis()) {
+                        continue;
+                    }
+                    Vec3 pan = clickBox(helper, be.getBehaviour(AimBoard.PAN), state, world, side);
+                    Vec3 tilt = clickBox(helper, be.getBehaviour(AimBoard.TILT), state, world, side);
+                    helper.assertTrue(pan.distanceTo(tilt) >= be.getBehaviour(AimBoard.PAN).getSlotPositioning().getScale() - 1e-6,
+                            state + " boxes overlap on side " + side);
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    /** Clicks the outline straight behind a box's centre and checks the box takes it; gives the centre. */
+    private static Vec3 clickBox(GameTestHelper helper, AimBoard board, BlockState state, BlockPos world, Direction side) {
+        ValueBoxTransform.Sided slot = (ValueBoxTransform.Sided) board.getSlotPositioning();
+        slot.fromSide(side);
+        Vec3 centre = slot.getLocalOffset(helper.getLevel(), world, state);
+        Vec3 from = Vec3.atLowerCornerOf(world).add(centre);
+        Vec3 to = from.subtract(Vec3.atLowerCornerOf(side.getNormal()));
+        BlockHitResult hit = state.getShape(helper.getLevel(), world).clip(from, to, world);
+        helper.assertTrue(hit != null, state + " has no outline behind its box on side " + side);
+        Vec3 local = hit.getLocation().subtract(Vec3.atLowerCornerOf(world));
+        helper.assertTrue(slot.testHit(helper.getLevel(), world, state, local), state + " box on side " + side + " cannot be clicked");
+        return centre;
     }
 
     /** A contraption placing the light back turned a quarter keeps the beam pointing the same way on the block. */
