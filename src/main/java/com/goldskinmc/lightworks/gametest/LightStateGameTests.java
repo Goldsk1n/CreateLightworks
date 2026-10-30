@@ -7,11 +7,14 @@ import com.goldskinmc.lightworks.beam.PanTilt;
 import com.goldskinmc.lightworks.content.directional.AimBoard;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
+import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
+import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
 import com.goldskinmc.lightworks.light.BeamLightBlock;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.simibubi.create.content.contraptions.StructureTransform;
 import com.simibubi.create.foundation.blockEntity.behaviour.ValueBoxTransform;
 import com.simibubi.create.foundation.blockEntity.behaviour.ValueSettingsPacket;
+import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -252,8 +255,26 @@ public final class LightStateGameTests {
         helper.succeed();
     }
 
+    /** The Warning Light's pattern box takes a click straight in front of it, on every mount and side. */
+    @GameTest(template = EMPTY)
+    public static void warningLightBoxCanBeClicked(GameTestHelper helper) {
+        BlockPos pos = new BlockPos(2, 2, 2);
+        BlockPos world = helper.absolutePos(pos);
+        for (Direction mount : Direction.values()) {
+            BlockState state = LightworksBlocks.WARNING_LIGHT.getDefaultState().setValue(SignalLampBlock.FACING, mount);
+            helper.setBlock(pos, state);
+            SignalLampBlockEntity be = helper.getBlockEntity(pos);
+            for (Direction side : Direction.values()) {
+                if (side.getAxis() != mount.getAxis()) {
+                    clickBox(helper, be.getBehaviour(ScrollValueBehaviour.TYPE), state, world, side);
+                }
+            }
+        }
+        helper.succeed();
+    }
+
     /** Clicks the outline straight behind a box's centre and checks the box takes it; gives the centre. */
-    private static Vec3 clickBox(GameTestHelper helper, AimBoard board, BlockState state, BlockPos world, Direction side) {
+    private static Vec3 clickBox(GameTestHelper helper, ScrollValueBehaviour board, BlockState state, BlockPos world, Direction side) {
         ValueBoxTransform.Sided slot = (ValueBoxTransform.Sided) board.getSlotPositioning();
         slot.fromSide(side);
         Vec3 centre = slot.getLocalOffset(helper.getLevel(), world, state);

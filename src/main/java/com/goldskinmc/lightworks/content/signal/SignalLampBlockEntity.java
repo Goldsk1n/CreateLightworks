@@ -10,7 +10,6 @@ import com.goldskinmc.lightworks.light.ProjectedTint;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
-import com.simibubi.create.foundation.blockEntity.behaviour.CenteredSideValueBoxTransform;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollOptionBehaviour;
 import java.util.List;
 import net.minecraft.ChatFormatting;
@@ -75,7 +74,7 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
         if (typeOf(getBlockState()).kind() == LightType.Kind.WARNING) {
             pattern = new ScrollOptionBehaviour<>(WarningPattern.class,
                     Component.translatable("lightworks.warning_light.pattern"), this,
-                    new CenteredSideValueBoxTransform((s, d) -> d.getAxis() != s.getValue(SignalLampBlock.FACING).getAxis()));
+                    new PatternBox());
             behaviours.add(pattern);
         }
     }

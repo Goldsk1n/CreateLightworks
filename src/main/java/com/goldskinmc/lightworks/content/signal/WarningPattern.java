@@ -58,7 +58,7 @@ public enum WarningPattern implements INamedIconOptions {
         return icon;
     }
 
-    /** Create shows this with its own "create." prefix. */
+    /** Create 6.0.0 looks this up with a "create." prefix and 6.0.10 as it is: the lang has both. */
     @Override
     public String getTranslationKey() {
         return "lightworks.warning_pattern." + name().toLowerCase(Locale.ROOT);
