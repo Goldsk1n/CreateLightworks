@@ -12,6 +12,7 @@ import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.phys.Vec3;
@@ -74,6 +75,40 @@ public final class PanTiltGameTests {
                 })
                 .thenExecute(() -> setSpeed(helper, motor, 0))
                 .thenWaitUntil(() -> helper.assertTrue(beamLights(helper) == 1, "stopped light has no server light block"))
+                .thenSucceed();
+    }
+
+    /** With the box set the pan bounces between the arc's ends; set back to 0 it goes on round. */
+    @GameTest(template = EMPTY, timeoutTicks = 400)
+    public static void headSweepsInsideItsArc(GameTestHelper helper) {
+        BlockPos motor = new BlockPos(2, 1, 2);
+        BlockPos head = motor.above();
+        helper.setBlock(motor, AllBlocks.CREATIVE_MOTOR.getDefaultState().setValue(CreativeMotorBlock.FACING, Direction.UP));
+        helper.setBlock(head, LightworksBlocks.PAN_TILT_HEAD.getDefaultState().setValue(PanTiltHeadBlock.FACING, Direction.UP));
+        PanTiltHeadBlockEntity entity = helper.getBlockEntity(head);
+        entity.getBehaviour(ScrollValueBehaviour.TYPE).setValue(9);
+        setSpeed(helper, motor, 32);
+        float[] range = {0, 0};
+        float[] round = {0};
+        helper.onEachTick(() -> {
+            float yaw = Mth.wrapDegrees(entity.yaw(0));
+            if (entity.getBehaviour(ScrollValueBehaviour.TYPE).getValue() > 0) {
+                range[0] = Math.min(range[0], yaw);
+                range[1] = Math.max(range[1], yaw);
+            } else {
+                round[0] = Math.max(round[0], Math.abs(yaw));
+            }
+        });
+        helper.startSequence()
+                .thenIdle(120)
+                .thenExecute(() -> {
+                    helper.assertTrue(range[0] >= -45.01f && range[1] <= 45.01f,
+                            "pan left the arc: " + range[0] + " to " + range[1]);
+                    helper.assertTrue(range[0] < -40 && range[1] > 40, "pan missed an end: " + range[0] + " to " + range[1]);
+                    entity.getBehaviour(ScrollValueBehaviour.TYPE).setValue(0);
+                })
+                .thenIdle(120)
+                .thenExecute(() -> helper.assertTrue(round[0] > 170, "pan should go round again, got to " + round[0]))
                 .thenSucceed();
     }
 }

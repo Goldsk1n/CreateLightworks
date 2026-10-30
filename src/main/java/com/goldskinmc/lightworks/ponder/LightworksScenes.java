@@ -339,6 +339,16 @@ final class LightworksScenes {
         tilt(scene, util, head, lever, 10);
         scene.idle(70);
 
+        scene.world().modifyBlockEntityNBT(util.select().position(head), PanTiltHeadBlockEntity.class,
+                nbt -> nbt.putInt("ScrollValue", 9));
+        scene.overlay().showControls(util.vector().blockSurface(head, Direction.NORTH), Pointing.RIGHT, 40).rightClick();
+        scene.overlay().showText(100)
+                .attachKeyFrame()
+                .text("Hold right-click on the box to make it sweep back and forth, this far either way of where it points now; the shaft sets how fast")
+                .placeNearTarget()
+                .pointAt(util.vector().blockSurface(head, Direction.NORTH));
+        scene.idle(120);
+
         scene.world().setKineticSpeed(kinetics, 0);
         scene.overlay().showText(80)
                 .attachKeyFrame()
