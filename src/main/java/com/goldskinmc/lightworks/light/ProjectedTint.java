@@ -4,12 +4,15 @@ import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.LightworksClientConfig;
 import com.goldskinmc.lightworks.beam.BeamFrame;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
+import com.goldskinmc.lightworks.beam.LightMix;
+import com.goldskinmc.lightworks.debug.Timer;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,9 +41,9 @@ import org.joml.Matrix4f;
 
 /**
  * Coloured light painted onto the world. Minecraft's block light and LambDynamicLights are colourless, so
- * a dyed beam, or a signal lamp, tints the block faces it lights: each face gets a layer of the light's
- * colour, multiplied over what is already drawn and fading the way the light does, drawn after the world
- * every frame (like the visible beam, it needs no client mod and works with Sodium). Shader packs
+ * a dyed beam, or a signal lamp, tints the block faces it lights. Every frame the colours of all the lights
+ * reaching a face are added up ({@link LightMix}) and the one result is multiplied over what is already
+ * drawn, after the world (like the visible beam, it needs no client mod and works with Sodium). Shader packs
  * replace the blending, so it is off while one is on (client config {@code colouredLight}).
  * <p>
  * The lit faces are found in world space when the light changes (a moving light: when its spot has
@@ -51,7 +54,8 @@ public final class ProjectedTint {
     private static final Set<ProjectedTint> ACTIVE = new LinkedHashSet<>();
     /** Squares per face side: the falloff is sampled at their corners, so the tint fades smoothly. */
     private static final int GRID = 4;
-    private static final int FLOATS_PER_FACE = (GRID + 1) * (GRID + 1) * 4;
+    private static final int CORNERS_PER_FACE = (GRID + 1) * (GRID + 1);
+    private static final int FLOATS_PER_FACE = CORNERS_PER_FACE * 4;
     /** Largest tinted patch, in blocks from its centre; wider cones are cut off here. */
     private static final double MAX_RADIUS = 6;
     private static final int MAX_FACES = 400;
@@ -78,8 +82,24 @@ public final class ProjectedTint {
                     .setCullState(RenderStateShard.NO_CULL)
                     .createCompositeState(false));
 
+    /** Which faces are in the mix, per side: block position to place in the two arrays below. */
+    private static final Long2IntOpenHashMap[] MIXED_FACES = new Long2IntOpenHashMap[Direction.values().length];
+    /** Per mixed face: its corners' x, y, z and sums of red, green, blue and strength. */
+    private static float[] mixedPlaces = new float[0];
+    private static float[] mixedLight = new float[0];
+
+    static {
+        for (int side = 0; side < MIXED_FACES.length; side++) {
+            MIXED_FACES[side] = new Long2IntOpenHashMap();
+            MIXED_FACES[side].defaultReturnValue(-1);
+        }
+    }
+
     /** Per face: (GRID + 1)^2 corners of x, y, z and light 0 to 1. */
     private float[] corners = new float[0];
+    /** Per face: which block and side it is. */
+    private long[] facePositions = new long[0];
+    private byte[] faceSides = new byte[0];
     private int faces;
     private float red;
     private float green;
@@ -291,6 +311,12 @@ public final class ProjectedTint {
             }
         }
         if (lit > 0.01f) {
+            if (facePositions.length <= faces) {
+                facePositions = Arrays.copyOf(facePositions, Math.max(8, faces * 2));
+                faceSides = Arrays.copyOf(faceSides, facePositions.length);
+            }
+            facePositions[faces] = pos.asLong();
+            faceSides[faces] = (byte) side.ordinal();
             faces++;
         }
     }
@@ -302,6 +328,7 @@ public final class ProjectedTint {
                 || !LightworksClientConfig.colouredLight()) {
             return;
         }
+        long start = Timer.start();
         Vec3 camera = event.getCamera().getPosition();
         PoseStack poseStack = event.getPoseStack();
         MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
@@ -312,36 +339,78 @@ public final class ProjectedTint {
         Matrix4f pose = poseStack.last().pose();
         long now = Minecraft.getInstance().level == null ? 0 : Minecraft.getInstance().level.getGameTime();
         ACTIVE.removeIf(tint -> now > tint.expires);
+        int mixed = 0;
+        for (Long2IntOpenHashMap sideFaces : MIXED_FACES) {
+            sideFaces.clear();
+        }
         for (ProjectedTint tint : ACTIVE) {
             float amount = STRENGTH * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
             if (amount > 0.01f) {
-                tint.draw(out, pose, amount);
+                mixed = tint.addToMix(amount, mixed);
             }
         }
+        drawMix(out, pose, mixed);
         poseStack.popPose();
         buffers.endBatch(TINT);
+        Timer.TINT.stop(start);
     }
 
-    private void draw(VertexConsumer out, Matrix4f pose, float amount) {
-        int row = GRID + 1;
+    /** Adds this light to the faces it reaches; gives how many faces are in the mix now. */
+    private int addToMix(float amount, int mixed) {
         for (int f = 0; f < faces; f++) {
+            Long2IntOpenHashMap sideFaces = MIXED_FACES[faceSides[f]];
+            int place = sideFaces.get(facePositions[f]);
+            int from = f * FLOATS_PER_FACE;
+            if (place < 0) {
+                place = mixed++;
+                sideFaces.put(facePositions[f], place);
+                if (mixedLight.length < mixed * FLOATS_PER_FACE) {
+                    int size = Math.max(FLOATS_PER_FACE * 64, mixedLight.length * 2);
+                    mixedLight = Arrays.copyOf(mixedLight, size);
+                    mixedPlaces = Arrays.copyOf(mixedPlaces, size);
+                }
+                int to = place * FLOATS_PER_FACE;
+                Arrays.fill(mixedLight, to, to + FLOATS_PER_FACE, 0);
+                for (int c = 0; c < CORNERS_PER_FACE; c++) {
+                    System.arraycopy(corners, from + c * 4, mixedPlaces, to + c * 4, 3);
+                }
+            }
+            int to = place * FLOATS_PER_FACE;
+            for (int c = 0; c < CORNERS_PER_FACE; c++) {
+                float k = amount * corners[from + c * 4 + 3];
+                mixedLight[to + c * 4] += k * red;
+                mixedLight[to + c * 4 + 1] += k * green;
+                mixedLight[to + c * 4 + 2] += k * blue;
+                mixedLight[to + c * 4 + 3] += k;
+            }
+        }
+        return mixed;
+    }
+
+    private static void drawMix(VertexConsumer out, Matrix4f pose, int mixed) {
+        int row = GRID + 1;
+        for (int f = 0; f < mixed; f++) {
             int base = f * FLOATS_PER_FACE;
             for (int a = 0; a < GRID; a++) {
                 for (int b = 0; b < GRID; b++) {
-                    corner(out, pose, base + (a * row + b) * 4, amount);
-                    corner(out, pose, base + ((a + 1) * row + b) * 4, amount);
-                    corner(out, pose, base + ((a + 1) * row + b + 1) * 4, amount);
-                    corner(out, pose, base + (a * row + b + 1) * 4, amount);
+                    corner(out, pose, base + (a * row + b) * 4);
+                    corner(out, pose, base + ((a + 1) * row + b) * 4);
+                    corner(out, pose, base + ((a + 1) * row + b + 1) * 4);
+                    corner(out, pose, base + (a * row + b + 1) * 4);
                 }
             }
         }
     }
 
-    /** One corner: white (no change) where unlit, the light's colour where fully lit. */
-    private void corner(VertexConsumer out, Matrix4f pose, int i, float amount) {
-        float k = amount * corners[i + 3];
-        out.addVertex(pose, corners[i], corners[i + 1], corners[i + 2])
-                .setColor(1 - k * (1 - red), 1 - k * (1 - green), 1 - k * (1 - blue), 1f);
+    /** One corner: white (no change) where unlit, the mix of the lights reaching it where lit. */
+    private static void corner(VertexConsumer out, Matrix4f pose, int i) {
+        float r = mixedLight[i];
+        float g = mixedLight[i + 1];
+        float b = mixedLight[i + 2];
+        float k = mixedLight[i + 3];
+        out.addVertex(pose, mixedPlaces[i], mixedPlaces[i + 1], mixedPlaces[i + 2])
+                .setColor(LightMix.channel(r, r, g, b, k), LightMix.channel(g, r, g, b, k),
+                        LightMix.channel(b, r, g, b, k), 1f);
     }
 
     @SubscribeEvent

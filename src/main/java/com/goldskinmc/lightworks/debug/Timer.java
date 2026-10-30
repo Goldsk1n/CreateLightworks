@@ -14,7 +14,9 @@ public enum Timer {
     /** Lights on Create contraptions, client side. */
     CLIENT_CONTRAPTION,
     /** LambDynamicLights asking our spots for light, during chunk meshing. */
-    LDL_LIGHT_AT_POS;
+    LDL_LIGHT_AT_POS,
+    /** Mixing and drawing the coloured light, once a frame. */
+    TINT;
 
     private final LongAdder nanos = new LongAdder();
     private final LongAdder calls = new LongAdder();
