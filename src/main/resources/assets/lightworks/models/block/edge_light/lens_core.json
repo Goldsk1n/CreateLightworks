@@ -1,0 +1,124 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "sheet": "lightworks:block/edge_light",
+    "particle": "create:block/industrial_iron_block"
+  },
+  "elements": [
+    {
+      "from": [
+        6,
+        1,
+        5.98
+      ],
+      "to": [
+        10,
+        3,
+        5.98
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            8.0,
+            6.0,
+            12.0,
+            8.0
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "from": [
+        6,
+        1,
+        10.02
+      ],
+      "to": [
+        10,
+        3,
+        10.02
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            8.0,
+            6.0,
+            12.0,
+            8.0
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "from": [
+        10.02,
+        1,
+        6
+      ],
+      "to": [
+        10.02,
+        3,
+        10
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            8.0,
+            6.0,
+            12.0,
+            8.0
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "from": [
+        5.98,
+        1,
+        6
+      ],
+      "to": [
+        5.98,
+        3,
+        10
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            8.0,
+            6.0,
+            12.0,
+            8.0
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "from": [
+        6,
+        3.02,
+        6
+      ],
+      "to": [
+        10,
+        3.02,
+        10
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            0.0,
+            6.0,
+            4.0,
+            10.0
+          ],
+          "texture": "#sheet"
+        }
+      }
+    }
+  ]
+}

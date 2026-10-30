@@ -9,6 +9,7 @@ import com.goldskinmc.lightworks.content.directional.DirectionalLightMovement;
 import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlock;
 import com.goldskinmc.lightworks.content.beacon.RotatingBeaconMovement;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
+import com.goldskinmc.lightworks.content.signal.EdgeLightBlock;
 import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
@@ -17,6 +18,7 @@ import com.goldskinmc.lightworks.light.BeamLightBlock;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
 import com.simibubi.create.api.stress.BlockStressValues;
 import com.tterrag.registrate.util.entry.BlockEntry;
+import net.minecraft.core.Direction;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
 import java.util.function.Supplier;
@@ -28,6 +30,8 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.neoforged.neoforge.client.model.generators.ModelFile;
+import net.neoforged.neoforge.client.model.generators.MultiPartBlockStateBuilder;
 
 public final class LightworksBlocks {
     public static final BlockEntry<DirectionalLightBlock> SEARCHLIGHT = directional("searchlight",
@@ -75,6 +79,28 @@ public final class LightworksBlocks {
     public static final BlockEntry<NavigationLightBlock> NAVIGATION_LIGHT = signal("navigation_light",
             LightType.NAVIGATION_LIGHT, NavigationLightBlock::new, () -> LightworksBlockEntities.NAVIGATION_LIGHT.get(),
             Block.box(5, 0, 5, 11, 6, 11), "Navigation Light");
+
+    public static final BlockEntry<EdgeLightBlock> EDGE_LIGHT = REGISTRATE
+            .block("edge_light", EdgeLightBlock::new)
+            .initialProperties(() -> Blocks.IRON_BLOCK)
+            .properties(p -> p.strength(1.0f).sound(SoundType.COPPER).noOcclusion().noCollission()
+                    .lightLevel(EdgeLightBlock::lightLevel))
+            .blockstate((c, p) -> {
+                // One part per mount: colour and brightness only change the tint, not the model
+                ModelFile model = p.models().getExistingFile(p.modLoc("block/edge_light/base"));
+                MultiPartBlockStateBuilder parts = p.getMultipartBuilder(c.get());
+                for (Direction facing : Direction.values()) {
+                    int x = facing == Direction.DOWN ? 180 : facing.getAxis().isHorizontal() ? 90 : 0;
+                    int y = facing.getAxis().isVertical() ? 0 : ((int) facing.toYRot() + 180) % 360;
+                    parts.part().modelFile(model).rotationX(x).rotationY(y).addModel()
+                            .condition(EdgeLightBlock.FACING, facing);
+                }
+            })
+            .tag(BlockTags.MINEABLE_WITH_PICKAXE, LightworksTags.SABLE_LIGHT)
+            .lang("Edge Light")
+            .item().model((c, p) -> {
+            }).build()
+            .register();
 
     /** Invisible light where a beam lands (server fallback path). No item, no drops. */
     public static final BlockEntry<BeamLightBlock> BEAM_LIGHT = REGISTRATE

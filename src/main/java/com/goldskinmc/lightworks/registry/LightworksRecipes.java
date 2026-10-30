@@ -65,6 +65,10 @@ public final class LightworksRecipes {
                 .define('G', GLASS).define('R', Tags.Items.DYES_RED).define('L', Tags.Items.DYES_GREEN)
                 .define('T', AllItems.ELECTRON_TUBE).define('I', IRON_PLATES)
                 .save(out);
+        // Eight at a time: a runway takes a lot of them
+        shaped(LightworksBlocks.EDGE_LIGHT, 8, " G ", " T ", " I ")
+                .define('G', GLASS).define('T', AllItems.ELECTRON_TUBE).define('I', IRON_PLATES)
+                .save(out);
     }
 
     /** A recipe unlocked by picking up an Electron Tube, which every light needs (and the head's light). */

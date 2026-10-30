@@ -15,6 +15,7 @@ import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
+import com.goldskinmc.lightworks.content.signal.EdgeLightBlock;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -35,6 +36,7 @@ public final class Lightworks {
     public Lightworks(IEventBus modBus, ModContainer container) {
         LOGGER.info("Lightworks loading");
         REGISTRATE.registerEventListeners(modBus);
+        EdgeLightBlock.registerMovementChecks();
         LightworksBlocks.register();
         LightworksBlockEntities.register();
         LightworksRecipes.register();

@@ -109,6 +109,16 @@ public final class PonderSchematics implements DataProvider {
         navigation.lamp(Layouts.Navigation.STARBOARD, navigationLight(NavigationColour.STARBOARD), Direction.UP);
         navigation.lamp(Layouts.Navigation.STERN, navigationLight(NavigationColour.STERN), Direction.UP);
         all.add(navigation);
+
+        Schematic edge = new Schematic("edge_light", Layouts.Edge.SIZE, 3);
+        edge.fill(Layouts.Edge.STRIP_FROM, Layouts.Edge.STRIP_TO, Blocks.GRAY_CARPET.defaultBlockState());
+        for (BlockPos pos : Layouts.Edge.LEFT) {
+            edge.set(pos, LightworksBlocks.EDGE_LIGHT.getDefaultState());
+        }
+        for (BlockPos pos : Layouts.Edge.RIGHT) {
+            edge.set(pos, LightworksBlocks.EDGE_LIGHT.getDefaultState());
+        }
+        all.add(edge);
         return all;
     }
 
