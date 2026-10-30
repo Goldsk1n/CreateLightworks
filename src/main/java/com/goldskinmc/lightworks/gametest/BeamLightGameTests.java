@@ -37,8 +37,12 @@ public final class BeamLightGameTests {
         return helper.getBlockState(pos).is(LightworksBlocks.BEAM_LIGHT.get());
     }
 
-    /** S1: aimed at a wall 20 blocks away, the spot in front of the wall reaches light level 12 or more. */
-    @GameTest(template = EMPTY_LONG)
+    /**
+     * S1: aimed at a wall 20 blocks away, the spot in front of the wall reaches light level 12 or more.
+     * The game test server does not wait between ticks (4-7 ms each, not 50) while the light engine works
+     * in real time on its own thread: measured up to 639 ms, 66 ticks. So the default 100 ticks are too few.
+     */
+    @GameTest(template = EMPTY_LONG, timeoutTicks = 1000)
     public static void s1SearchlightLightsAWallTwentyBlocksAway(GameTestHelper helper) {
         BlockPos light = new BlockPos(0, 2, 2);
         BlockPos spot = new BlockPos(20, 2, 2);

@@ -4,6 +4,8 @@ import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlock;
 import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlockEntity;
+import com.goldskinmc.lightworks.beam.Aim;
+import com.goldskinmc.lightworks.beam.PanTilt;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
@@ -45,7 +47,6 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -159,8 +160,8 @@ final class Scenarios {
     }
 
     /**
-     * Wrench aim: a Searchlight on the floor aimed by a Wrench click at a point high on a wall 12 blocks
-     * away. The beam should land within a block of that point and light it.
+     * Board aim: a Searchlight on the floor aimed with its Pan and Tilt boards at a point high on a wall 12
+     * blocks away. The beam should land within a block of that point and light it.
      */
     static Script aim() {
         BlockPos[] light = new BlockPos[1];
@@ -182,8 +183,8 @@ final class Scenarios {
                 })
                 .waitTicks(10)
                 .run(stage -> {
-                    wrenchAim(stage, light[0], target[0]);
-                    stage.log("aim: wrenched to %s", stage.lightAt(light[0]).aim());
+                    PanTilt set = boardAim(stage, light[0], target[0]);
+                    stage.log("aim: boards set to %s, aim %s", set, stage.lightAt(light[0]).aim());
                 })
                 .waitTicks(30)
                 .run(stage -> {
@@ -209,7 +210,8 @@ final class Scenarios {
     }
 
     /**
-     * A Floodlight on the side of a pillar, wrenched to light the ground in front of it: a wide lit patch.
+     * A Floodlight on the side of a pillar, tilted down on its board to light the ground in front of it: a
+     * wide lit patch.
      * (On top of the pillar it could not point down: aim stays in the half-space in front of the mount.)
      */
     static Script floodlight() {
@@ -230,7 +232,7 @@ final class Scenarios {
                     SelfTestBridge.focus = target[0];
                 })
                 .waitTicks(10)
-                .run(stage -> wrenchAim(stage, light[0], target[0]))
+                .run(stage -> boardAim(stage, light[0], target[0]))
                 .waitTicks(40)
                 .run(stage -> {
                     StringBuilder levels = new StringBuilder();
@@ -960,16 +962,18 @@ final class Scenarios {
                 });
     }
 
-    /** Aims a light the way a player does: looking along {@code target - light centre} and clicking it with a Wrench. */
-    private static void wrenchAim(Stage stage, BlockPos light, Vec3 target) {
-        Vec3 d = target.subtract(Vec3.atCenterOf(light)).normalize();
-        stage.player.setYRot((float) (Mth.atan2(-d.x, d.z) * Mth.RAD_TO_DEG));
-        stage.player.setXRot((float) (-Math.asin(d.y) * Mth.RAD_TO_DEG));
-        BlockState state = stage.level.getBlockState(light);
-        if (state.getBlock() instanceof DirectionalLightBlock block) {
-            block.onWrenched(state, new UseOnContext(stage.player, InteractionHand.MAIN_HAND,
-                    new BlockHitResult(Vec3.atCenterOf(light), Direction.UP, light, false)));
-        }
+    /**
+     * Aims a light at {@code target} the way a player does: by setting the whole-degree pan and tilt
+     * nearest that direction on its boards. Returns what was set.
+     */
+    private static PanTilt boardAim(Stage stage, BlockPos light, Vec3 target) {
+        Vec3 d = target.subtract(Vec3.atCenterOf(light));
+        DirectionalLightBlockEntity be = stage.lightAt(light);
+        Direction f = be.mountFacing();
+        PanTilt set = PanTilt.of(f.getStepX(), f.getStepY(), f.getStepZ(),
+                Aim.fromDirection(f.getStepX(), f.getStepY(), f.getStepZ(), d.x, d.y, d.z));
+        be.setPanTilt(set);
+        return set;
     }
 
     /**

@@ -17,7 +17,7 @@ final class Layouts {
         static final BlockPos WALL_FROM = new BlockPos(6, 1, 2);
         static final BlockPos WALL_TO = new BlockPos(6, 3, 4);
         static final BlockPos TARGET = new BlockPos(6, 2, 3);
-        static final BlockPos TARGET_AFTER_WRENCH = new BlockPos(6, 3, 2);
+        static final BlockPos TARGET_AFTER_AIM = new BlockPos(6, 3, 2);
     }
 
     /** 7x7 plate: a Floodlight high on the side of a pillar, aimed at the ground. */
@@ -27,7 +27,7 @@ final class Layouts {
         static final BlockPos PILLAR_TO = new BlockPos(0, 3, 3);
         static final BlockPos LIGHT = new BlockPos(1, 3, 3);
         static final BlockPos TARGET = new BlockPos(4, 0, 3);
-        static final BlockPos TARGET_AFTER_WRENCH = new BlockPos(4, 0, 5);
+        static final BlockPos TARGET_AFTER_AIM = new BlockPos(4, 0, 5);
     }
 
     /** 7x7 plate: a cart of brass casing with a lamp at each end; it travels east and back. */

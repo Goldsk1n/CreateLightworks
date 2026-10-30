@@ -3,11 +3,14 @@ package com.goldskinmc.lightworks.gametest;
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.beam.Aim;
+import com.goldskinmc.lightworks.beam.PanTilt;
+import com.goldskinmc.lightworks.content.directional.AimBoard;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.light.BeamLightBlock;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.simibubi.create.content.contraptions.StructureTransform;
+import com.simibubi.create.foundation.blockEntity.behaviour.ValueSettingsPacket;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -17,6 +20,9 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
@@ -28,8 +34,8 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
- * Light state: redstone dims a light (and the {@code invertRedstone} config flips that), and aim is
- * saved, synced and turned with its block.
+ * Light state: redstone dims a light (and the {@code invertRedstone} config flips that), lights are placed
+ * level, and aim (and the Pan and Tilt boards' values) is saved, synced and turned with its block.
  */
 @GameTestHolder(Lightworks.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -143,6 +149,79 @@ public final class LightStateGameTests {
                 light.getBlockState());
         client.handleUpdateTag(light.getUpdateTag(registries), registries);
         helper.assertTrue(client.aim().equals(aim), "aim missing from the client update, got " + client.aim());
+        helper.succeed();
+    }
+
+    /** Placed by a player facing east: level and east on the floor, straight out on a wall. */
+    @GameTest(template = EMPTY)
+    public static void placedLightsPointLevel(GameTestHelper helper) {
+        Player player = helper.makeMockPlayer(GameType.CREATIVE);
+        player.setYRot(-90);
+        BlockPos floor = new BlockPos(1, 1, 1);
+        BlockPos wall = new BlockPos(3, 2, 3);
+        for (BlockPos pos : new BlockPos[] {floor, wall}) {
+            BlockState state = LightworksBlocks.SEARCHLIGHT.getDefaultState()
+                    .setValue(DirectionalLightBlock.FACING, pos == floor ? Direction.UP : Direction.SOUTH);
+            helper.setBlock(pos, state);
+            state.getBlock().setPlacedBy(helper.getLevel(), helper.absolutePos(pos), state, player, ItemStack.EMPTY);
+        }
+        DirectionalLightBlockEntity onFloor = helper.getBlockEntity(floor);
+        DirectionalLightBlockEntity onWall = helper.getBlockEntity(wall);
+        helper.assertTrue(onFloor.beamDirection().distanceTo(new Vec3(1, 0, 0)) < 1e-9,
+                "floor light placed facing east points " + onFloor.beamDirection());
+        helper.assertTrue(onWall.aim().equals(Aim.STRAIGHT), "wall light placed with aim " + onWall.aim());
+        helper.assertTrue(onFloor.panTilt().equals(new PanTilt(90, 0)), "floor boards read " + onFloor.panTilt());
+        helper.succeed();
+    }
+
+    /**
+     * Board values on a wall light come back exactly as set, also after saving and loading and on the
+     * client, though the aim they turn into is rounded.
+     */
+    @GameTest(template = EMPTY)
+    public static void boardValuesPersistAndSync(GameTestHelper helper) {
+        BlockPos pos = new BlockPos(2, 2, 2);
+        helper.setBlock(pos, LightworksBlocks.SEARCHLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.NORTH));
+        DirectionalLightBlockEntity light = helper.getBlockEntity(pos);
+        PanTilt set = new PanTilt(37, -23);
+        light.setPanTilt(set);
+        double down = light.beamDirection().y;
+        helper.assertTrue(Math.abs(down + Math.sin(Math.toRadians(23))) < 0.02, "tilted down 23 degrees points " + light.beamDirection());
+        HolderLookup.Provider registries = helper.getLevel().registryAccess();
+
+        CompoundTag saved = light.saveWithFullMetadata(registries);
+        BlockEntity loaded = BlockEntity.loadStatic(light.getBlockPos(), light.getBlockState(), saved, registries);
+        helper.assertTrue(loaded instanceof DirectionalLightBlockEntity copy && copy.panTilt().equals(set),
+                "board values lost in save and load");
+        DirectionalLightBlockEntity client = new DirectionalLightBlockEntity(light.getType(), light.getBlockPos(),
+                light.getBlockState());
+        client.handleUpdateTag(light.getUpdateTag(registries), registries);
+        helper.assertTrue(client.panTilt().equals(set), "board values missing from the client update, got " + client.panTilt());
+        helper.succeed();
+    }
+
+    /** Create's packet, run without a connection: its own loop picks the behaviour the value goes to. */
+    private static final class BoardPacket extends ValueSettingsPacket {
+        BoardPacket(BlockPos pos, int row, int value, int netId) {
+            super(pos, row, value, null, null, Direction.UP, false, netId);
+        }
+
+        void applyTo(DirectionalLightBlockEntity light) {
+            applySettings(null, light);
+        }
+    }
+
+    /** Create's packet reaches the board it was sent for: tilt changes tilt and pan changes pan. */
+    @GameTest(template = EMPTY)
+    public static void eachBoardSetsItsOwnValue(GameTestHelper helper) {
+        BlockPos pos = new BlockPos(2, 1, 2);
+        helper.setBlock(pos, LightworksBlocks.SEARCHLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.UP));
+        DirectionalLightBlockEntity light = helper.getBlockEntity(pos);
+        light.setPanTilt(new PanTilt(90, 0));
+        new BoardPacket(light.getBlockPos(), 0, 30, light.getBehaviour(AimBoard.TILT).netId()).applyTo(light);
+        helper.assertTrue(light.panTilt().equals(new PanTilt(90, 30)), "the tilt board gave " + light.panTilt());
+        new BoardPacket(light.getBlockPos(), 1, 45, light.getBehaviour(AimBoard.PAN).netId()).applyTo(light);
+        helper.assertTrue(light.panTilt().equals(new PanTilt(45, 30)), "the pan board gave " + light.panTilt());
         helper.succeed();
     }
 
