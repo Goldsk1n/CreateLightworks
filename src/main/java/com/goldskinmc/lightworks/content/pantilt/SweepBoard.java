@@ -33,6 +33,12 @@ final class SweepBoard extends ScrollValueBehaviour {
                 : Component.translatable("lightworks.pan_tilt_head.arc", steps * DEGREES_PER_STEP);
     }
 
+    /** What the value box shows; left alone it would be the number of steps. */
+    @Override
+    public String formatValue() {
+        return named(getValue()).getString();
+    }
+
     @Override
     public ValueSettingsBoard createBoard(Player player, BlockHitResult hitResult) {
         return new ValueSettingsBoard(label, max, STEPS_PER_MILESTONE,
