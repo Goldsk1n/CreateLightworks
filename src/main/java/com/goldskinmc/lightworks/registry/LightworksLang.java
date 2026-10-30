@@ -78,15 +78,19 @@ public final class LightworksLang {
         add("lightworks.goggles.hint.redstone_inverted", "Redstone lights it; brighter the stronger");
         add("lightworks.goggles.hint.pan_tilt", "Shaft pans the light on top; redstone tilts it 6° a level");
         add("lightworks.goggles.hint.beacon", "Shaft speed sets the sweep");
-        add("lightworks.goggles.hint.pattern", "Hold R-click on the box to change the pattern");
+        add("lightworks.goggles.hint.pattern", "Hold R-click on the box to pick the pattern, and always or night only");
         add("lightworks.goggles.hint.navigation", "Wrench: change the side colour");
         add("lightworks.warning_light.pattern", "Pattern");
+        add("lightworks.warning_light.always", "Always: %s");
+        add("lightworks.warning_light.night", "Night only: %s");
         // Create 6.0.0 looks option names up with a "create." prefix, 6.0.10 without: both must exist
         for (String prefix : new String[] {"", "create."}) {
             add(prefix + "lightworks.warning_pattern.steady", "Steady");
             add(prefix + "lightworks.warning_pattern.blink", "Blink");
+            add(prefix + "lightworks.warning_pattern.opposite_blink", "Opposite Blink");
             add(prefix + "lightworks.warning_pattern.pulse", "Pulse");
-            add(prefix + "lightworks.warning_pattern.flash", "Flash");
+            add(prefix + "lightworks.warning_pattern.double_flash", "Double Flash");
+            add(prefix + "lightworks.warning_pattern.strobe", "Strobe");
         }
         add("lightworks.configuration.invertRedstone", "Invert redstone");
         add("lightworks.configuration.maxBeamRange", "Longest beam");
@@ -127,9 +131,9 @@ public final class LightworksLang {
                 behaviour("When stopped", "Lights where the beams land, like two fixed Searchlights."),
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
                 action("When R-clicked with Dye", "Colours the lens, the beams and the light they cast."));
-        tooltip("warning_light", "An _amber_ lamp that shines steady, blinks, pulses or flashes, and lights the world round it in the same rhythm.",
+        tooltip("warning_light", "An _amber_ lamp that shines steady, blinks, pulses, flashes or strobes, always or only at night, and lights the world round it in the same rhythm.",
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
-                action("When scrolling the value panel", "Picks the _pattern_."),
+                action("When R-click is held on the box", "Picks the _pattern_, and the lower row runs it _only at night_."),
                 action("When R-clicked with Dye", "Changes its colour."));
         tooltip("tail_light", "A red lamp for the back of a vehicle. On a moving contraption, train or Sable vehicle it _brightens for a second_ whenever the vehicle slows down.",
                 behaviour("When placed", "Glows dim red and gives a little block light."),

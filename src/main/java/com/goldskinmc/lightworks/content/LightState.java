@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Everything a player can set on a light, saved in its block entity, synced to clients and carried onto
  * contraptions in {@code MovementContext.blockEntityData}: the redstone signal it last read, the brightness
- * that gives, its dye colour, its aim and its pattern.
+ * that gives, its dye colour, its aim, its pattern and whether it shines only at night.
  */
 public final class LightState {
     private static final String SIGNAL = "Signal";
@@ -17,6 +17,7 @@ public final class LightState {
     private static final String YAW = "Yaw";
     private static final String ELEVATION = "Elevation";
     private static final String PATTERN = "Pattern";
+    private static final String NIGHT_ONLY = "NightOnly";
 
     private int signal;
     private int brightness = 15;
@@ -24,6 +25,7 @@ public final class LightState {
     private DyeColor colour;
     private Aim aim = Aim.STRAIGHT;
     private int pattern;
+    private boolean nightOnly;
 
     /** State read from block-entity data, or defaults when there is none. */
     public static LightState of(@Nullable CompoundTag tag) {
@@ -85,6 +87,15 @@ public final class LightState {
         this.pattern = pattern;
     }
 
+    /** True for a Warning Light set to shine only at night. */
+    public boolean nightOnly() {
+        return nightOnly;
+    }
+
+    public void setNightOnly(boolean nightOnly) {
+        this.nightOnly = nightOnly;
+    }
+
     public void write(CompoundTag tag) {
         tag.putInt(SIGNAL, signal);
         tag.putInt(BRIGHTNESS, brightness);
@@ -93,6 +104,7 @@ public final class LightState {
         tag.remove(YAW);
         tag.remove(ELEVATION);
         tag.remove(PATTERN);
+        tag.remove(NIGHT_ONLY);
         if (colour != null) {
             tag.putString(COLOUR, colour.getSerializedName());
         }
@@ -103,6 +115,9 @@ public final class LightState {
         if (pattern != 0) {
             tag.putInt(PATTERN, pattern);
         }
+        if (nightOnly) {
+            tag.putBoolean(NIGHT_ONLY, true);
+        }
     }
 
     public void read(CompoundTag tag) {
@@ -111,5 +126,6 @@ public final class LightState {
         colour = tag.contains(COLOUR) ? DyeColor.byName(tag.getString(COLOUR), null) : null;
         aim = tag.contains(ELEVATION) ? new Aim(tag.getInt(YAW), tag.getInt(ELEVATION)) : Aim.STRAIGHT;
         pattern = tag.getInt(PATTERN);
+        nightOnly = tag.getBoolean(NIGHT_ONLY);
     }
 }

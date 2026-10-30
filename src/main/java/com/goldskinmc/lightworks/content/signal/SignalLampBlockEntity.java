@@ -1,6 +1,7 @@
 package com.goldskinmc.lightworks.content.signal;
 
 import com.goldskinmc.lightworks.LightworksConfig;
+import com.goldskinmc.lightworks.beam.DayCycle;
 import com.goldskinmc.lightworks.content.LightGoggles;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
@@ -18,6 +19,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -72,9 +74,7 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
     @Override
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {
         if (typeOf(getBlockState()).kind() == LightType.Kind.WARNING) {
-            pattern = new ScrollOptionBehaviour<>(WarningPattern.class,
-                    Component.translatable("lightworks.warning_light.pattern"), this,
-                    new PatternBox());
+            pattern = new PatternBoard(this);
             behaviours.add(pattern);
         }
     }
@@ -83,7 +83,7 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
         return pattern == null ? WarningPattern.STEADY : pattern.get();
     }
 
-    /** Warning Light only: what scrolling its value box does. */
+    /** Warning Light only: sets the pattern, as its value box does. */
     public void setPattern(WarningPattern next) {
         if (pattern != null) {
             pattern.setValue(next.ordinal());
@@ -107,15 +107,21 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
     public float intensity(float partialTick) {
         // Game time keeps every player's lamps in step; a Ponder scene runs on its own clock
         long time = level == null ? 0 : ClientBeams.isRealWorld(level) ? level.getGameTime() : previewTicks;
-        return intensity(lightType(), state.brightness(), pattern(), brake.braking(), time, partialTick);
+        boolean shining = !state.nightOnly() || level == null || !ClientBeams.isRealWorld(level) || isDark(level);
+        return intensity(lightType(), state.brightness(), pattern(), shining, brake.braking(), time, partialTick);
+    }
+
+    /** True at night, and always where the clock stands still (the Nether, the End). */
+    public static boolean isDark(Level level) {
+        return level.dimensionType().hasFixedTime() || DayCycle.isNight(level.getDayTime());
     }
 
     /** Lens brightness of a signal lamp, placed or on a contraption, at game time {@code time}. */
-    public static float intensity(LightType type, int brightness, WarningPattern pattern, boolean braking,
-            long time, float partialTick) {
+    public static float intensity(LightType type, int brightness, WarningPattern pattern, boolean shining,
+            boolean braking, long time, float partialTick) {
         float base = brightness / 15f;
         return switch (type.kind()) {
-            case WARNING -> base * pattern.at(time, partialTick);
+            case WARNING -> shining ? base * pattern.at(time, partialTick) : 0;
             case TAIL -> base * (braking ? 1 : TAIL_GLOW);
             default -> base;
         };
@@ -225,7 +231,10 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
      * pulse moves in quarter steps).
      */
     private void updateBlockLight() {
-        float pattern = lightType().kind() == LightType.Kind.WARNING ? pattern().blockLight(level.getGameTime()) : 1;
+        float pattern = 1;
+        if (lightType().kind() == LightType.Kind.WARNING) {
+            pattern = state.nightOnly() && !isDark(level) ? 0 : pattern().blockLight(level.getGameTime());
+        }
         int lightLevel = Math.round(lightType().placedLight() * state.brightness() / 15f * pattern);
         BlockState blockState = getBlockState();
         if (blockState.getValue(SignalLampBlock.LIGHT) != lightLevel) {
@@ -241,7 +250,7 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
         LightGoggles.line(tooltip, "block_light", ChatFormatting.GOLD, getBlockState().getValue(SignalLampBlock.LIGHT));
         switch (type.kind()) {
             case WARNING -> LightGoggles.line(tooltip, "pattern", ChatFormatting.AQUA,
-                    Component.translatable("create." + pattern().getTranslationKey()));
+                    PatternBoard.named(Component.translatable(pattern().getTranslationKey()), state.nightOnly()));
             case TAIL -> LightGoggles.line(tooltip, brake.braking() ? "brake_now" : "brake", ChatFormatting.AQUA);
             case NAVIGATION -> LightGoggles.line(tooltip, "side", ChatFormatting.AQUA, Component.translatable(
                     "lightworks.navigation." + getBlockState().getValue(NavigationLightBlock.COLOUR).getSerializedName()));
