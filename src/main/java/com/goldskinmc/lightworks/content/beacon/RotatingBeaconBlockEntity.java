@@ -25,7 +25,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -147,7 +146,7 @@ public class RotatingBeaconBlockEntity extends KineticBlockEntity implements Bea
     @Override
     public boolean ownsBeamLight(BlockPos pos) {
         for (Beam beam : beams) {
-            if (pos.equals(beam.serverLight.pos())) {
+            if (beam.serverLight.owns(pos)) {
                 return true;
             }
         }
@@ -283,17 +282,8 @@ public class RotatingBeaconBlockEntity extends KineticBlockEntity implements Bea
             if (level.isClientSide) {
                 clientBeam.update(level, beam, beam.moving() ? renderBeam(0.5f) : beam, brightness, tint);
             } else if (LightworksConfig.serverLightBlocks() && !beam.moving()) {
-                BeamTrace.Hit hit = BeamTrace.trace(level, beam.origin(), beam.direction(), BeamTrace.range(shape));
-                BeamTrace.Landing edge = hit.hitBlock() ? null : BeamTrace.edgeLanding(level, beam.origin(),
-                        beam.direction(), shape, type.lensHalf(), BeamTrace.range(shape));
-                if (edge != null) {
-                    serverLight.update(level, worldPosition, edge.hit(), edge.direction(),
-                            Mth.clamp((int) Math.round(edge.light() * brightness / 15.0), 0, 15));
-                } else {
-                    int lightLevel = hit.hitBlock()
-                            ? Mth.clamp((int) Math.round(shape.onAxis(hit.distance()) * brightness / 15.0), 0, 15) : 0;
-                    serverLight.update(level, worldPosition, hit, beam.direction(), lightLevel);
-                }
+                serverLight.update(level, worldPosition, BeamTrace.landings(level, beam.origin(), beam.direction(), shape,
+                        type.lensHalf(), BeamTrace.range(shape), type.rays()), brightness);
             } else {
                 serverLight.clear(level);
             }

@@ -2,8 +2,11 @@ package com.goldskinmc.lightworks.light;
 
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.beam.BeamFrame;
+import com.goldskinmc.lightworks.beam.BeamRays;
 import com.goldskinmc.lightworks.beam.BeamSpot;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ClipContext;
@@ -96,14 +99,53 @@ public final class BeamTrace {
     }
 
     /**
-     * Where a beam whose centre ray hit nothing still lands: the nearest of its corner and edge rays that
-     * hits a block, with the (soft-edge, so weaker) light there; null when none does (open sky).
+     * Where a fixed light's beam places light: one landing per ray of {@code rays} that hits something, or,
+     * when none does, the single landing of {@link #edgeLanding}. Empty in the open. Light is 0 to 15 at full
+     * brightness. A wide beam's rays sit halfway to its visible edge, in its full-strength core.
+     */
+    public static List<Landing> landings(BlockGetter level, Vec3 origin, Vec3 axis, ConeFalloff shape,
+            double lensHalf, double range, BeamRays rays) {
+        List<Landing> landings = new ArrayList<>();
+        if (rays.single()) {
+            Hit hit = trace(level, origin, axis, range);
+            if (hit.hitBlock()) {
+                landings.add(new Landing(hit, axis, shape.onAxis(hit.distance())));
+            }
+        } else {
+            double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
+            double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
+            double spread = Math.tan(visibleHalfAngle(shape)) / 2;
+            for (int[] offset : rays.offsets()) {
+                Vec3[] ray = cornerRay(BeamFrame.corner(offset[0], offset[1]), origin, axis, u, v, spread, lensHalf / 2);
+                Hit hit = trace(level, ray[0], ray[1], range);
+                if (landsUsefully(hit)) {
+                    landings.add(new Landing(hit, ray[1], rayLight(shape, hit.distance(), 0.5)));
+                }
+            }
+        }
+        if (landings.isEmpty()) {
+            Landing edge = edgeLanding(level, origin, axis, shape, lensHalf, range);
+            if (edge != null) {
+                landings.add(edge);
+            }
+        }
+        return landings;
+    }
+
+    /**
+     * Where a beam whose centre ray hit nothing still lands: along its full-strength inner rays
+     * ({@link #halfLanding}), or else the nearest of its corner and edge rays that hits a block, with the
+     * (soft-edge, so weaker) light there; null when none does (open sky).
      */
     public static @Nullable Landing edgeLanding(BlockGetter level, Vec3 origin, Vec3 axis, ConeFalloff shape,
             double lensHalf, double range) {
         double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
         double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
         double spread = Math.tan(visibleHalfAngle(shape));
+        Landing inner = halfLanding(level, origin, axis, shape, lensHalf, range);
+        if (inner != null) {
+            return inner;
+        }
         Landing nearest = null;
         for (int i = 0; i < BeamFrame.GRID * BeamFrame.GRID; i++) {
             if (i == BeamFrame.corner(0, 0)) {
@@ -115,29 +157,29 @@ public final class BeamTrace {
                 nearest = new Landing(hit, ray[1], edgeLight(shape, hit.distance()));
             }
         }
-        return nearest != null ? nearest : halfLanding(level, origin, axis, shape, lensHalf, range);
+        return nearest;
     }
 
     /**
      * Where a beam lands along the four rays halfway between its centre and its edges (in its full-strength
-     * core): for a wide beam whose edges touch the ground right at the lens and miss everything else, like a
-     * Floodlight aimed level on the ground. Null when none lands.
+     * core): the furthest that lands, so a beam going through a gap in a wall stays on the wall, not on the
+     * ground at its foot. Null when none lands.
      */
     public static @Nullable Landing halfLanding(BlockGetter level, Vec3 origin, Vec3 axis, ConeFalloff shape,
             double lensHalf, double range) {
         double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
         double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
         double spread = Math.tan(visibleHalfAngle(shape)) / 2;
-        Landing nearest = null;
+        Landing furthest = null;
         for (int i : new int[] {BeamFrame.corner(-1, 0), BeamFrame.corner(1, 0), BeamFrame.corner(0, -1),
                 BeamFrame.corner(0, 1)}) {
             Vec3[] ray = cornerRay(i, origin, axis, u, v, spread, lensHalf / 2);
             Hit hit = trace(level, ray[0], ray[1], range);
-            if (landsUsefully(hit) && (nearest == null || hit.distance() < nearest.hit().distance())) {
-                nearest = new Landing(hit, ray[1], rayLight(shape, hit.distance(), 0.5));
+            if (landsUsefully(hit) && (furthest == null || hit.distance() > furthest.hit().distance())) {
+                furthest = new Landing(hit, ray[1], rayLight(shape, hit.distance(), 0.5));
             }
         }
-        return nearest;
+        return furthest;
     }
 
     /**
