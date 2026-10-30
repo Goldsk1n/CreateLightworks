@@ -197,10 +197,13 @@ FRESNEL_LENS = own('lens', style='fresnel')
 PRISM_LENS = own('lens', style='prism')
 
 
-def plate():
-    """Shared brass mounting plate of the Searchlight and Floodlight, with the iron collar the yoke turns on."""
+def plate(collar=3):
+    """
+    Shared brass mounting plate of the Searchlight and Floodlight, with the iron collar the yoke turns on,
+    {@code collar} pixels to each side of the centre.
+    """
     return [box((2, 0, 2), (14, 2, 14), BRASS_BAND, up=own('plate_top'), down=SEAT),
-            box((5, 2, 5), (11, 3, 11), BAR)]
+            box((8 - collar, 2, 8 - collar), (8 + collar, 3, 8 + collar), BAR)]
 
 
 def yoke_arm(x0, x1, top, outside, bolt_row):
@@ -223,11 +226,12 @@ b.part('head',
 b.part('lens', box((5, 15, 5), (11, 15.4, 11), FRESNEL_LENS))   # lens 7.4/16 from the centre, 6 wide: LightType
 b.finish('base', 'yoke', 'head', 'lens')
 
-# Floodlight: wide flat head with one big lens, on a wide yoke
+# Floodlight: wide flat head with one big lens, on a wide yoke. The lens comes down past the yoke plate and the
+# collar when level, 3.8 pixels from the pivot: they stay inside that at every pan, or they poke through it
 b = Block('floodlight', BRASS_CASING)
-b.part('base', *plate())
+b.part('base', *plate(collar=2.5))
 b.part('yoke',
-       box((4, 3, 4), (12, 4, 12), IRON),
+       box((4, 3, 5), (12, 4, 11), IRON),
        yoke_arm(1, 2, 10, 'west', 1),
        yoke_arm(14, 15, 10, 'east', 1),
        box((2, 3, 7), (4, 4, 9), BAR),
