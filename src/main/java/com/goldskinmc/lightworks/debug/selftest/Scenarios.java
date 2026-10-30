@@ -10,6 +10,8 @@ import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
 import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
+import com.goldskinmc.lightworks.debug.Timer;
+import com.goldskinmc.lightworks.light.ProjectedTint;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
 import com.goldskinmc.lightworks.content.signal.WarningPattern;
 import com.goldskinmc.lightworks.debug.Timer;
@@ -81,6 +83,7 @@ final class Scenarios {
         ALL.put("navigation", Scenarios::navigation);
         ALL.put("goggles", Scenarios::goggles);
         ALL.put("colour", Scenarios::colour);
+        ALL.put("colour-mix", Scenarios::colourMix);
         ALL.put("vehicle", () -> vehicle("vehicle", 0.1, 100, true));
         // Create's default train top speed, 28 blocks a second: how far the spot trails at train speeds
         ALL.put("vehicle-fast", () -> vehicle("vehicle-fast", 1.4, 40, false));
@@ -838,6 +841,67 @@ final class Scenarios {
             }
         }
         return state;
+    }
+
+    /**
+     * Overlapping coloured light, at night on white wool: red, green and blue Floodlights side by side, lighting
+     * one wall. Where two overlap it should read yellow, cyan or magenta and where all three do near white,
+     * never darker than the wool. Then 24 Floodlights in those colours on the same wall, for the cost: the log
+     * gives the milliseconds a frame spent mixing and drawing the tint.
+     */
+    static Script colourMix() {
+        long[] timed = new long[2];
+        return new Script("colour-mix")
+                .run(stage -> {
+                    stage.night();
+                    stage.stand(0, -3);
+                    for (int x = -9; x <= 9; x++) {
+                        for (int z = 0; z <= 11; z++) {
+                            stage.set(stage.at(x, -1, z), Blocks.WHITE_WOOL.defaultBlockState());
+                        }
+                        for (int y = 0; y <= 8; y++) {
+                            stage.set(stage.at(x, y, 11), Blocks.WHITE_WOOL.defaultBlockState());
+                        }
+                    }
+                    DyeColor[] colours = {DyeColor.RED, DyeColor.LIME, DyeColor.BLUE};
+                    for (int i = 0; i < 3; i++) {
+                        mixLight(stage, stage.at(-3 + i * 3, 0, 3), colours[i]);
+                    }
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 3, 10));
+                })
+                .waitTicks(40)
+                .shot("colour-mix-0")
+                .run(stage -> {
+                    DyeColor[] colours = {DyeColor.RED, DyeColor.LIME, DyeColor.BLUE};
+                    for (int i = 0; i < 24; i++) {
+                        mixLight(stage, stage.at(-6 + i % 6 * 2 + (i / 6 % 2), 0, 1 + i / 6), colours[i % 3]);
+                    }
+                })
+                .waitTicks(40)
+                .run(stage -> {
+                    timed[0] = Timer.TINT.nanos();
+                    timed[1] = Timer.TINT.calls();
+                })
+                .waitTicks(100)
+                .run(stage -> {
+                    long frames = Math.max(1, Timer.TINT.calls() - timed[1]);
+                    stage.log("colour-mix: %.3f ms a frame for the tint over %d frames, %d tinted faces from all lights",
+                            (Timer.TINT.nanos() - timed[0]) / 1e6 / frames, frames, ProjectedTint.activeFaces());
+                })
+                .shot("colour-mix-1-many")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                    stage.stand(0, 0);
+                });
+    }
+
+    private static void mixLight(Stage stage, BlockPos pos, DyeColor colour) {
+        stage.set(pos, LightworksBlocks.FLOODLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.UP));
+        DirectionalLightBlockEntity light = stage.lightAt(pos);
+        light.aimAlong(new Vec3(0, 0.3, 1));
+        light.lightState().setColour(colour);
+        light.notifyUpdate();
     }
 
     /**
