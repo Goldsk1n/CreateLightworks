@@ -27,8 +27,6 @@ FACES = ('north', 'south', 'east', 'west', 'up', 'down')
 SIDES = ('north', 'south', 'east', 'west')
 BRASS_CASING = 'create:block/brass_casing'
 BRASS_GEARBOX = 'create:block/brass_gearbox'
-ANDESITE_CASING = 'create:block/andesite_casing'
-INDUSTRIAL_IRON = 'create:block/industrial_iron_block'
 
 
 def own(painter, **params):
@@ -206,7 +204,6 @@ FINS = own('fins')
 SEAT = own('seat')
 IRON = own('iron_panel')
 BAR = own('bar')
-ANDESITE = own('andesite_panel')
 LENS = own('lens')                   # Create's lamp pane
 FRESNEL_LENS = own('lens', style='fresnel')
 PRISM_LENS = own('lens', style='prism')
@@ -259,15 +256,17 @@ b.part('head',
 b.part('lens', box((2.5, 11.5, 2.5), (13.5, 11.8, 13.5), PRISM_LENS))   # 3.8/16 from the centre, 11 wide: LightType
 b.finish('base', 'yoke', 'head', 'lens')
 
-# Headlight: compact andesite-rimmed lamp on a stalk, no yoke
-b = Block('headlight', ANDESITE_CASING)
+FOOT_TOP = own('plate_top')
+
+# Headlight: compact brass-rimmed lamp on a stalk, no yoke
+b = Block('headlight', BRASS_CASING)
 b.part('base',
-       box((4, 0, 4), (12, 2, 12), ANDESITE, down=SEAT),
+       box((4, 0, 4), (12, 2, 12), BRASS_BAND, up=FOOT_TOP, down=SEAT),
        box((7, 2, 7), (9, 5, 9), BAR))
 b.part('no_base')   # On a Pan-Tilt Head the renderer draws the base, turning with the head
 b.part('head',
        box((5, 5, 5), (11, 11, 11), HOUSING, down=FINS, up=None),
-       box((4, 11, 4), (12, 12.5, 12), ANDESITE, up=own('andesite_ring')))
+       box((4, 11, 4), (12, 12.5, 12), BRASS_BAND, up=own('bezel_top'), down=BRASS_PLATE))
 b.part('lens', box((5, 12.5, 5), (11, 12.8, 11), LENS))   # 4.8/16 from the centre, 6 wide
 b.finish('base', 'head', 'lens')
 
@@ -315,11 +314,11 @@ b.finish('base', 'rotor', 'lens')
 
 
 def rim(x0, z0, x1, z1, y0, y1):
-    """Four iron bars round a lamp from y0 to y1, without inner faces (the lens fills the inside)."""
-    return [box((x0, y0, z0), (x1, y1, z0 + 1), BAR, south=None),
-            box((x0, y0, z1 - 1), (x1, y1, z1), BAR, north=None),
-            box((x0, y0, z0 + 1), (x0 + 1, y1, z1 - 1), BAR, east=None, north=None, south=None),
-            box((x1 - 1, y0, z0 + 1), (x1, y1, z1 - 1), BAR, west=None, north=None, south=None)]
+    """Four brass bars round a lamp from y0 to y1, without inner faces (the lens fills the inside)."""
+    return [box((x0, y0, z0), (x1, y1, z0 + 1), BRASS_BAND, south=None),
+            box((x0, y0, z1 - 1), (x1, y1, z1), BRASS_BAND, north=None),
+            box((x0, y0, z0 + 1), (x0 + 1, y1, z1 - 1), BRASS_BAND, east=None, north=None, south=None),
+            box((x1 - 1, y0, z0 + 1), (x1, y1, z1 - 1), BRASS_BAND, west=None, north=None, south=None)]
 
 
 # Warning Light: brass lantern, a lamp dome between a brass foot and a brass collar with a knob
@@ -331,26 +330,27 @@ b.part('base',
 b.part('lens', box((5, 2, 5), (11, 8, 11), own('lens', style='dome'), down=None, up=None))
 b.finish('base', 'lens')
 
-# Tail and Brake Light: flat rectangular lamp in an iron frame
-b = Block('tail_light', INDUSTRIAL_IRON)
+# Tail and Brake Light: flat rectangular lamp, an iron body with a brass frame round the lens. Its long sides are
+# too wide for brass band: all brass reads as a slab
+b = Block('tail_light', BRASS_CASING)
 b.part('base',
        box((3, 0, 4), (13, 2, 12), IRON, down=SEAT),
        *rim(3, 4, 13, 12, 2, 3))
 b.part('lens', box((4, 2, 5), (12, 2.8, 11), LENS, down=None))
 b.finish('base', 'lens')
 
-# Navigation Light: small dome on an iron foot
-b = Block('navigation_light', INDUSTRIAL_IRON)
-b.part('base', box((5, 0, 5), (11, 2, 11), IRON, down=SEAT))
+# Navigation Light: small dome on a brass foot
+b = Block('navigation_light', BRASS_CASING)
+b.part('base', box((5, 0, 5), (11, 2, 11), BRASS_BAND, up=FOOT_TOP, down=SEAT))
 b.part('lens',
        box((6, 2, 6), (10, 5, 10), LENS, down=None),
        box((7, 5, 7), (9, 5.5, 9), LENS, down=None))
 b.finish('base', 'lens')
 
-# Edge Light: a low lens on a flat iron foot, one baked model (see glowing)
-b = Block('edge_light', INDUSTRIAL_IRON)
+# Edge Light: a low lens on a flat brass foot, one baked model (see glowing)
+b = Block('edge_light', BRASS_CASING)
 b.part('base',
-       box((5, 0, 5), (11, 1, 11), IRON, down=SEAT),
+       box((5, 0, 5), (11, 1, 11), BRASS_BAND, up=FOOT_TOP, down=SEAT),
        glowing(box((6, 1, 6), (10, 3, 10), LENS, down=None)))
 # Drawn over it in Ponder scenes only, which light every block alike (EdgeLightRenderer)
 b.part('lens', box((6, 1, 6), (10, 3, 10), LENS, down=None))

@@ -2,7 +2,7 @@
   "parent": "block/block",
   "textures": {
     "sheet": "lightworks:block/headlight",
-    "particle": "create:block/andesite_casing"
+    "particle": "create:block/brass_casing"
   },
   "elements": [
     {
@@ -19,46 +19,46 @@
       "faces": {
         "north": {
           "uv": [
-            0.0,
-            4.0,
             3.0,
+            4.0,
+            6.0,
             7.0
           ],
           "texture": "#sheet"
         },
         "south": {
           "uv": [
-            0.0,
-            4.0,
             3.0,
+            4.0,
+            6.0,
             7.0
           ],
           "texture": "#sheet"
         },
         "east": {
           "uv": [
-            0.0,
-            4.0,
             3.0,
+            4.0,
+            6.0,
             7.0
           ],
           "texture": "#sheet"
         },
         "west": {
           "uv": [
-            0.0,
-            4.0,
             3.0,
+            4.0,
+            6.0,
             7.0
           ],
           "texture": "#sheet"
         },
         "down": {
           "uv": [
-            12.0,
             0.0,
-            15.0,
-            3.0
+            4.0,
+            3.0,
+            7.0
           ],
           "texture": "#sheet"
         }
@@ -78,54 +78,54 @@
       "faces": {
         "north": {
           "uv": [
-            10.0,
+            0.0,
+            7.0,
             4.0,
-            14.0,
-            4.75
+            7.75
           ],
           "texture": "#sheet"
         },
         "south": {
           "uv": [
-            10.0,
+            0.0,
+            7.0,
             4.0,
-            14.0,
-            4.75
+            7.75
           ],
           "texture": "#sheet"
         },
         "east": {
           "uv": [
-            10.0,
+            0.0,
+            7.0,
             4.0,
-            14.0,
-            4.75
+            7.75
           ],
           "texture": "#sheet"
         },
         "west": {
           "uv": [
-            10.0,
+            0.0,
+            7.0,
             4.0,
-            14.0,
-            4.75
+            7.75
           ],
           "texture": "#sheet"
         },
         "up": {
           "uv": [
-            4.0,
             0.0,
-            8.0,
+            0.0,
+            4.0,
             4.0
           ],
           "texture": "#sheet"
         },
         "down": {
           "uv": [
-            0.0,
-            0.0,
             4.0,
+            0.0,
+            8.0,
             4.0
           ],
           "texture": "#sheet"
