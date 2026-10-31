@@ -6,6 +6,7 @@ import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.goldskinmc.lightworks.beam.PanTilt;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.compat.DynamicLights;
+import com.goldskinmc.lightworks.content.LightClipboard;
 import com.goldskinmc.lightworks.content.LightGoggles;
 import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.content.MovingBeam;
@@ -21,6 +22,7 @@ import com.goldskinmc.lightworks.light.ClientBeams;
 import com.goldskinmc.lightworks.light.ServerBeamLight;
 import com.simibubi.create.api.contraption.transformable.TransformableBlockEntity;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
+import com.simibubi.create.content.equipment.clipboard.ClipboardCloneable;
 import com.simibubi.create.content.contraptions.StructureTransform;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -33,6 +35,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -49,13 +52,15 @@ import org.jetbrains.annotations.Nullable;
  * own aim.
  */
 public class DirectionalLightBlockEntity extends SmartBlockEntity
-        implements BeamLightOwner, BeamSource, TransformableBlockEntity, IHaveGoggleInformation {
+        implements BeamLightOwner, BeamSource, TransformableBlockEntity, IHaveGoggleInformation, ClipboardCloneable {
     /** Head angles written for contraption copies, which cannot see the head. */
     static final String HEAD_YAW = "HeadYaw";
     static final String HEAD_ELEVATION = "HeadElevation";
     /** The values last set on the Pan and Tilt boards, kept because a wall light's aim rounds them. */
     private static final String BOARD_PAN = "BoardPan";
     private static final String BOARD_TILT = "BoardTilt";
+    private static final String CLIPBOARD_PAN = "Pan";
+    private static final String CLIPBOARD_TILT = "Tilt";
     /** How often the beam is re-traced to notice blocks placed or removed in its path. */
     private static final int RETRACE_INTERVAL_TICKS = 5;
 
@@ -484,8 +489,42 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         if (isPlayerSneaking) {
             LightGoggles.hint(tooltip, head != null ? "on_head" : "aim");
             LightGoggles.hint(tooltip, "dye");
+            LightGoggles.hint(tooltip, "clipboard");
             LightGoggles.hint(tooltip, LightworksConfig.invertRedstone() ? "redstone_inverted" : "redstone");
         }
+        return true;
+    }
+
+    @Override
+    public String getClipboardKey() {
+        return LightClipboard.KEY;
+    }
+
+    /** Colour and aim, as the Pan and Tilt boards show it: relative to the mount, so a row of lights ends up parallel. */
+    @Override
+    public boolean writeToClipboard(HolderLookup.Provider registries, CompoundTag tag, Direction side) {
+        LightClipboard.writeColour(tag, state);
+        PanTilt aim = panTilt();
+        tag.putInt(CLIPBOARD_PAN, aim.pan());
+        tag.putInt(CLIPBOARD_TILT, aim.tilt());
+        return true;
+    }
+
+    @Override
+    public boolean readFromClipboard(HolderLookup.Provider registries, CompoundTag tag, Player player, Direction side,
+            boolean simulate) {
+        if (!LightClipboard.hasColour(tag)) {
+            return false;
+        }
+        if (simulate) {
+            return true;
+        }
+        // Without the dye the rest still pastes: a row of lights should not stay crooked for want of it
+        LightClipboard.readColour(tag, state, player);
+        if (tag.contains(CLIPBOARD_TILT)) {
+            setPanTilt(new PanTilt(tag.getInt(CLIPBOARD_PAN), tag.getInt(CLIPBOARD_TILT)));
+        }
+        notifyUpdate();
         return true;
     }
 

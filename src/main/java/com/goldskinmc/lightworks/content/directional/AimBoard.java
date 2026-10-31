@@ -61,6 +61,18 @@ public class AimBoard extends ScrollValueBehaviour {
         return pan ? 1 : 2;
     }
 
+    /** The light copies its aim on the Clipboard: Pan and Tilt would overwrite each other under one key. */
+    @Override
+    public boolean writeToClipboard(HolderLookup.Provider registries, CompoundTag tag, Direction side) {
+        return false;
+    }
+
+    @Override
+    public boolean readFromClipboard(HolderLookup.Provider registries, CompoundTag tag, Player player, Direction side,
+            boolean simulate) {
+        return false;
+    }
+
     /** A dye click on a box goes to the light, which takes dye anywhere on the block. */
     @Override
     public boolean bypassesInput(ItemStack mainhandItem) {
