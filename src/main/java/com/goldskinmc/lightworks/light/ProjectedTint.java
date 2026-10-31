@@ -13,6 +13,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,6 +47,9 @@ import org.joml.Matrix4f;
  * drawn, after the world (like the visible beam, it needs no client mod and works with Sodium). Shader packs
  * replace the blending, so it is off while one is on (client config {@code colouredLight}).
  * <p>
+ * Block light cannot draw a beam's square either, so every beam, dyed or not, also has a {@linkplain #spot spot}:
+ * the same faces brightened in proportion to what they show, after the colours.
+ * <p>
  * The lit faces are found in world space when the light changes (a moving light: when its spot has
  * moved), only on faces that see the light, so a tint never shows through a wall. Client thread only.
  */
@@ -59,14 +63,18 @@ public final class ProjectedTint {
     /** Largest tinted patch, in blocks from its centre; wider cones are cut off here. */
     private static final double MAX_RADIUS = 6;
     private static final int MAX_FACES = 400;
+    /** A fixed light finds its faces only when it changes, so it may tint more. */
+    private static final int MAX_FACES_FIXED = 1600;
     /** How far the colour can go: at 1 a lit white block takes the light's colour exactly. */
-    private static final float STRENGTH = 0.85f;
+    private static final float STRENGTH = 0.7f;
     /** Lifted off the face so it never fights the block for depth. */
     private static final float LIFT = 0.002f;
     private static final float DAY_FADE = 0.8f;
     /** The glow round a beam's spot is softer than the spot itself. */
     private static final float GLOW_WEIGHT = 0.6f;
     private static final long EXPIRY_TICKS = 5;
+    /** How much a spot brightens what it falls on, at full strength: 1 doubles it. */
+    private static final float SPOT_STRENGTH = 0.45f;
 
     private static final RenderType TINT = RenderType.create("lightworks_tint", DefaultVertexFormat.POSITION_COLOR,
             VertexFormat.Mode.QUADS, 4096, false, false, RenderType.CompositeState.builder()
@@ -74,6 +82,21 @@ public final class ProjectedTint {
                     .setTransparencyState(new RenderStateShard.TransparencyStateShard("lightworks_multiply", () -> {
                         RenderSystem.enableBlend();
                         RenderSystem.blendFunc(GlStateManager.SourceFactor.DST_COLOR, GlStateManager.DestFactor.ZERO);
+                    }, () -> {
+                        RenderSystem.disableBlend();
+                        RenderSystem.defaultBlendFunc();
+                    }))
+                    .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                    .setCullState(RenderStateShard.NO_CULL)
+                    .createCompositeState(false));
+
+    /** Adds to what is drawn in proportion to it, like light falling on a surface. */
+    private static final RenderType SPOT = RenderType.create("lightworks_spot", DefaultVertexFormat.POSITION_COLOR,
+            VertexFormat.Mode.QUADS, 4096, false, false, RenderType.CompositeState.builder()
+                    .setShaderState(RenderStateShard.POSITION_COLOR_SHADER)
+                    .setTransparencyState(new RenderStateShard.TransparencyStateShard("lightworks_brighten", () -> {
+                        RenderSystem.enableBlend();
+                        RenderSystem.blendFunc(GlStateManager.SourceFactor.DST_COLOR, GlStateManager.DestFactor.ONE);
                     }, () -> {
                         RenderSystem.disableBlend();
                         RenderSystem.defaultBlendFunc();
@@ -100,12 +123,16 @@ public final class ProjectedTint {
     /** Per face: which block and side it is. */
     private long[] facePositions = new long[0];
     private byte[] faceSides = new byte[0];
+    /** Per face: the same light at all its corners, so a spot draws it as one quad. */
+    private boolean[] faceEven = new boolean[0];
     private int faces;
     private float red;
     private float green;
     private float blue;
     private float strength;
     private float skyExposure;
+    /** A {@linkplain #spot spot}: brightens its faces rather than joining the mix of colours. */
+    private boolean brightens;
     /** Client game time after which this tint stops drawing unless refreshed; MAX for owned tints. */
     private long expires = Long.MAX_VALUE;
 
@@ -115,37 +142,128 @@ public final class ProjectedTint {
      *
      * @param origin     lens position
      * @param axis       unit vector the beam points along
+     * @param lensHalf   half the lens's width, in blocks
      * @param ends       where the beam's centre, corner and edge rays stopped on blocks
      * @param glowCentre where the beam's white light sits, just in front of the spot
      * @param glowRadius how far that light reaches, in blocks (0 for none)
      * @param brightness 0 to 1
+     * @param moving     a moving light, which finds its faces all the time and keeps to the smaller limits
      */
-    public void beam(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, List<Vec3> ends, Vec3 glowCentre,
-            double glowRadius, int rgb, float brightness) {
-        double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
-        double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
-        double tan = Math.tan(Math.toRadians(shape.coreDegrees() + shape.edgeDegrees()));
-        List<Region> regions = new ArrayList<>();
-        for (Vec3 end : ends) {
-            // Each ray's own patch: as wide as the cone there, over the square's diagonal
-            double radius = Math.min(MAX_RADIUS, end.distanceTo(origin) * tan * Math.sqrt(2) / BeamFrame.GRID + 0.75);
-            regions.add(new Region(end, radius));
-        }
+    public void beam(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf, List<Vec3> ends,
+            Vec3 glowCentre, double glowRadius, int rgb, float brightness, boolean moving) {
+        int maxFaces = moving ? MAX_FACES : MAX_FACES_FIXED;
+        List<Region> regions = new ArrayList<>(1);
         List<Source> sources = new ArrayList<>(2);
-        sources.add(new Source(origin, (x, y, z) -> (float) (shape.lightAtSquare(x - origin.x, y - origin.y,
-                z - origin.z, axis.x, axis.y, axis.z, u[0], u[1], u[2], v[0], v[1], v[2]) / 15)));
+        Source beam = beamSource(origin, axis, shape, lensHalf);
+        sources.add(beam);
         if (glowRadius > 0.5) {
             double radius = Math.min(MAX_RADIUS, glowRadius);
             regions.add(new Region(glowCentre, radius));
             sources.add(new Source(glowCentre, glowFalloff(glowCentre, radius, GLOW_WEIGHT)));
         }
-        project(level, regions, sources);
+        project(level, litBlocks(level, ends, beam, maxFaces), regions, sources, maxFaces);
         show(level, ends.get(0), rgb, brightness);
+    }
+
+    /**
+     * Brightens the faces a beam lights, in the same square as {@link #beam}: a beam's white light on them is
+     * block light, which cannot show the beam's shape. A spot too big for the limits is left out whole: a cut one
+     * would show its jagged edge, and the block light is still there.
+     *
+     * @param rgb    the light's colour, 0xRRGGBB
+     * @param moving a moving light, which finds its faces all the time and keeps to the smaller limits
+     */
+    public void spot(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf, List<Vec3> ends, int rgb,
+            float brightness, boolean moving) {
+        brightens = true;
+        int maxFaces = moving ? MAX_FACES : MAX_FACES_FIXED;
+        Source beam = beamSource(origin, axis, shape, lensHalf);
+        if (!project(level, litBlocks(level, ends, beam, maxFaces), List.of(), List.of(beam), maxFaces)) {
+            faces = 0;
+        }
+        show(level, ends.get(0), rgb, brightness);
+    }
+
+    /**
+     * The blocks with a face in a beam's light: spreads from where its rays landed, across blocks that have one,
+     * so it covers the whole lit shape however slanted the surface. Stops soon after {@code maxFaces} blocks.
+     */
+    private static LongOpenHashSet litBlocks(Level level, List<Vec3> ends, Source beam, int maxFaces) {
+        LongOpenHashSet lit = new LongOpenHashSet();
+        LongOpenHashSet visited = new LongOpenHashSet();
+        LongArrayFIFOQueue queue = new LongArrayFIFOQueue();
+        for (Vec3 end : ends) {
+            enqueueAround(BlockPos.containing(end), visited, queue);
+        }
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        BlockPos.MutableBlockPos neighbour = new BlockPos.MutableBlockPos();
+        while (!queue.isEmpty() && lit.size() <= maxFaces) {
+            pos.set(queue.dequeueLong());
+            if (level.isLoaded(pos) && level.getBlockState(pos).isSolidRender(level, pos)
+                    && hasLitFace(level, pos, neighbour, beam)) {
+                lit.add(pos.asLong());
+                enqueueAround(pos, visited, queue);
+            }
+        }
+        return lit;
+    }
+
+    private static void enqueueAround(BlockPos centre, LongOpenHashSet visited, LongArrayFIFOQueue queue) {
+        for (int x = -1; x <= 1; x++) {
+            for (int y = -1; y <= 1; y++) {
+                for (int z = -1; z <= 1; z++) {
+                    long next = BlockPos.asLong(centre.getX() + x, centre.getY() + y, centre.getZ() + z);
+                    if (visited.add(next)) {
+                        queue.enqueue(next);
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean hasLitFace(Level level, BlockPos pos, BlockPos.MutableBlockPos neighbour, Source source) {
+        for (Direction side : Direction.values()) {
+            neighbour.setWithOffset(pos, side);
+            Vec3 faceCentre = Vec3.atCenterOf(pos).add(Vec3.atLowerCornerOf(side.getNormal()).scale(0.5));
+            if (source.position().subtract(faceCentre).dot(Vec3.atLowerCornerOf(side.getNormal())) <= 0
+                    || level.getBlockState(neighbour).isSolidRender(level, neighbour)) {
+                continue;
+            }
+            for (int a = 0; a <= GRID; a++) {
+                for (int b = 0; b <= GRID; b++) {
+                    double[] p = facePoint(pos, side, a, b);
+                    if (source.falloff().at(p[0], p[1], p[2]) > 0.01f) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Corner (a, b) of the {@link #GRID} squares on a face, lifted off the block. */
+    private static double[] facePoint(BlockPos pos, Direction side, int a, int b) {
+        Direction.Axis axis = side.getAxis();
+        Direction.Axis u = axis == Direction.Axis.X ? Direction.Axis.Y : Direction.Axis.X;
+        Direction.Axis v = axis == Direction.Axis.Z ? Direction.Axis.Y : Direction.Axis.Z;
+        double[] p = new double[3];
+        p[axis.ordinal()] = (side.getAxisDirection() == Direction.AxisDirection.POSITIVE ? 1 + LIFT : -LIFT) + pos.get(axis);
+        p[u.ordinal()] = pos.get(u) + (double) a / GRID;
+        p[v.ordinal()] = pos.get(v) + (double) b / GRID;
+        return p;
+    }
+
+    private static Source beamSource(Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf) {
+        double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
+        double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
+        return new Source(origin, (x, y, z) -> (float) (shape.lightInBeam(x - origin.x, y - origin.y,
+                z - origin.z, axis.x, axis.y, axis.z, u[0], u[1], u[2], v[0], v[1], v[2], lensHalf) / 15));
     }
 
     /** Tints the faces round a signal lamp, fading to nothing {@code radius} blocks away. */
     public void glow(Level level, Vec3 centre, double radius, int rgb, float brightness) {
-        project(level, List.of(new Region(centre, radius)), List.of(new Source(centre, glowFalloff(centre, radius, 1))));
+        project(level, new LongOpenHashSet(), List.of(new Region(centre, radius)),
+                List.of(new Source(centre, glowFalloff(centre, radius, 1))), MAX_FACES);
         show(level, centre, rgb, brightness);
     }
 
@@ -223,54 +341,68 @@ public final class ProjectedTint {
     }
 
     /**
-     * Finds the exposed faces of full blocks in the regions; each face is tinted by the strongest of the
-     * sources that face it and see it.
+     * Finds the exposed faces of full blocks among {@code blocks} and in the regions; each face is tinted by the
+     * strongest of the sources that face it and see it. False if it stopped at {@code maxFaces}.
      */
-    private void project(Level level, List<Region> regions, List<Source> sources) {
+    private boolean project(Level level, LongOpenHashSet blocks, List<Region> regions, List<Source> sources, int maxFaces) {
         faces = 0;
         LongOpenHashSet seen = new LongOpenHashSet();
         BlockPos.MutableBlockPos neighbour = new BlockPos.MutableBlockPos();
         List<Falloff> lighting = new ArrayList<>(sources.size());
+        BlockPos.MutableBlockPos block = new BlockPos.MutableBlockPos();
+        for (long at : blocks) {
+            if (faces >= maxFaces) {
+                return false;
+            }
+            seen.add(at);
+            projectBlock(level, block.set(at), sources, neighbour, lighting);
+        }
         for (Region region : regions) {
             int reach = (int) Math.ceil(region.radius());
             BlockPos middle = BlockPos.containing(region.centre());
             double limit = (region.radius() + 1) * (region.radius() + 1);
             for (BlockPos pos : BlockPos.betweenClosed(middle.offset(-reach, -reach, -reach),
                     middle.offset(reach, reach, reach))) {
-                if (faces >= MAX_FACES) {
-                    return;
+                if (faces >= maxFaces) {
+                    return false;
                 }
                 if (Vec3.atCenterOf(pos).distanceToSqr(region.centre()) > limit || !seen.add(pos.asLong())
                         || !level.getBlockState(pos).isSolidRender(level, pos)) {
                     continue;
                 }
-                for (Direction side : Direction.values()) {
-                    neighbour.setWithOffset(pos, side);
-                    if (level.getBlockState(neighbour).isSolidRender(level, neighbour)) {
-                        continue;
-                    }
-                    Vec3 normal = Vec3.atLowerCornerOf(side.getNormal());
-                    Vec3 faceCentre = Vec3.atCenterOf(pos).add(normal.scale(0.5));
-                    lighting.clear();
-                    for (Source source : sources) {
-                        if (source.position().subtract(faceCentre).dot(normal) > 0
-                                && sees(level, source.position(), faceCentre, normal, pos)) {
-                            lighting.add(source.falloff());
-                        }
-                    }
-                    if (lighting.size() == 1) {
-                        addFace(pos, side, lighting.get(0));
-                    } else if (lighting.size() > 1) {
-                        List<Falloff> both = List.copyOf(lighting);
-                        addFace(pos, side, (x, y, z) -> {
-                            float most = 0;
-                            for (Falloff falloff : both) {
-                                most = Math.max(most, falloff.at(x, y, z));
-                            }
-                            return most;
-                        });
-                    }
+                projectBlock(level, pos, sources, neighbour, lighting);
+            }
+        }
+        return true;
+    }
+
+    private void projectBlock(Level level, BlockPos pos, List<Source> sources, BlockPos.MutableBlockPos neighbour,
+            List<Falloff> lighting) {
+        for (Direction side : Direction.values()) {
+            neighbour.setWithOffset(pos, side);
+            if (level.getBlockState(neighbour).isSolidRender(level, neighbour)) {
+                continue;
+            }
+            Vec3 normal = Vec3.atLowerCornerOf(side.getNormal());
+            Vec3 faceCentre = Vec3.atCenterOf(pos).add(normal.scale(0.5));
+            lighting.clear();
+            for (Source source : sources) {
+                if (source.position().subtract(faceCentre).dot(normal) > 0
+                        && sees(level, source.position(), faceCentre, normal, pos)) {
+                    lighting.add(source.falloff());
                 }
+            }
+            if (lighting.size() == 1) {
+                addFace(pos, side, lighting.get(0));
+            } else if (lighting.size() > 1) {
+                List<Falloff> both = List.copyOf(lighting);
+                addFace(pos, side, (x, y, z) -> {
+                    float most = 0;
+                    for (Falloff falloff : both) {
+                        most = Math.max(most, falloff.at(x, y, z));
+                    }
+                    return most;
+                });
             }
         }
     }
@@ -284,39 +416,34 @@ public final class ProjectedTint {
     }
 
     private void addFace(BlockPos pos, Direction side, Falloff falloff) {
-        // Two axes across the face and the plane it sits in, lifted off the block
-        Direction.Axis axis = side.getAxis();
-        double plane = (side.getAxisDirection() == Direction.AxisDirection.POSITIVE ? 1 + LIFT : -LIFT)
-                + pos.get(axis);
-        Direction.Axis u = axis == Direction.Axis.X ? Direction.Axis.Y : Direction.Axis.X;
-        Direction.Axis v = axis == Direction.Axis.Z ? Direction.Axis.Y : Direction.Axis.Z;
         int base = faces * FLOATS_PER_FACE;
         if (corners.length < base + FLOATS_PER_FACE) {
             corners = Arrays.copyOf(corners, Math.max(FLOATS_PER_FACE * 8, corners.length * 2));
         }
         float lit = 0;
+        float least = Float.MAX_VALUE;
         int i = base;
         for (int a = 0; a <= GRID; a++) {
             for (int b = 0; b <= GRID; b++) {
-                double[] p = new double[3];
-                p[axis.ordinal()] = plane;
-                p[u.ordinal()] = pos.get(u) + (double) a / GRID;
-                p[v.ordinal()] = pos.get(v) + (double) b / GRID;
+                double[] p = facePoint(pos, side, a, b);
                 float light = falloff.at(p[0], p[1], p[2]);
                 corners[i++] = (float) p[0];
                 corners[i++] = (float) p[1];
                 corners[i++] = (float) p[2];
                 corners[i++] = light;
                 lit = Math.max(lit, light);
+                least = Math.min(least, light);
             }
         }
         if (lit > 0.01f) {
             if (facePositions.length <= faces) {
                 facePositions = Arrays.copyOf(facePositions, Math.max(8, faces * 2));
                 faceSides = Arrays.copyOf(faceSides, facePositions.length);
+                faceEven = Arrays.copyOf(faceEven, facePositions.length);
             }
             facePositions[faces] = pos.asLong();
             faceSides[faces] = (byte) side.ordinal();
+            faceEven[faces] = least == lit;
             faces++;
         }
     }
@@ -345,13 +472,21 @@ public final class ProjectedTint {
         }
         for (ProjectedTint tint : ACTIVE) {
             float amount = STRENGTH * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
-            if (amount > 0.01f) {
+            if (amount > 0.01f && !tint.brightens) {
                 mixed = tint.addToMix(amount, mixed);
             }
         }
         drawMix(out, pose, mixed);
-        poseStack.popPose();
         buffers.endBatch(TINT);
+        VertexConsumer spots = buffers.getBuffer(SPOT);
+        for (ProjectedTint tint : ACTIVE) {
+            float amount = SPOT_STRENGTH * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
+            if (amount > 0.01f && tint.brightens) {
+                tint.drawSpot(spots, pose, amount);
+            }
+        }
+        poseStack.popPose();
+        buffers.endBatch(SPOT);
         Timer.TINT.stop(start);
     }
 
@@ -385,6 +520,33 @@ public final class ProjectedTint {
             }
         }
         return mixed;
+    }
+
+    private void drawSpot(VertexConsumer out, Matrix4f pose, float amount) {
+        int row = GRID + 1;
+        for (int f = 0; f < faces; f++) {
+            int base = f * FLOATS_PER_FACE;
+            if (faceEven[f]) {
+                spotCorner(out, pose, base, amount);
+                spotCorner(out, pose, base + GRID * row * 4, amount);
+                spotCorner(out, pose, base + (GRID * row + GRID) * 4, amount);
+                spotCorner(out, pose, base + GRID * 4, amount);
+                continue;
+            }
+            for (int a = 0; a < GRID; a++) {
+                for (int b = 0; b < GRID; b++) {
+                    spotCorner(out, pose, base + (a * row + b) * 4, amount);
+                    spotCorner(out, pose, base + ((a + 1) * row + b) * 4, amount);
+                    spotCorner(out, pose, base + ((a + 1) * row + b + 1) * 4, amount);
+                    spotCorner(out, pose, base + (a * row + b + 1) * 4, amount);
+                }
+            }
+        }
+    }
+
+    private void spotCorner(VertexConsumer out, Matrix4f pose, int i, float amount) {
+        float k = amount * corners[i + 3];
+        out.addVertex(pose, corners[i], corners[i + 1], corners[i + 2]).setColor(k * red, k * green, k * blue, 1f);
     }
 
     private static void drawMix(VertexConsumer out, Matrix4f pose, int mixed) {

@@ -46,17 +46,23 @@ class BeamFrameTest {
     }
 
     @Test
-    void squareFalloffReachesFurtherAlongTheDiagonal() {
+    void lightFillsTheVisibleSquareAndFadesAtItsEdge() {
         ConeFalloff shape = new ConeFalloff(10, 5, 10, 20, 15);
         double[] u = BeamFrame.side(0, 0, 1);
         double[] v = BeamFrame.up(0, 0, 1, u);
-        // 12 degrees off axis along U and V: outside the round core, still in the square one's edge
-        double t = Math.tan(Math.toRadians(12)) * 5;
-        double round = shape.lightAt(t, t, 5, 0, 0, 1);
-        double square = shape.lightAtSquare(t, t, 5, 0, 0, 1, u[0], u[1], u[2], v[0], v[1], v[2]);
-        assertEquals(true, square > round);
-        // On an axis both agree
-        assertEquals(shape.lightAt(t, 0, 5, 0, 0, 1),
-                shape.lightAtSquare(t, 0, 5, 0, 0, 1, u[0], u[1], u[2], v[0], v[1], v[2]), 1e-6);
+        double lens = 0.25;
+        // 5 blocks out the square reaches the lens plus 5 blocks at 12.5 degrees
+        double half = lens + 5 * Math.tan(Math.toRadians(12.5));
+        double[] light = new double[4];
+        double[] across = {0, half * 0.65, half * 0.9, half + 0.01};
+        for (int i = 0; i < across.length; i++) {
+            // In a corner, like along an axis: the square is as wide there as the visible beam
+            light[i] = shape.lightInBeam(across[i], across[i], 5, 0, 0, 1, u[0], u[1], u[2], v[0], v[1], v[2], lens);
+            assertEquals(light[i], shape.lightInBeam(across[i], 0, 5, 0, 0, 1, u[0], u[1], u[2], v[0], v[1], v[2], lens), EPS);
+        }
+        assertEquals(15, light[0], EPS);
+        assertEquals(15, light[1], EPS);
+        assertEquals(true, light[2] > 0 && light[2] < 15);
+        assertEquals(0, light[3], EPS);
     }
 }
