@@ -69,6 +69,8 @@ def quickPlayServer = providers.gradleProperty('quickplay_server').getOrNull()
 def devPerf = providers.gradleProperty('dev_perf').map { it.toBoolean() }.getOrElse(false)
 // -Pdev_ldl=false leaves LambDynamicLights out of `latest` runs: a player without the optional client mod
 def devLdl = providers.gradleProperty('dev_ldl').map { it.toBoolean() }.getOrElse(true)
+// -Pdev_tools=true adds JEI and The One Probe to `latest`/`lite` runs, for playing by hand: dev only, never shipped
+def devTools = providers.gradleProperty('dev_tools').map { it.toBoolean() }.getOrElse(false)
 // -Pdev_conflicts=contraption-lights,create-train-lights,create-dynamic-lights adds other lighting mods
 // (with what they require) to `latest` runs for the S9 conflict test. create-dynamic-lights needs -Pdev_perf
 // and -Pdev_ldl=false: LambDynamicLights refuses to load next to Sodium Dynamic Lights, which it requires.
@@ -191,6 +193,11 @@ dependencies {
     if (devPerf && !floorRun) {
         localRuntime("maven.modrinth:iris:${iris_version}") { transitive = false }
         localRuntime("maven.modrinth:spark:${spark_version}") { transitive = false }
+    }
+
+    if (devTools && !floorRun) {
+        localRuntime("maven.modrinth:jei:${jei_version}") { transitive = false }
+        localRuntime("maven.modrinth:the-one-probe:${the_one_probe_version}") { transitive = false }
     }
 
     if (runProfile == 'latest') {
