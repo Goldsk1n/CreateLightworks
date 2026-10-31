@@ -64,6 +64,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.WeightedPressurePlateBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -95,6 +96,7 @@ final class Scenarios {
         ALL.put("goggles", Scenarios::goggles);
         ALL.put("colour", Scenarios::colour);
         ALL.put("colour-mix", Scenarios::colourMix);
+        ALL.put("surfaces", Scenarios::surfaces);
         ALL.put("vehicle", () -> vehicle("vehicle", 0.1, 100, true));
         // Create's default train top speed, 28 blocks a second: how far the spot trails at train speeds
         ALL.put("vehicle-fast", () -> vehicle("vehicle-fast", 1.4, 40, false));
@@ -399,6 +401,66 @@ final class Scenarios {
                     setMotorSpeed(stage, at[0], 0);
                     stage.restoreBlocks();
                 });
+    }
+
+    /**
+     * Dyes across surfaces: a row of Searchlights looking straight down per colour, undyed first, a strip of ground per
+     * block, then low Floodlights on grass, undyed, red, green and blue. Each should look lit on every surface and never
+     * darker than the ground beside it: a green light bright on grass, a red or blue one dim but clearly there.
+     */
+    static Script surfaces() {
+        Block[] grounds = {Blocks.GRASS_BLOCK, Blocks.STONE, Blocks.WHITE_WOOL, Blocks.DIRT, Blocks.SAND, Blocks.OAK_PLANKS,
+                Blocks.DEEPSLATE};
+        DyeColor[] colours = {null, DyeColor.RED, DyeColor.GREEN, DyeColor.BLUE, DyeColor.YELLOW, DyeColor.BROWN,
+                DyeColor.GRAY, DyeColor.BLACK};
+        int cell = 5;
+        int across = grounds.length * cell;
+        int along = colours.length * cell;
+        ItemStack[] helmet = new ItemStack[1];
+        Script script = new Script("surfaces")
+                .run(stage -> {
+                    stage.night();
+                    // Goggles would draw every beam's debug line over the light being judged
+                    helmet[0] = stage.player.getItemBySlot(EquipmentSlot.HEAD);
+                    stage.player.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
+                    for (int g = 0; g < grounds.length; g++) {
+                        for (int x = 0; x < cell; x++) {
+                            for (int z = 0; z < along; z++) {
+                                stage.set(stage.at(g * cell + x - across / 2, -1, z + 2), grounds[g].defaultBlockState());
+                            }
+                        }
+                        for (int c = 0; c < colours.length; c++) {
+                            BlockPos light = stage.at(g * cell + cell / 2 - across / 2, 8, c * cell + cell / 2 + 2);
+                            stage.set(light, searchlight(Direction.DOWN));
+                            stage.lightAt(light).lightState().setColour(colours[c]);
+                            stage.lightAt(light).notifyUpdate();
+                        }
+                    }
+                    stage.hover(0, 30, -8);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 0, along / 2 + 2));
+                })
+                .waitTicks(60);
+        script.shot("surfaces");
+        script.run(stage -> {
+            stage.restoreBlocks();
+            // Far from where the rays land there is little block light: the lit ground should still not turn dark
+            DyeColor[] lit = {null, DyeColor.RED, DyeColor.GREEN, DyeColor.BLUE};
+            for (int i = 0; i < lit.length; i++) {
+                BlockPos light = stage.at(i * 14 - 21, 1, 4);
+                stage.set(light, LightworksBlocks.FLOODLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.UP));
+                stage.lightAt(light).aimAlong(new Vec3(0, -1.5, 8));
+                stage.lightAt(light).lightState().setColour(lit[i]);
+                stage.lightAt(light).notifyUpdate();
+            }
+            stage.hover(0, 16, -6);
+            SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 0, 14));
+        }).waitTicks(60);
+        script.shot("surfaces-field");
+        return script.run(stage -> {
+            SelfTestBridge.focus = null;
+            stage.player.setItemSlot(EquipmentSlot.HEAD, helmet[0]);
+            stage.restoreBlocks();
+        });
     }
 
     /**

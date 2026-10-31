@@ -169,7 +169,8 @@ public final class ClientBeam {
                 }
             }
             long start = System.nanoTime();
-            spotLayer.spot(level, at.origin(), at.direction(), shape, lensHalf, ends, rgb, brightness / 15f, at.moving());
+            spotLayer.spot(level, at.origin(), at.direction(), shape, lensHalf, ends, rgb, brightness / 15f, at.moving(),
+                    rgb != WHITE_SPOT);
             if (at.moving()) {
                 spotAverageNanos += (System.nanoTime() - start - spotAverageNanos) * 0.1;
             }
