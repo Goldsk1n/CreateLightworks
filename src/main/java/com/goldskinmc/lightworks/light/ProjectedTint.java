@@ -65,8 +65,11 @@ public final class ProjectedTint {
     private static final int MAX_FACES = 400;
     /** A fixed light finds its faces only when it changes, so it may tint more. */
     private static final int MAX_FACES_FIXED = 1600;
-    /** How far the colour can go: at 1 a lit white block takes the light's colour exactly. */
-    private static final float STRENGTH = 0.7f;
+    /**
+     * How far the colour can go: at 1 a lit white block takes the light's colour exactly. This layer also takes
+     * away light the beam did not bring, so at much more than this a beam darkens the ground it lights.
+     */
+    private static final float STRENGTH = 0.5f;
     /** Lifted off the face so it never fights the block for depth. */
     private static final float LIFT = 0.002f;
     private static final float DAY_FADE = 0.8f;
@@ -75,6 +78,8 @@ public final class ProjectedTint {
     private static final long EXPIRY_TICKS = 5;
     /** How much a spot brightens what it falls on, at full strength: 1 doubles it. */
     private static final float SPOT_STRENGTH = 0.45f;
+    /** How much of a dyed light goes straight onto what it falls on: green grass has little red to brighten, yet shows red light. */
+    private static final float DIRECT_STRENGTH = 0.12f;
 
     private static final RenderType TINT = RenderType.create("lightworks_tint", DefaultVertexFormat.POSITION_COLOR,
             VertexFormat.Mode.QUADS, 4096, false, false, RenderType.CompositeState.builder()
@@ -97,6 +102,21 @@ public final class ProjectedTint {
                     .setTransparencyState(new RenderStateShard.TransparencyStateShard("lightworks_brighten", () -> {
                         RenderSystem.enableBlend();
                         RenderSystem.blendFunc(GlStateManager.SourceFactor.DST_COLOR, GlStateManager.DestFactor.ONE);
+                    }, () -> {
+                        RenderSystem.disableBlend();
+                        RenderSystem.defaultBlendFunc();
+                    }))
+                    .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                    .setCullState(RenderStateShard.NO_CULL)
+                    .createCompositeState(false));
+
+    /** Adds to what is drawn, whatever it is. */
+    private static final RenderType DIRECT = RenderType.create("lightworks_direct", DefaultVertexFormat.POSITION_COLOR,
+            VertexFormat.Mode.QUADS, 4096, false, false, RenderType.CompositeState.builder()
+                    .setShaderState(RenderStateShard.POSITION_COLOR_SHADER)
+                    .setTransparencyState(new RenderStateShard.TransparencyStateShard("lightworks_direct_add", () -> {
+                        RenderSystem.enableBlend();
+                        RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE);
                     }, () -> {
                         RenderSystem.disableBlend();
                         RenderSystem.defaultBlendFunc();
@@ -133,6 +153,10 @@ public final class ProjectedTint {
     private float skyExposure;
     /** A {@linkplain #spot spot}: brightens its faces rather than joining the mix of colours. */
     private boolean brightens;
+    /** A dyed beam's spot: also adds light directly. */
+    private boolean dyed;
+    /** The colour's brightest channel, 0 to 1: a dark dye gives a faint spot. */
+    private float dyeLevel = 1;
     /** Client game time after which this tint stops drawing unless refreshed; MAX for owned tints. */
     private long expires = Long.MAX_VALUE;
 
@@ -174,8 +198,9 @@ public final class ProjectedTint {
      * @param moving a moving light, which finds its faces all the time and keeps to the smaller limits
      */
     public void spot(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf, List<Vec3> ends, int rgb,
-            float brightness, boolean moving) {
+            float brightness, boolean moving, boolean dyed) {
         brightens = true;
+        this.dyed = dyed;
         int maxFaces = moving ? MAX_FACES : MAX_FACES_FIXED;
         Source beam = beamSource(origin, axis, shape, lensHalf);
         if (!project(level, litBlocks(level, ends, beam, maxFaces), List.of(), List.of(beam), maxFaces)) {
@@ -328,6 +353,7 @@ public final class ProjectedTint {
         float g = (rgb >> 8 & 0xFF) / 255f;
         float b = (rgb & 0xFF) / 255f;
         float max = Math.max(0.01f, Math.max(r, Math.max(g, b)));
+        dyeLevel = max;
         red = r / max;
         green = g / max;
         blue = b / max;
@@ -480,13 +506,21 @@ public final class ProjectedTint {
         buffers.endBatch(TINT);
         VertexConsumer spots = buffers.getBuffer(SPOT);
         for (ProjectedTint tint : ACTIVE) {
-            float amount = SPOT_STRENGTH * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
+            float amount = SPOT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
             if (amount > 0.01f && tint.brightens) {
                 tint.drawSpot(spots, pose, amount);
             }
         }
-        poseStack.popPose();
         buffers.endBatch(SPOT);
+        VertexConsumer direct = buffers.getBuffer(DIRECT);
+        for (ProjectedTint tint : ACTIVE) {
+            float amount = DIRECT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
+            if (amount > 0.002f && tint.brightens && tint.dyed) {
+                tint.drawSpot(direct, pose, amount);
+            }
+        }
+        poseStack.popPose();
+        buffers.endBatch(DIRECT);
         Timer.TINT.stop(start);
     }
 
