@@ -2,7 +2,7 @@
   "parent": "block/block",
   "textures": {
     "sheet": "lightworks:block/tail_light",
-    "particle": "create:block/industrial_iron_block"
+    "particle": "create:block/brass_casing"
   },
   "elements": [
     {

@@ -2,7 +2,7 @@
   "parent": "block/block",
   "textures": {
     "sheet": "lightworks:block/headlight",
-    "particle": "create:block/andesite_casing"
+    "particle": "create:block/brass_casing"
   },
   "elements": [
     {
@@ -19,9 +19,9 @@
       "faces": {
         "north": {
           "uv": [
-            3.0,
+            8.0,
             7.0,
-            6.0,
+            11.0,
             7.15
           ],
           "texture": "#sheet"
@@ -42,9 +42,9 @@
       "faces": {
         "south": {
           "uv": [
-            3.0,
+            8.0,
             7.0,
-            6.0,
+            11.0,
             7.15
           ],
           "texture": "#sheet"
@@ -65,9 +65,9 @@
       "faces": {
         "east": {
           "uv": [
-            3.0,
+            8.0,
             7.0,
-            6.0,
+            11.0,
             7.15
           ],
           "texture": "#sheet"
@@ -88,9 +88,9 @@
       "faces": {
         "west": {
           "uv": [
-            3.0,
+            8.0,
             7.0,
-            6.0,
+            11.0,
             7.15
           ],
           "texture": "#sheet"
@@ -111,9 +111,9 @@
       "faces": {
         "up": {
           "uv": [
-            6.0,
-            4.0,
             9.0,
+            4.0,
+            12.0,
             7.0
           ],
           "texture": "#sheet"
@@ -134,9 +134,9 @@
       "faces": {
         "down": {
           "uv": [
-            6.0,
-            4.0,
             9.0,
+            4.0,
+            12.0,
             7.0
           ],
           "texture": "#sheet"
