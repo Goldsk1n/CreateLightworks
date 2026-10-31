@@ -35,8 +35,9 @@ public final class ClientBeam {
     /** Moving lights further from the camera than this trace only their centre (corners would not show). */
     private static final double CORNER_TRACE_DISTANCE = 32;
     /**
-     * A moving light traces its corner rays only every this many ticks (lights take turns); in between each
-     * corner keeps its last length relative to the centre, which holds while the beam sweeps one surface.
+     * A moving light whose centre ray lands traces its corner rays only every this many ticks (lights take
+     * turns); in between each corner keeps its last length relative to the centre, which holds while the beam
+     * sweeps one surface.
      */
     private static final int MOVING_CORNER_INTERVAL = 8;
     private static final int CORNERS = BeamFrame.GRID * BeamFrame.GRID;
@@ -137,7 +138,8 @@ public final class ClientBeam {
         Vec3 a = at.direction();
         boolean far = at.moving() && Minecraft.getInstance().gameRenderer.getMainCamera().getPosition()
                 .distanceToSqr(at.origin()) > CORNER_TRACE_DISTANCE * CORNER_TRACE_DISTANCE;
-        if (at.moving() && !far && --ticksToCorners > 0) {
+        // A centre ray that lands nowhere gives corners no length to keep, and the light goes where they land
+        if (at.moving() && !far && centre.hitBlock() && --ticksToCorners > 0) {
             for (int i = 0; i < CORNERS; i++) {
                 cornerLengths[i] = (float) Math.min(range, cornerRatios[i] * centre.distance());
             }

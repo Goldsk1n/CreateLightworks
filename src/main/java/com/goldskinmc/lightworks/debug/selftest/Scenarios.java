@@ -78,7 +78,7 @@ final class Scenarios {
     static final Map<String, Supplier<Script>> ALL = new LinkedHashMap<>();
     /** What {@code -Pselftest=true} runs. */
     static final String DEFAULT =
-            "fixed,aim,floodlight,pantilt,beacon,warning,navigation,edge,sweep,goggles,colour,vehicle,bearing,piston,vehicle-fast";
+            "fixed,aim,floodlight,pantilt,pantilt-level,beacon,warning,navigation,edge,sweep,goggles,colour,vehicle,bearing,piston,vehicle-fast";
 
     static {
         ALL.put("fixed", Scenarios::fixed);
@@ -87,6 +87,8 @@ final class Scenarios {
         ALL.put("pantilt", Scenarios::panTilt);
         ALL.put("sweep", Scenarios::sweep);
         ALL.put("head-base", Scenarios::headBase);
+        ALL.put("pantilt-level", Scenarios::panTiltLevel);
+        ALL.put("load-level", Scenarios::loadLevel);
         ALL.put("beacon", Scenarios::beacon);
         ALL.put("warning", Scenarios::warning);
         ALL.put("navigation", Scenarios::navigation);
@@ -395,6 +397,88 @@ final class Scenarios {
                     SelfTestBridge.showGui = false;
                     SelfTestBridge.focus = null;
                     setMotorSpeed(stage, at[0], 0);
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * A head with no signal turning a Searchlight level over flat ground, so the centre ray lands nowhere and the
+     * light goes where the beam's lower rays land. The probe's bearing lag should stay near the tick's turn
+     * (4.8 degrees at 16 RPM), not several ticks of it.
+     */
+    static Script panTiltLevel() {
+        BlockPos[] at = new BlockPos[3];
+        return new Script("pantilt-level")
+                .run(stage -> {
+                    stage.night();
+                    at[0] = stage.at(0, 0, 8);
+                    at[1] = at[0].above();
+                    at[2] = at[1].above();
+                    stage.set(at[0], AllBlocks.CREATIVE_MOTOR.getDefaultState().setValue(CreativeMotorBlock.FACING, Direction.UP));
+                    stage.set(at[1], LightworksBlocks.PAN_TILT_HEAD.getDefaultState()
+                            .setValue(PanTiltHeadBlock.FACING, Direction.UP));
+                    stage.set(at[2], searchlight(Direction.UP));
+                    setMotorSpeed(stage, at[0], 16);
+                    stage.hover(0, 12, 0);
+                    SelfTestBridge.focus = Vec3.atCenterOf(at[2]);
+                })
+                .waitTicks(30)
+                .run(stage -> {
+                    SelfTestBridge.probeGroundY = stage.origin.getY();
+                    SelfTestBridge.probeAxis = Vec3.atCenterOf(at[2]);
+                    SelfTestBridge.probe = "pantilt-level";
+                    SelfTestBridge.recording = "pantilt-level";
+                })
+                .waitTicks(120)
+                .run(stage -> {
+                    SelfTestBridge.recording = null;
+                    SelfTestBridge.probe = null;
+                    SelfTestBridge.probeAxis = null;
+                })
+                .shot("pantilt-level-0")
+                .run(stage -> {
+                    setMotorSpeed(stage, at[0], 0);
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /** 50 of {@link #panTiltLevel}'s turning level lights in view: what tracing them costs, frame and client tick. */
+    static Script loadLevel() {
+        int ticks = 200;
+        long[] start = new long[2];
+        return new Script("load-level")
+                .run(stage -> {
+                    stage.night();
+                    for (int x = -9; x <= 9; x += 2) {
+                        for (int z = 0; z <= 8; z += 2) {
+                            BlockPos motor = stage.at(x, 0, z);
+                            stage.set(motor, AllBlocks.CREATIVE_MOTOR.getDefaultState()
+                                    .setValue(CreativeMotorBlock.FACING, Direction.UP));
+                            stage.set(motor.above(), LightworksBlocks.PAN_TILT_HEAD.getDefaultState()
+                                    .setValue(PanTiltHeadBlock.FACING, Direction.UP));
+                            stage.set(motor.above(2), searchlight(Direction.UP));
+                            setMotorSpeed(stage, motor, 16);
+                        }
+                    }
+                    stage.hover(0, 12, -8);
+                    SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 0, 4)).add(0.5, 0, 0.5);
+                })
+                .waitTicks(60)
+                .run(stage -> {
+                    start[0] = Timer.CLIENT_BLOCK.nanos();
+                    start[1] = Timer.CLIENT_BLOCK.calls();
+                    SelfTestBridge.frameStats = "load-level";
+                })
+                .waitTicks(ticks)
+                .run(stage -> {
+                    SelfTestBridge.frameStats = null;
+                    stage.log("load-level: our client block entities %.1f us per tick (%d light ticks)",
+                            (Timer.CLIENT_BLOCK.nanos() - start[0]) / 1000.0 / ticks, Timer.CLIENT_BLOCK.calls() - start[1]);
+                })
+                .shot("load-level-0")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
                     stage.restoreBlocks();
                 });
     }

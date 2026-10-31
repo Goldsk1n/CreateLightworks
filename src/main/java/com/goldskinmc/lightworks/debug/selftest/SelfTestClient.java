@@ -491,7 +491,7 @@ public final class SelfTestClient {
         void tick(BeamSource light, BeamPose beam) {
             swaps.computeIfAbsent(light, l -> new Swaps()).tick(ticks, beam, light.beam().length() > 0);
             if (axis != null && light.lastSpot() != null) {
-                circles.computeIfAbsent(light, l -> new Circle()).add(light.lastSpot(), axis);
+                circles.computeIfAbsent(light, l -> new Circle()).add(light.lastSpot(), axis, beam);
             }
             if (beam.direction().y > -0.99) {
                 return;
@@ -536,8 +536,10 @@ public final class SelfTestClient {
             int c = 0;
             for (Circle circle : circles.values()) {
                 Lightworks.LOGGER.info(String.format("[selftest] probe %s light %d circle: %d samples, spot %.2f to "
-                                + "%.2f blocks from the axis, went %.0f degrees round (%.2f a tick)", name, ++c,
-                        circle.samples, circle.minRadius, circle.maxRadius, circle.swept, circle.swept / ticks));
+                                + "%.2f blocks from the axis, went %.0f degrees round (%.2f a tick), bearing off the "
+                                + "beam by %.1f degrees on average, %.1f at most", name, ++c,
+                        circle.samples, circle.minRadius, circle.maxRadius, circle.swept, circle.swept / ticks,
+                        circle.sumBearingGap / circle.samples, circle.maxBearingGap));
             }
             int n = 0;
             for (Swaps s : swaps.values()) {
@@ -568,8 +570,10 @@ public final class SelfTestClient {
             double maxRadius;
             double swept;
             double lastAngle = Double.NaN;
+            double sumBearingGap;
+            double maxBearingGap;
 
-            void add(BeamSpot spot, Vec3 axis) {
+            void add(BeamSpot spot, Vec3 axis, BeamPose beam) {
                 double dx = spot.spotX() - axis.x;
                 double dz = spot.spotZ() - axis.z;
                 double radius = Math.hypot(dx, dz);
@@ -581,6 +585,10 @@ public final class SelfTestClient {
                     swept += Math.abs(Mth.wrapDegrees(angle - lastAngle));
                 }
                 lastAngle = angle;
+                double beamAngle = Math.toDegrees(Math.atan2(beam.direction().z, beam.direction().x));
+                double bearingGap = Math.abs(Mth.wrapDegrees(angle - beamAngle));
+                sumBearingGap += bearingGap;
+                maxBearingGap = Math.max(maxBearingGap, bearingGap);
             }
         }
 
