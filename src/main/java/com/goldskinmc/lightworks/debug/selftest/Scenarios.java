@@ -402,12 +402,14 @@ final class Scenarios {
     /**
      * Close looks at a Searchlight's base on a Pan-Tilt Head. In {@code head-base-0-turned} the plate lines up with
      * the turntable, not the casing. In {@code head-base-1-no-head} the head is gone, and the plate is back in the
-     * block model, square to the block. In {@code head-base-2-on-bearing} a head and light at pan 30 hang from a
+     * block model, square to the block; a Floodlight and a Headlight on heads of their own stay turned beside it.
+     * In {@code head-base-2-on-bearing} a head and light at pan 30 hang from a
      * turning arm: plate and turntable still line up.
      */
     static Script headBase() {
         BlockPos[] at = new BlockPos[3];
         BlockPos[] arm = new BlockPos[1];
+        BlockPos[] others = new BlockPos[2];
         return new Script("head-base")
                 .run(stage -> {
                     stage.night();
@@ -419,12 +421,29 @@ final class Scenarios {
                             .setValue(PanTiltHeadBlock.FACING, Direction.UP));
                     stage.set(at[2], searchlight(Direction.UP));
                     setMotorSpeed(stage, at[0], 16);
+                    int x = -2;
+                    for (BlockState light : new BlockState[] {LightworksBlocks.FLOODLIGHT.getDefaultState(),
+                            LightworksBlocks.HEADLIGHT.getDefaultState()}) {
+                        BlockPos motor = stage.at(x, 0, 4);
+                        stage.set(motor, AllBlocks.CREATIVE_MOTOR.getDefaultState()
+                                .setValue(CreativeMotorBlock.FACING, Direction.UP));
+                        stage.set(motor.above(), LightworksBlocks.PAN_TILT_HEAD.getDefaultState()
+                                .setValue(PanTiltHeadBlock.FACING, Direction.UP));
+                        stage.set(motor.above(2), light.setValue(DirectionalLightBlock.FACING, Direction.UP));
+                        setMotorSpeed(stage, motor, 16);
+                        others[x < 0 ? 0 : 1] = motor;
+                        x += 4;
+                    }
                     stage.hover(1.5, 4, 2.5);
                     SelfTestBridge.focus = Vec3.atCenterOf(at[2]);
                 })
                 // About 30 degrees at 16 RPM
                 .waitTicks(7)
-                .run(stage -> setMotorSpeed(stage, at[0], 0))
+                .run(stage -> {
+                    setMotorSpeed(stage, at[0], 0);
+                    setMotorSpeed(stage, others[0], 0);
+                    setMotorSpeed(stage, others[1], 0);
+                })
                 .waitTicks(20)
                 .run(stage -> stage.log("head-base: on a head, on_head %s",
                         stage.level.getBlockState(at[2]).getValue(DirectionalLightBlock.ON_HEAD)))

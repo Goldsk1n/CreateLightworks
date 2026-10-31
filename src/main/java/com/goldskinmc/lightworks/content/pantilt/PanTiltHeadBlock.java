@@ -13,7 +13,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * Mount for a Searchlight or Floodlight placed on its {@link #FACING} side. The shaft comes in from the
+ * Mount for a Searchlight, Floodlight or Headlight placed on its {@link #FACING} side. The shaft comes in from the
  * opposite side, the one it was placed against.
  */
 public class PanTiltHeadBlock extends DirectionalKineticBlock implements IBE<PanTiltHeadBlockEntity> {
