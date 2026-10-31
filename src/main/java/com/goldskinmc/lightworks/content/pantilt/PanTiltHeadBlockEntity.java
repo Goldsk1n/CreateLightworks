@@ -152,6 +152,7 @@ public class PanTiltHeadBlockEntity extends KineticBlockEntity {
         if (isPlayerSneaking) {
             LightGoggles.hint(tooltip, "pan_tilt");
             LightGoggles.hint(tooltip, "sweep");
+            LightGoggles.hint(tooltip, "clipboard");
         }
         return true;
     }

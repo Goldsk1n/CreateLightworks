@@ -3,6 +3,7 @@ package com.goldskinmc.lightworks.content.beacon;
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.beam.Aim;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
+import com.goldskinmc.lightworks.content.LightClipboard;
 import com.goldskinmc.lightworks.content.LightGoggles;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
@@ -16,6 +17,7 @@ import com.goldskinmc.lightworks.light.BeamTrace;
 import com.goldskinmc.lightworks.light.ClientBeam;
 import com.goldskinmc.lightworks.light.ClientBeams;
 import com.goldskinmc.lightworks.light.ServerBeamLight;
+import com.simibubi.create.content.equipment.clipboard.ClipboardCloneable;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import java.util.List;
 import java.util.Objects;
@@ -25,6 +27,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -35,7 +38,7 @@ import org.jetbrains.annotations.Nullable;
  * are moving lights (client dynamic light and cosmetic beam, re-traced every tick); stopped, each lights
  * where it lands through a server light block, like a fixed Searchlight.
  */
-public class RotatingBeaconBlockEntity extends KineticBlockEntity implements BeamLightOwner {
+public class RotatingBeaconBlockEntity extends KineticBlockEntity implements BeamLightOwner, ClipboardCloneable {
     static final String ANGLE = "Angle";
     /** Beams leave the rotor level with the mount. */
     static final float ELEVATION = 0;
@@ -193,8 +196,34 @@ public class RotatingBeaconBlockEntity extends KineticBlockEntity implements Bea
         if (isPlayerSneaking) {
             LightGoggles.hint(tooltip, "beacon");
             LightGoggles.hint(tooltip, "dye");
+            LightGoggles.hint(tooltip, "clipboard");
         }
         return true;
+    }
+
+    @Override
+    public String getClipboardKey() {
+        return LightClipboard.KEY;
+    }
+
+    @Override
+    public boolean writeToClipboard(HolderLookup.Provider registries, CompoundTag tag, Direction side) {
+        LightClipboard.writeColour(tag, state);
+        return true;
+    }
+
+    @Override
+    public boolean readFromClipboard(HolderLookup.Provider registries, CompoundTag tag, Player player, Direction side,
+            boolean simulate) {
+        if (!LightClipboard.hasColour(tag)) {
+            return false;
+        }
+        if (simulate) {
+            return true;
+        }
+        boolean pasted = LightClipboard.readColour(tag, state, player);
+        notifyUpdate();
+        return pasted;
     }
 
     @Override

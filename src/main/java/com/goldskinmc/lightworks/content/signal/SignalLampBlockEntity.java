@@ -2,6 +2,7 @@ package com.goldskinmc.lightworks.content.signal;
 
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.beam.DayCycle;
+import com.goldskinmc.lightworks.content.LightClipboard;
 import com.goldskinmc.lightworks.content.LightGoggles;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
@@ -9,6 +10,7 @@ import com.goldskinmc.lightworks.host.SableHost;
 import com.goldskinmc.lightworks.light.ClientBeams;
 import com.goldskinmc.lightworks.light.ProjectedTint;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
+import com.simibubi.create.content.equipment.clipboard.ClipboardCloneable;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollOptionBehaviour;
@@ -21,6 +23,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -32,7 +35,7 @@ import org.jetbrains.annotations.Nullable;
  * for a Warning Light, the pattern picked with its value box. A Tail and Brake Light on a Sable vehicle
  * watches the vehicle's speed on the client and brightens when it slows.
  */
-public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGoggleInformation {
+public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGoggleInformation, ClipboardCloneable {
     /** How bright a Tail and Brake Light's lens is while not braking. */
     public static final float TAIL_GLOW = 0.45f;
 
@@ -88,6 +91,35 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
         if (pattern != null) {
             pattern.setValue(next.ordinal());
         }
+    }
+
+    @Override
+    public String getClipboardKey() {
+        return LightClipboard.KEY;
+    }
+
+    /** The colour; a Warning Light's pattern is on the Clipboard through its value box. A Navigation Light takes no dye. */
+    @Override
+    public boolean writeToClipboard(HolderLookup.Provider registries, CompoundTag tag, Direction side) {
+        if (lightType().kind() == LightType.Kind.NAVIGATION) {
+            return false;
+        }
+        LightClipboard.writeColour(tag, state);
+        return true;
+    }
+
+    @Override
+    public boolean readFromClipboard(HolderLookup.Provider registries, CompoundTag tag, Player player, Direction side,
+            boolean simulate) {
+        if (lightType().kind() == LightType.Kind.NAVIGATION || !LightClipboard.hasColour(tag)) {
+            return false;
+        }
+        if (simulate) {
+            return true;
+        }
+        boolean pasted = LightClipboard.readColour(tag, state, player);
+        notifyUpdate();
+        return pasted;
     }
 
     /** Lights the brake light for a second, as if the vehicle had slowed (Ponder scenes). */
@@ -269,6 +301,7 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
             }
             if (type.kind() != LightType.Kind.NAVIGATION) {
                 LightGoggles.hint(tooltip, "dye");
+                LightGoggles.hint(tooltip, "clipboard");
             }
             LightGoggles.hint(tooltip, LightworksConfig.invertRedstone() ? "redstone_inverted" : "redstone");
         }

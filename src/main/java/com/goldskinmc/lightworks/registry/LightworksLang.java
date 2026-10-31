@@ -76,6 +76,8 @@ public final class LightworksLang {
         add("lightworks.goggles.hint.aim", "Hold R-click on Pan or Tilt to aim");
         add("lightworks.goggles.hint.on_head", "Aimed by the Pan-Tilt Head below");
         add("lightworks.goggles.hint.dye", "Dye: colour the lens, beam and light");
+        add("lightworks.clipboard.needs_dye", "Needs %s to paste the colour");
+        add("lightworks.goggles.hint.clipboard", "Clipboard: R-click copies its settings, L-click pastes them");
         add("lightworks.goggles.hint.redstone", "Redstone dims it; 15 turns it off");
         add("lightworks.goggles.hint.redstone_inverted", "Redstone lights it; brighter the stronger");
         add("lightworks.goggles.hint.pan_tilt", "Shaft pans the light on top; redstone tilts it 6° a level");

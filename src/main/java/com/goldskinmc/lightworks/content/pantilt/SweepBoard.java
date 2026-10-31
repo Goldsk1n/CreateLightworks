@@ -33,6 +33,12 @@ final class SweepBoard extends ScrollValueBehaviour {
                 : Component.translatable("lightworks.pan_tilt_head.arc", steps * DEGREES_PER_STEP);
     }
 
+    /** Its own key on the Clipboard, so only another head's sweep pastes here. */
+    @Override
+    public String getClipboardKey() {
+        return "LightworksSweep";
+    }
+
     /** What the value box shows; left alone it would be the number of steps. */
     @Override
     public String formatValue() {
