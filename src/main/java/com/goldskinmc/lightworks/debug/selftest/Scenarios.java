@@ -89,6 +89,10 @@ final class Scenarios {
         ALL.put("sweep", Scenarios::sweep);
         ALL.put("head-base", Scenarios::headBase);
         ALL.put("pantilt-level", Scenarios::panTiltLevel);
+        ALL.put("moving-flood", Scenarios::movingFlood);
+        ALL.put("flood-block", Scenarios::floodBlock);
+        ALL.put("load-flood", Scenarios::loadFlood);
+        ALL.put("level-dyed", Scenarios::levelDyed);
         ALL.put("load-level", Scenarios::loadLevel);
         ALL.put("beacon", Scenarios::beacon);
         ALL.put("warning", Scenarios::warning);
@@ -498,6 +502,186 @@ final class Scenarios {
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
                 });
+    }
+
+    /**
+     * A level Floodlight, then a level Headlight, and a stone block moved across the beam: logs the block light on the
+     * air in front of the block's lit face, per distance from the lamp and per blocks off its axis. Block light only
+     * comes where a ray lands, so it has gaps; the shot of stones in a beam shows them lit all the same, by the spot.
+     */
+    static Script floodBlock() {
+        int[] distances = {8, 12, 16};
+        int[] offsets = {-8, -6, -4, -2, 0, 2, 4, 6, 8};
+        BlockPos[] lamp = new BlockPos[1];
+        BlockPos[] placed = new BlockPos[2];
+        Script script = new Script("flood-block").run(stage -> stage.night());
+        for (int type = 0; type < 2; type++) {
+            boolean flood = type == 0;
+            script.run(stage -> {
+                lamp[0] = stage.at(0, 0, 0);
+                stage.set(lamp[0], (flood ? LightworksBlocks.FLOODLIGHT : LightworksBlocks.HEADLIGHT).getDefaultState()
+                        .setValue(DirectionalLightBlock.FACING, Direction.UP));
+                stage.lightAt(lamp[0]).setPanTilt(new PanTilt(0, 0));
+                stage.lightAt(lamp[0]).aimAlong(new Vec3(0, 0, 1));
+            }).waitTicks(20);
+            String name = flood ? "Floodlight" : "Headlight";
+            int high = 1;
+            for (int distance : distances) {
+                StringBuilder row = new StringBuilder();
+                script.run(stage -> row.setLength(0));
+                for (int offset : offsets) {
+                    script.run(stage -> {
+                        placed[0] = stage.at(offset, 0, distance);
+                        placed[1] = placed[0].above();
+                        stage.set(placed[0], Blocks.STONE.defaultBlockState());
+                        if (high == 2) {
+                            stage.set(placed[1], Blocks.STONE.defaultBlockState());
+                        }
+                    }).waitTicks(20).run(stage -> {
+                        row.append(' ').append(stage.level.getBrightness(LightLayer.BLOCK, placed[0].north()));
+                        stage.level.setBlock(placed[0], Blocks.AIR.defaultBlockState(), 3);
+                        stage.level.setBlock(placed[1], Blocks.AIR.defaultBlockState(), 3);
+                    }).waitTicks(10);
+                }
+                script.run(stage -> stage.log("flood-block: %s, %d out, light in front at -8 to 8 across:%s", name, distance, row));
+            }
+        }
+        // The owner's scene: stones here and there in a level Floodlight's beam, none on a ray's line
+        script.run(stage -> {
+            lamp[0] = stage.at(0, 0, 0);
+            stage.set(lamp[0], LightworksBlocks.FLOODLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.UP));
+            stage.lightAt(lamp[0]).setPanTilt(new PanTilt(0, 0));
+            stage.lightAt(lamp[0]).aimAlong(new Vec3(0, 0, 1));
+            for (int[] at : new int[][] {{-6, 12}, {2, 12}, {-2, 16}, {4, 16}, {7, 14}, {-9, 17}}) {
+                stage.set(stage.at(at[0], 0, at[1]), Blocks.STONE.defaultBlockState());
+            }
+            stage.hover(-3, 5, -3);
+            SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 0, 13)).add(0.5, 0, 0.5);
+        }).waitTicks(40).shot("flood-block");
+        return script.run(stage -> {
+            SelfTestBridge.focus = null;
+            stage.restoreBlocks();
+        });
+    }
+
+    /** 50 fixed Floodlights aimed at the ground: what their rays and light blocks cost the server. */
+    static Script loadFlood() {
+        int ticks = 200;
+        long[] start = new long[2];
+        return new Script("load-flood")
+                .run(stage -> {
+                    stage.night();
+                    for (int x = 0; x < 10; x++) {
+                        for (int z = 0; z < 5; z++) {
+                            BlockPos light = stage.at(x * 8 - 36, 6, z * 8 + 2);
+                            stage.set(light, LightworksBlocks.FLOODLIGHT.getDefaultState()
+                                    .setValue(DirectionalLightBlock.FACING, Direction.DOWN));
+                        }
+                    }
+                    stage.hover(0, 30, -14);
+                    SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 0, 18)).add(0.5, 0, 0.5);
+                })
+                .waitTicks(100)
+                .run(stage -> {
+                    int lights = 0;
+                    for (BlockPos pos : BlockPos.betweenClosed(stage.at(-44, -1, -6), stage.at(44, 8, 44))) {
+                        if (stage.level.getBlockState(pos).is(LightworksBlocks.BEAM_LIGHT.get())) {
+                            lights++;
+                        }
+                    }
+                    stage.log("load-flood: %d light blocks", lights);
+                    start[0] = Timer.SERVER_BLOCK.nanos();
+                    start[1] = Timer.SERVER_BLOCK.calls();
+                    SelfTestBridge.frameStats = "load-flood";
+                })
+                .waitTicks(ticks)
+                .run(stage -> {
+                    SelfTestBridge.frameStats = null;
+                    stage.log("load-flood: our block entities %.1f us per tick (%d light ticks), server tick %.2f ms",
+                            (Timer.SERVER_BLOCK.nanos() - start[0]) / 1000.0 / ticks, Timer.SERVER_BLOCK.calls() - start[1],
+                            stage.level.getServer().getAverageTickTimeNanos() / 1e6);
+                })
+                .shot("load-flood-0")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * A green Searchlight on a head turning level over flat ground, as in the owner's screenshots: the colour should
+     * follow the beam smoothly, not appear now and then. Film and look; the tint must stay on the beam's end.
+     */
+    static Script levelDyed() {
+        BlockPos[] at = new BlockPos[3];
+        return new Script("level-dyed")
+                .run(stage -> {
+                    stage.night();
+                    at[0] = stage.at(0, 0, 8);
+                    at[1] = at[0].above();
+                    at[2] = at[1].above();
+                    stage.set(at[0], AllBlocks.CREATIVE_MOTOR.getDefaultState().setValue(CreativeMotorBlock.FACING, Direction.UP));
+                    stage.set(at[1], LightworksBlocks.PAN_TILT_HEAD.getDefaultState()
+                            .setValue(PanTiltHeadBlock.FACING, Direction.UP));
+                    stage.set(at[2], searchlight(Direction.UP));
+                    stage.lightAt(at[2]).lightState().setColour(DyeColor.GREEN);
+                    stage.lightAt(at[2]).notifyUpdate();
+                    setMotorSpeed(stage, at[0], 16);
+                    stage.hover(0, 14, 0);
+                    SelfTestBridge.focus = Vec3.atCenterOf(at[2]);
+                })
+                .waitTicks(30)
+                .run(stage -> SelfTestBridge.recording = "level-dyed")
+                .waitTicks(100)
+                .run(stage -> SelfTestBridge.recording = null)
+                .shot("level-dyed-0")
+                .run(stage -> {
+                    setMotorSpeed(stage, at[0], 0);
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * A Floodlight turning under a head, pointing almost straight down, undyed then red, from higher and higher up: a
+     * moving beam's lit square grows with height. The square should stay on the ground as far as the beam lights it,
+     * and fade rather than vanish at once if it grows past the limit. Logs the tinted faces at each height.
+     */
+    static Script movingFlood() {
+        int[] heights = {8, 12, 15, 18, 22};
+        DyeColor[] colours = {null, DyeColor.RED};
+        BlockPos[] at = new BlockPos[3];
+        Script script = new Script("moving-flood").run(stage -> stage.night());
+        for (DyeColor colour : colours) {
+            for (int height : heights) {
+                String name = "moving-flood-" + (colour == null ? "white" : "red") + "-" + height;
+                script.run(stage -> {
+                    stage.restoreBlocks();
+                    at[0] = stage.at(0, height + 2, 16);
+                    at[1] = at[0].below();
+                    at[2] = at[0].below(2);
+                    stage.set(at[1], LightworksBlocks.PAN_TILT_HEAD.getDefaultState()
+                            .setValue(PanTiltHeadBlock.FACING, Direction.DOWN));
+                    stage.set(at[2], LightworksBlocks.FLOODLIGHT.getDefaultState()
+                            .setValue(DirectionalLightBlock.FACING, Direction.DOWN));
+                    stage.lightAt(at[2]).lightState().setColour(colour);
+                    stage.lightAt(at[2]).notifyUpdate();
+                    // Signal 14 from a plate on glass: tilt 84 degrees, so the spot circles and keeps moving
+                    stage.set(at[1].east().below(), Blocks.GLASS.defaultBlockState());
+                    stage.set(at[1].east(), Blocks.LIGHT_WEIGHTED_PRESSURE_PLATE.defaultBlockState()
+                            .setValue(WeightedPressurePlateBlock.POWER, 14));
+                    stage.set(at[0], AllBlocks.CREATIVE_MOTOR.getDefaultState()
+                            .setValue(CreativeMotorBlock.FACING, Direction.DOWN));
+                    setMotorSpeed(stage, at[0], 16);
+                    stage.hover(0, 34, -6);
+                    SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 0, 16)).add(0.5, 0, 0.5);
+                }).waitTicks(45).run(stage -> stage.log("%s: %d tinted faces", name, ProjectedTint.activeFaces())).shot(name);
+            }
+        }
+        return script.run(stage -> {
+            SelfTestBridge.focus = null;
+            stage.restoreBlocks();
+        });
     }
 
     /** 50 of {@link #panTiltLevel}'s turning level lights in view: what tracing them costs, frame and client tick. */

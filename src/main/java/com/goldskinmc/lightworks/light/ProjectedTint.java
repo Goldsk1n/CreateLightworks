@@ -12,6 +12,7 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import it.unimi.dsi.fastutil.longs.Long2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -63,8 +64,13 @@ public final class ProjectedTint {
     /** Largest tinted patch, in blocks from its centre; wider cones are cut off here. */
     private static final double MAX_RADIUS = 6;
     private static final int MAX_FACES = 400;
+    /** A moving beam finds its faces all the time; this covers a Floodlight on flat ground at its full range. */
+    private static final int MAX_FACES_MOVING = 1000;
     /** A fixed light finds its faces only when it changes, so it may tint more. */
     private static final int MAX_FACES_FIXED = 1600;
+    /** A beam nearing its limit fades over this last share of it, so it never vanishes at once. */
+    private static final float LIMIT_FADE_SHARE = 0.2f;
+    private static final int NOT_SHARED = -1;
     /**
      * How far the colour can go: at 1 a lit white block takes the light's colour exactly. This layer also takes
      * away light the beam did not bring, so at much more than this a beam darkens the ground it lights.
@@ -78,7 +84,10 @@ public final class ProjectedTint {
     private static final long EXPIRY_TICKS = 5;
     /** How much a spot brightens what it falls on, at full strength: 1 doubles it. */
     private static final float SPOT_STRENGTH = 0.45f;
-    /** How much of a dyed light goes straight onto what it falls on: green grass has little red to brighten, yet shows red light. */
+    /**
+     * How much of a beam goes straight onto what it falls on. Brightening alone leaves what is dark dark: green grass
+     * has little red to brighten, and a block no ray landed on, with no block light, has nothing to brighten at all.
+     */
     private static final float DIRECT_STRENGTH = 0.12f;
 
     private static final RenderType TINT = RenderType.create("lightworks_tint", DefaultVertexFormat.POSITION_COLOR,
@@ -125,6 +134,12 @@ public final class ProjectedTint {
                     .setCullState(RenderStateShard.NO_CULL)
                     .createCompositeState(false));
 
+    /**
+     * Whether a beam's lens sees a block, per side, while one beam finds its faces: the colour and the spot ask about
+     * the same faces, and a ray to each is most of the work. A moving beam asks once per cell of two blocks.
+     */
+    private static final Long2BooleanOpenHashMap[] SEEN_BY_BEAM = new Long2BooleanOpenHashMap[Direction.values().length];
+
     /** Which faces are in the mix, per side: block position to place in the two arrays below. */
     private static final Long2IntOpenHashMap[] MIXED_FACES = new Long2IntOpenHashMap[Direction.values().length];
     /** Per mixed face: its corners' x, y, z and sums of red, green, blue and strength. */
@@ -132,6 +147,9 @@ public final class ProjectedTint {
     private static float[] mixedLight = new float[0];
 
     static {
+        for (int side = 0; side < SEEN_BY_BEAM.length; side++) {
+            SEEN_BY_BEAM[side] = new Long2BooleanOpenHashMap();
+        }
         for (int side = 0; side < MIXED_FACES.length; side++) {
             MIXED_FACES[side] = new Long2IntOpenHashMap();
             MIXED_FACES[side].defaultReturnValue(-1);
@@ -153,8 +171,6 @@ public final class ProjectedTint {
     private float skyExposure;
     /** A {@linkplain #spot spot}: brightens its faces rather than joining the mix of colours. */
     private boolean brightens;
-    /** A dyed beam's spot: also adds light directly. */
-    private boolean dyed;
     /** The colour's brightest channel, 0 to 1: a dark dye gives a faint spot. */
     private float dyeLevel = 1;
     /** Client game time after which this tint stops drawing unless refreshed; MAX for owned tints. */
@@ -175,38 +191,51 @@ public final class ProjectedTint {
      */
     public void beam(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf, List<Vec3> ends,
             Vec3 glowCentre, double glowRadius, int rgb, float brightness, boolean moving) {
-        int maxFaces = moving ? MAX_FACES : MAX_FACES_FIXED;
+        int maxFaces = moving ? MAX_FACES_MOVING : MAX_FACES_FIXED;
         List<Region> regions = new ArrayList<>(1);
         List<Source> sources = new ArrayList<>(2);
-        Source beam = beamSource(origin, axis, shape, lensHalf);
+        Source beam = beamSource(origin, axis, shape, lensHalf, moving);
         sources.add(beam);
         if (glowRadius > 0.5) {
             double radius = Math.min(MAX_RADIUS, glowRadius);
             regions.add(new Region(glowCentre, radius));
-            sources.add(new Source(glowCentre, glowFalloff(glowCentre, radius, GLOW_WEIGHT)));
+            sources.add(new Source(glowCentre, glowFalloff(glowCentre, radius, GLOW_WEIGHT), NOT_SHARED));
         }
-        project(level, litBlocks(level, ends, beam, maxFaces), regions, sources, maxFaces);
-        show(level, ends.get(0), rgb, brightness);
+        if (!project(level, litBlocks(level, ends, beam, maxFaces), regions, sources, maxFaces)) {
+            faces = 0;
+        }
+        show(level, ends.get(0), rgb, brightness * limitFade(maxFaces));
+    }
+
+    /** Call before finding one beam's faces: what its lens saw last time no longer holds. */
+    static void newBeam() {
+        for (Long2BooleanOpenHashMap seen : SEEN_BY_BEAM) {
+            seen.clear();
+        }
+    }
+
+    /** 1 well inside the limit, down to 0 at it. */
+    private float limitFade(int maxFaces) {
+        return Math.min(1, (maxFaces - faces) / (LIMIT_FADE_SHARE * maxFaces));
     }
 
     /**
      * Brightens the faces a beam lights, in the same square as {@link #beam}: a beam's white light on them is
-     * block light, which cannot show the beam's shape. A spot too big for the limits is left out whole: a cut one
-     * would show its jagged edge, and the block light is still there.
+     * block light, which cannot show the beam's shape. A spot too big for the limit fades out and is left out whole:
+     * a cut one would show its jagged edge, and the block light is still there.
      *
      * @param rgb    the light's colour, 0xRRGGBB
      * @param moving a moving light, which finds its faces all the time and keeps to the smaller limits
      */
     public void spot(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf, List<Vec3> ends, int rgb,
-            float brightness, boolean moving, boolean dyed) {
+            float brightness, boolean moving) {
         brightens = true;
-        this.dyed = dyed;
-        int maxFaces = moving ? MAX_FACES : MAX_FACES_FIXED;
-        Source beam = beamSource(origin, axis, shape, lensHalf);
+        int maxFaces = moving ? MAX_FACES_MOVING : MAX_FACES_FIXED;
+        Source beam = beamSource(origin, axis, shape, lensHalf, moving);
         if (!project(level, litBlocks(level, ends, beam, maxFaces), List.of(), List.of(beam), maxFaces)) {
             faces = 0;
         }
-        show(level, ends.get(0), rgb, brightness);
+        show(level, ends.get(0), rgb, brightness * limitFade(maxFaces));
     }
 
     /**
@@ -278,17 +307,18 @@ public final class ProjectedTint {
         return p;
     }
 
-    private static Source beamSource(Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf) {
+    private static Source beamSource(Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf, boolean moving) {
         double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
         double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
         return new Source(origin, (x, y, z) -> (float) (shape.lightInBeam(x - origin.x, y - origin.y,
-                z - origin.z, axis.x, axis.y, axis.z, u[0], u[1], u[2], v[0], v[1], v[2], lensHalf) / 15));
+                z - origin.z, axis.x, axis.y, axis.z, u[0], u[1], u[2], v[0], v[1], v[2], lensHalf) / 15),
+                moving ? 1 : 0);
     }
 
     /** Tints the faces round a signal lamp, fading to nothing {@code radius} blocks away. */
     public void glow(Level level, Vec3 centre, double radius, int rgb, float brightness) {
         project(level, new LongOpenHashSet(), List.of(new Region(centre, radius)),
-                List.of(new Source(centre, glowFalloff(centre, radius, 1))), MAX_FACES);
+                List.of(new Source(centre, glowFalloff(centre, radius, 1), NOT_SHARED)), MAX_FACES);
         show(level, centre, rgb, brightness);
     }
 
@@ -343,8 +373,13 @@ public final class ProjectedTint {
     private record Region(Vec3 centre, double radius) {
     }
 
-    /** A light: a face it can see is tinted by its falloff. */
-    private record Source(Vec3 position, Falloff falloff) {
+    /**
+     * A light: a face it can see is tinted by its falloff.
+     *
+     * @param cellBits blocks in a cell that share one answer to "can it see this?", as a power of 2 ({@link #SEEN_BY_BEAM});
+     *                 {@link #NOT_SHARED} for a source that is not a beam's lens
+     */
+    private record Source(Vec3 position, Falloff falloff, int cellBits) {
     }
 
     private void show(Level level, Vec3 at, int rgb, float brightness) {
@@ -414,7 +449,7 @@ public final class ProjectedTint {
             lighting.clear();
             for (Source source : sources) {
                 if (source.position().subtract(faceCentre).dot(normal) > 0
-                        && sees(level, source.position(), faceCentre, normal, pos)) {
+                        && sees(level, source, side, faceCentre, normal, pos)) {
                     lighting.add(source.falloff());
                 }
             }
@@ -431,6 +466,21 @@ public final class ProjectedTint {
                 });
             }
         }
+    }
+
+    private static boolean sees(Level level, Source source, Direction side, Vec3 faceCentre, Vec3 normal, BlockPos pos) {
+        int bits = source.cellBits();
+        if (bits == NOT_SHARED) {
+            return sees(level, source.position(), faceCentre, normal, pos);
+        }
+        long cell = BlockPos.asLong(pos.getX() >> bits, pos.getY() >> bits, pos.getZ() >> bits);
+        Long2BooleanOpenHashMap seen = SEEN_BY_BEAM[side.ordinal()];
+        if (seen.containsKey(cell)) {
+            return seen.get(cell);
+        }
+        boolean answer = sees(level, source.position(), faceCentre, normal, pos);
+        seen.put(cell, answer);
+        return answer;
     }
 
     /** True when nothing stands between the light and the face. */
@@ -515,7 +565,7 @@ public final class ProjectedTint {
         VertexConsumer direct = buffers.getBuffer(DIRECT);
         for (ProjectedTint tint : ACTIVE) {
             float amount = DIRECT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
-            if (amount > 0.002f && tint.brightens && tint.dyed) {
+            if (amount > 0.002f && tint.brightens) {
                 tint.drawSpot(direct, pose, amount);
             }
         }
@@ -587,6 +637,13 @@ public final class ProjectedTint {
         int row = GRID + 1;
         for (int f = 0; f < mixed; f++) {
             int base = f * FLOATS_PER_FACE;
+            if (mixIsEven(base)) {
+                corner(out, pose, base);
+                corner(out, pose, base + GRID * row * 4);
+                corner(out, pose, base + (GRID * row + GRID) * 4);
+                corner(out, pose, base + GRID * 4);
+                continue;
+            }
             for (int a = 0; a < GRID; a++) {
                 for (int b = 0; b < GRID; b++) {
                     corner(out, pose, base + (a * row + b) * 4);
@@ -596,6 +653,16 @@ public final class ProjectedTint {
                 }
             }
         }
+    }
+
+    /** True when every corner of a mixed face has the same light: most of a big beam, drawn as one quad. */
+    private static boolean mixIsEven(int base) {
+        for (int i = 4; i < FLOATS_PER_FACE; i++) {
+            if (mixedLight[base + i] != mixedLight[base + i % 4]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** One corner: white (no change) where unlit, the mix of the lights reaching it where lit. */
