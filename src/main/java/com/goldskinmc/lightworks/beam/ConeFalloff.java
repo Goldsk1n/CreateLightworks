@@ -8,6 +8,11 @@ package com.goldskinmc.lightworks.beam;
  * Pure maths with no Minecraft classes, so it is unit-tested without booting the game.
  */
 public final class ConeFalloff {
+    /** Share of the square beam's half-width its light fades over, at the edge. */
+    private static final double BEAM_FADE_SHARE = 0.25;
+    /** The fade is at least this wide, in blocks, so it stays smooth on a near wall. */
+    private static final double BEAM_FADE_MIN = 0.4;
+
     private final double coreDegrees;
     private final double edgeDegrees;
     private final double cosCore;
@@ -87,27 +92,24 @@ public final class ConeFalloff {
     }
 
     /**
-     * Light at offset (dx, dy, dz) from the beam origin for the square beam the player sees: like
-     * {@link #lightAt} but the core and edge are squares across the axes (ux, uy, uz) and (vx, vy, vz)
-     * (see {@link BeamFrame}), measured by the larger of the two angles off the axis.
+     * Light at offset (dx, dy, dz) from the beam origin inside the square beam the player sees, across the axes
+     * (ux, uy, uz) and (vx, vy, vz) (see {@link BeamFrame}). The square starts as the lens, {@code lensHalf}
+     * from the axis, and widens at the visible half-angle, the core plus half the soft edge. Light is even
+     * across most of it and fades smoothly to nothing just at its edge.
      */
-    public double lightAtSquare(double dx, double dy, double dz, double ax, double ay, double az,
-            double ux, double uy, double uz, double vx, double vy, double vz) {
+    public double lightInBeam(double dx, double dy, double dz, double ax, double ay, double az,
+            double ux, double uy, double uz, double vx, double vy, double vz, double lensHalf) {
         double along = dx * ax + dy * ay + dz * az;
         if (along <= 0 || along >= range) {
             return 0;
         }
         double across = Math.max(Math.abs(dx * ux + dy * uy + dz * uz), Math.abs(dx * vx + dy * vy + dz * vz));
-        // The cosine of the larger angle off the axis, then the same edge as the round beam
-        double cos = along / Math.sqrt(along * along + across * across);
-        double angular;
-        if (cos >= cosCore) {
-            angular = 1;
-        } else if (cos <= cosEdge) {
+        double half = lensHalf + along * Math.tan(Math.toRadians(coreDegrees + edgeDegrees / 2));
+        double fade = Math.min(half, Math.max(half * BEAM_FADE_SHARE, BEAM_FADE_MIN));
+        double t = (half - across) / fade;
+        if (t <= 0) {
             return 0;
-        } else {
-            angular = (cos - cosEdge) / (cosCore - cosEdge);
         }
-        return onAxis(along) * angular;
+        return t >= 1 ? onAxis(along) : onAxis(along) * t * t * (3 - 2 * t);
     }
 }

@@ -1,5 +1,6 @@
 package com.goldskinmc.lightworks.light;
 
+import com.goldskinmc.lightworks.LightworksClientConfig;
 import com.goldskinmc.lightworks.beam.BeamFrame;
 import com.goldskinmc.lightworks.beam.BeamSpot;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
@@ -44,6 +45,19 @@ public final class ClientBeam {
     private static final int CENTRE = BeamFrame.corner(0, 0);
     /** Blocks of tinted glow round the spot per level of light there: block light fades one level a block. */
     private static final double GLOW_PER_LEVEL = 0.5;
+    /** An undyed beam's spot, warm white like its lens. */
+    private static final int WHITE_SPOT = 0xFFF4DC;
+    /**
+     * Time all moving lights together may spend finding their spots' faces each tick. Over it they take turns,
+     * each refreshing less often, so a scene full of them keeps its frame rate and only their spots step. Past
+     * {@link #MAX_SPOT_INTERVAL} ticks a spot would no longer follow its beam, so they go without until fewer want one.
+     */
+    private static final long SPOT_BUDGET_NANOS = 1_500_000;
+    private static final int MAX_SPOT_INTERVAL = 10;
+    private static long spotTick;
+    private static int spotsWanted;
+    private static int spotInterval = 1;
+    private static double spotAverageNanos;
 
     private final ConeFalloff shape;
     /** Half the lens's width, in blocks: the square the beam starts as, flush on the glass. */
@@ -54,6 +68,12 @@ public final class ClientBeam {
     private ProjectedTint tint;
     private int tintedRgb = -1;
     private int tintedBrightness;
+    @Nullable
+    private ProjectedTint spotLayer;
+    private int spotRgb = -1;
+    private int spotBrightness;
+    /** Moved since its spot's faces were last found, waiting for its turn. */
+    private boolean spotStale;
     @Nullable
     private BeamSpot lastSpot;
     private double length;
@@ -123,6 +143,63 @@ public final class ClientBeam {
             spot.set(next);
         }
         updateTint(level, at, lit, ends, brightness, tintRgb, moved);
+        updateSpotLayer(level, at, ends, brightness, tintRgb < 0 ? WHITE_SPOT : tintRgb, moved);
+    }
+
+    /** The beam's brightened square; a moving light too far off to show it, or with shaders on, skips the work. */
+    private void updateSpotLayer(Level level, BeamPose at, List<Vec3> ends, int brightness, int rgb, boolean moved) {
+        if (ends.isEmpty() || !ClientBeams.isRealWorld(level) || !LightworksClientConfig.colouredLight()
+                || (at.moving() && farFromCamera(at))) {
+            clearSpotLayer();
+            return;
+        }
+        if (spotLayer == null) {
+            spotLayer = new ProjectedTint();
+        }
+        spotStale |= moved;
+        if (spotStale || rgb != spotRgb || brightness != spotBrightness) {
+            if (at.moving()) {
+                boolean turn = spotTurn(level.getGameTime());
+                if (spotInterval > MAX_SPOT_INTERVAL) {
+                    clearSpotLayer();
+                    return;
+                }
+                if (!turn) {
+                    return;
+                }
+            }
+            long start = System.nanoTime();
+            spotLayer.spot(level, at.origin(), at.direction(), shape, lensHalf, ends, rgb, brightness / 15f, at.moving());
+            if (at.moving()) {
+                spotAverageNanos += (System.nanoTime() - start - spotAverageNanos) * 0.1;
+            }
+            spotStale = false;
+            spotRgb = rgb;
+            spotBrightness = brightness;
+        }
+    }
+
+    /** True when this moving light may find its spot's faces this tick. */
+    private boolean spotTurn(long tick) {
+        if (tick != spotTick) {
+            spotTick = tick;
+            spotInterval = (int) Math.max(1, Math.ceil(spotsWanted * spotAverageNanos / SPOT_BUDGET_NANOS));
+            spotsWanted = 0;
+        }
+        spotsWanted++;
+        return (tick + System.identityHashCode(this)) % spotInterval == 0;
+    }
+
+    private void clearSpotLayer() {
+        if (spotLayer != null) {
+            spotLayer.clear();
+        }
+        spotRgb = -1;
+    }
+
+    private static boolean farFromCamera(BeamPose at) {
+        return Minecraft.getInstance().gameRenderer.getMainCamera().getPosition()
+                .distanceToSqr(at.origin()) > CORNER_TRACE_DISTANCE * CORNER_TRACE_DISTANCE;
     }
 
 
@@ -136,8 +213,7 @@ public final class ClientBeam {
             ends.add(centre.end());
         }
         Vec3 a = at.direction();
-        boolean far = at.moving() && Minecraft.getInstance().gameRenderer.getMainCamera().getPosition()
-                .distanceToSqr(at.origin()) > CORNER_TRACE_DISTANCE * CORNER_TRACE_DISTANCE;
+        boolean far = at.moving() && farFromCamera(at);
         // A centre ray that lands nowhere gives corners no length to keep, and the light goes where they land
         if (at.moving() && !far && centre.hitBlock() && --ticksToCorners > 0) {
             for (int i = 0; i < CORNERS; i++) {
@@ -192,8 +268,8 @@ public final class ClientBeam {
             // The white light the beam leaves round its spot (light block or dynamic light) is tinted too
             double glowRadius = lit == null ? 0 : lit.light() * brightness / 15.0 * GLOW_PER_LEVEL;
             Vec3 glowCentre = lit == null ? at.origin() : lit.hit().end().subtract(lit.direction().scale(0.5));
-            tint.beam(level, at.origin(), at.direction(), shape, ends, glowCentre, glowRadius, tintRgb,
-                    brightness / 15f);
+            tint.beam(level, at.origin(), at.direction(), shape, lensHalf, ends, glowCentre, glowRadius, tintRgb,
+                    brightness / 15f, at.moving());
             tintedRgb = tintRgb;
             tintedBrightness = brightness;
         }
@@ -222,6 +298,7 @@ public final class ClientBeam {
             spot.set(null);
         }
         clearTint();
+        clearSpotLayer();
     }
 
     /** Removes the dynamic light for good. */
@@ -232,6 +309,8 @@ public final class ClientBeam {
         }
         clearTint();
         tint = null;
+        clearSpotLayer();
+        spotLayer = null;
         lastSpot = null;
         length = 0;
         brightness = 0;
