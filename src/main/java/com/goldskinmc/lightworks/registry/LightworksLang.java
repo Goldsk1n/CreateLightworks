@@ -33,12 +33,6 @@ public final class LightworksLang {
         add("lightworks.goggles.aim", "pan %s, tilt %s");
         add("lightworks.goggles.aim_head.label", "Aim:");
         add("lightworks.goggles.aim_head", "pan %s, tilt %s, by the Pan-Tilt Head");
-        add("lightworks.goggles.beam_hit.label", "Beam:");
-        add("lightworks.goggles.beam_hit", "lands on %s %s blocks away, light %s");
-        add("lightworks.goggles.beam_miss.label", "Beam:");
-        add("lightworks.goggles.beam_miss", "reaches %s blocks without landing");
-        add("lightworks.goggles.moving_dynamic.label", "Moving:");
-        add("lightworks.goggles.moving_dynamic", "lit by LambDynamicLights");
         add("lightworks.goggles.moving_beam_only.label", "Moving:");
         add("lightworks.goggles.moving_beam_only", "beam only; LambDynamicLights lights the ground");
         add("lightworks.goggles.no_light_path.label", "Light:");

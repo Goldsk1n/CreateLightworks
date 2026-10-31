@@ -10,7 +10,6 @@ import com.goldskinmc.lightworks.light.BeamSource;
 import com.goldskinmc.lightworks.light.BeamTrace;
 import com.goldskinmc.lightworks.light.ClientBeams;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.simibubi.create.content.equipment.goggles.GogglesItem;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -30,8 +29,8 @@ import net.neoforged.neoforge.client.event.CustomizeGuiOverlayEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 /**
- * Beam paths, drawn while the player wears Engineer's Goggles, or with the F3 screen open and the client
- * config {@code debugOverlay} on. Each beam (placed, on a vehicle or on a contraption)
+ * Beam paths, drawn with the F3 screen open and the client config {@code debugOverlay} on. Each beam (placed,
+ * on a vehicle or on a contraption)
  * as a line from lens to hit point with a box around the hit block, plus details of the searchlight under
  * the crosshair.
  */
@@ -47,8 +46,7 @@ public final class BeamDebugRenderer {
     public static void onRenderLevel(RenderLevelStageEvent event) {
         Minecraft mc = Minecraft.getInstance();
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES || mc.level == null || mc.player == null
-                || !(GogglesItem.isWearingGoggles(mc.player)
-                        || mc.getDebugOverlay().showDebugScreen() && LightworksClientConfig.debugOverlay())) {
+                || !mc.getDebugOverlay().showDebugScreen() || !LightworksClientConfig.debugOverlay()) {
             return;
         }
         Vec3 camera = event.getCamera().getPosition();
