@@ -4,7 +4,10 @@ import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.content.directional.AimBoard;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
+import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
+import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
+import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -38,6 +41,19 @@ public final class DyeGameTests {
             helper.assertFalse(board.bypassesInput(new ItemStack(Items.STICK)), "other items skip the box");
             helper.assertFalse(board.bypassesInput(ItemStack.EMPTY), "an empty hand skips the box");
         }
+        helper.succeed();
+    }
+
+    /** The same for the Warning Light's pattern box. */
+    @GameTest(template = "empty")
+    public static void dyeClicksPassThePatternBoard(GameTestHelper helper) {
+        BlockPos pos = new BlockPos(2, 1, 2);
+        helper.setBlock(pos, LightworksBlocks.WARNING_LIGHT.getDefaultState().setValue(SignalLampBlock.FACING, Direction.UP));
+        SignalLampBlockEntity lamp = helper.getBlockEntity(pos);
+        ScrollValueBehaviour board = lamp.getBehaviour(ScrollValueBehaviour.TYPE);
+        helper.assertTrue(board.bypassesInput(new ItemStack(Items.RED_DYE)), "dye stops at the box");
+        helper.assertFalse(board.bypassesInput(new ItemStack(Items.STICK)), "other items skip the box");
+        helper.assertFalse(board.bypassesInput(ItemStack.EMPTY), "an empty hand skips the box");
         helper.succeed();
     }
 

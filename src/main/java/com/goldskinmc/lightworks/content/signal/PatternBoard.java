@@ -7,6 +7,8 @@ import java.util.List;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.DyeItem;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
 
 /**
@@ -27,6 +29,12 @@ final class PatternBoard extends ScrollOptionBehaviour<WarningPattern> {
     /** Text for a pattern and row, also the goggles' line. */
     static MutableComponent named(Component pattern, boolean nightOnly) {
         return Component.translatable(nightOnly ? NIGHT : ALWAYS, pattern);
+    }
+
+    /** A dye click on the box goes to the lamp, which takes dye anywhere on the block. */
+    @Override
+    public boolean bypassesInput(ItemStack mainhandItem) {
+        return mainhandItem.getItem() instanceof DyeItem;
     }
 
     @Override
