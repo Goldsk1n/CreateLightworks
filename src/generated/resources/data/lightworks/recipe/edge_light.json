@@ -2,11 +2,11 @@
   "type": "minecraft:crafting_shaped",
   "category": "redstone",
   "key": {
+    "B": {
+      "tag": "c:plates/brass"
+    },
     "G": {
       "tag": "c:glass_blocks/colorless"
-    },
-    "I": {
-      "tag": "c:plates/iron"
     },
     "T": {
       "item": "create:electron_tube"
@@ -15,7 +15,7 @@
   "pattern": [
     " G ",
     " T ",
-    " I "
+    " B "
   ],
   "result": {
     "count": 8,

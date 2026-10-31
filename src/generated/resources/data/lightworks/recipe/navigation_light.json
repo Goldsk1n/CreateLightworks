@@ -2,11 +2,11 @@
   "type": "minecraft:crafting_shaped",
   "category": "redstone",
   "key": {
+    "B": {
+      "tag": "c:plates/brass"
+    },
     "G": {
       "tag": "c:glass_blocks/colorless"
-    },
-    "I": {
-      "tag": "c:plates/iron"
     },
     "L": {
       "tag": "c:dyes/green"
@@ -21,7 +21,7 @@
   "pattern": [
     " G ",
     "RTL",
-    " I "
+    " B "
   ],
   "result": {
     "count": 2,
