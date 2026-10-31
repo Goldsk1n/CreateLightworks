@@ -91,6 +91,7 @@ final class Scenarios {
         ALL.put("pantilt-level", Scenarios::panTiltLevel);
         ALL.put("moving-flood", Scenarios::movingFlood);
         ALL.put("flood-block", Scenarios::floodBlock);
+        ALL.put("block-change", Scenarios::blockChange);
         ALL.put("load-flood", Scenarios::loadFlood);
         ALL.put("level-dyed", Scenarios::levelDyed);
         ALL.put("load-level", Scenarios::loadLevel);
@@ -506,8 +507,8 @@ final class Scenarios {
 
     /**
      * A level Floodlight, then a level Headlight, and a stone block moved across the beam: logs the block light on the
-     * air in front of the block's lit face, per distance from the lamp and per blocks off its axis. Block light only
-     * comes where a ray lands, so it has gaps; the shot of stones in a beam shows them lit all the same, by the spot.
+     * air in front of the block's lit face, per distance from the lamp and per blocks off its axis. Inside the beam a
+     * block should have light wherever it stands, ray or no ray. The shot of stones in a beam shows the same by eye.
      */
     static Script floodBlock() {
         int[] distances = {8, 12, 16};
@@ -562,6 +563,33 @@ final class Scenarios {
             SelfTestBridge.focus = null;
             stage.restoreBlocks();
         });
+    }
+
+    /**
+     * A stone placed in a level Floodlight's beam, away from its rays, then broken: the painted faces must follow at once
+     * (more with the stone, back to the first count without it; 5 ticks is well under a refresh of anything else), and
+     * the last shot must show no ghost of the block.
+     */
+    static Script blockChange() {
+        return new Script("block-change").run(stage -> {
+            stage.night();
+            BlockPos lamp = stage.at(0, 0, 0);
+            stage.set(lamp, LightworksBlocks.FLOODLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.UP));
+            stage.lightAt(lamp).setPanTilt(new PanTilt(0, 0));
+            stage.lightAt(lamp).aimAlong(new Vec3(0, 0, 1));
+            stage.hover(-3, 5, -3);
+            SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 0, 13)).add(0.5, 0, 0.5);
+        }).waitTicks(40).run(stage -> stage.log("block-change: no stone, %d faces", ProjectedTint.activeFaces()))
+                .run(stage -> stage.set(stage.at(5, 0, 13), Blocks.STONE.defaultBlockState()))
+                .waitTicks(5).run(stage -> stage.log("block-change: stone placed, %d faces", ProjectedTint.activeFaces()))
+                .shot("block-change-placed")
+                .run(stage -> stage.level.setBlock(stage.at(5, 0, 13), Blocks.AIR.defaultBlockState(), 3))
+                .waitTicks(5).run(stage -> stage.log("block-change: stone broken, %d faces", ProjectedTint.activeFaces()))
+                .shot("block-change-broken")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
     }
 
     /** 50 fixed Floodlights aimed at the ground: what their rays and light blocks cost the server. */

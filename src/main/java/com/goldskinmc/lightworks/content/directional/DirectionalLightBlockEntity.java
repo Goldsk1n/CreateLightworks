@@ -346,8 +346,8 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         if (level.isClientSide) {
             clientBeam.update(level, beam, beam.moving() ? renderBeam(0.5f) : beam, brightness, tint);
         } else if (LightworksConfig.serverLightBlocks() && !beam.moving()) {
-            serverLight.update(level, worldPosition, BeamTrace.landings(level, beam.origin(), beam.direction(), shape,
-                    type.lensHalf(), BeamTrace.range(shape), type.rays()), brightness);
+            serverLight.update(level, worldPosition, beam.origin(), beam.direction(), shape, type.lensHalf(),
+                    BeamTrace.range(shape), type.rays(), brightness);
         } else {
             // Light blocks cannot keep up with a moving vehicle: vehicles rely on the client dynamic light
             serverLight.clear(level);
