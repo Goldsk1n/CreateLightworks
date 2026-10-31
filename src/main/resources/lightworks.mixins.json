@@ -1,0 +1,12 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.goldskinmc.lightworks.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ClientLevelMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

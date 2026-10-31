@@ -80,6 +80,17 @@ public final class BeamVisual {
      */
     public static void render(PoseStack poseStack, MultiBufferSource buffers, Vector3f lens, Vector3f axis,
             ClientBeam beam, int rgb) {
+        if (ClientSafety.works(ClientSafety.BEAMS)) {
+            try {
+                draw(poseStack, buffers, lens, axis, beam, rgb);
+            } catch (RuntimeException e) {
+                ClientSafety.failed(ClientSafety.BEAMS, e);
+            }
+        }
+    }
+
+    private static void draw(PoseStack poseStack, MultiBufferSource buffers, Vector3f lens, Vector3f axis,
+            ClientBeam beam, int rgb) {
         float alpha = ALPHA * LightworksClientConfig.beamAlpha() * beam.brightness() / 15f
                 * (1 - DAY_FADE * daylight() * beam.skyExposure());
         if (beam.length() <= 0 || alpha <= 0) {

@@ -59,6 +59,8 @@ public final class ClientBeam {
     /** A moving light's colour and spot fade from this far from the camera, in blocks, and are gone at the next. */
     private static final double LAYER_FADE_DISTANCE = 48;
     private static final double LAYER_DISTANCE = 64;
+    /** Blocks past the lit area whose change still counts, for the faces they cover or uncover. */
+    private static final double CHANGE_MARGIN = 2;
     private static long layersTick;
     private static int layersWanted;
     private static int layersInterval = 1;
@@ -82,6 +84,7 @@ public final class ClientBeam {
     private long retryAt;
     /** Moved since its lit faces were last found, waiting for its turn. */
     private boolean layersStale;
+    private long changesSeen = BlockChanges.count();
     @Nullable
     private BeamSpot lastSpot;
     private double length;
@@ -148,14 +151,32 @@ public final class ClientBeam {
         boolean moved = worthPublishing(lastSpot, next);
         if (moved) {
             lastSpot = next;
-            spot.set(next);
+            setSpot(next);
         }
-        updateLayers(level, at, lit, ends, brightness, tintRgb, moved);
+        if (ClientSafety.works(ClientSafety.LAYERS)) {
+            try {
+                updateLayers(level, at, lit, ends, brightness, tintRgb, moved);
+            } catch (RuntimeException e) {
+                ClientSafety.failed(ClientSafety.LAYERS, e);
+                clearLayers();
+            }
+        }
+    }
+
+    private void setSpot(@Nullable BeamSpot to) {
+        if (ClientSafety.works(ClientSafety.DYNAMIC_LIGHT)) {
+            try {
+                spot.set(to);
+            } catch (RuntimeException e) {
+                ClientSafety.failed(ClientSafety.DYNAMIC_LIGHT, e);
+            }
+        }
     }
 
     /**
-     * What is painted on the faces the beam lights, its colour and its spot. Found again when the light changed or
-     * its spot moved enough to be republished; moving lights take turns at this. A moving light far off fades out.
+     * What is painted on the faces the beam lights, its colour and its spot. Found again when the light changed, its
+     * spot moved enough to be republished or a block in its way changed; moving lights take turns at this. A moving
+     * light far off fades out.
      */
     private void updateLayers(Level level, BeamPose at, @Nullable BeamTrace.Landing lit, List<Vec3> ends, int brightness,
             int tintRgb, boolean moved) {
@@ -166,6 +187,10 @@ public final class ClientBeam {
             return;
         }
         layersStale |= moved;
+        if (changesSeen != BlockChanges.count()) {
+            layersStale |= BlockChanges.any(changesSeen, pos -> reaches(at, lit, brightness, pos));
+            changesSeen = BlockChanges.count();
+        }
         if (!layersStale && tintRgb == layersRgb && brightness == layersBrightness && layersShown) {
             return;
         }
@@ -224,6 +249,25 @@ public final class ClientBeam {
         layersShown = true;
         layersRgb = tintRgb;
         layersBrightness = brightness;
+    }
+
+    /** True if a block here could change what the layers paint: inside the beam's square or the glow round its spot. */
+    private boolean reaches(BeamPose at, @Nullable BeamTrace.Landing lit, int brightness, long pos) {
+        Vec3 centre = Vec3.atCenterOf(BlockPos.of(pos));
+        if (lit != null) {
+            double glow = lit.light() * brightness / 15.0 * GLOW_PER_LEVEL + CHANGE_MARGIN;
+            if (lit.hit().end().distanceToSqr(centre) < glow * glow) {
+                return true;
+            }
+        }
+        Vec3 fromLens = centre.subtract(at.origin());
+        double along = fromLens.dot(at.direction());
+        if (along < -CHANGE_MARGIN || along > BeamTrace.range(shape) + CHANGE_MARGIN) {
+            return false;
+        }
+        double across = fromLens.subtract(at.direction().scale(along)).length();
+        // The square's corners are further out than its sides
+        return across < Math.tan(BeamTrace.visibleHalfAngle(shape)) * Math.max(0, along) * Math.sqrt(2) + lensHalf + CHANGE_MARGIN;
     }
 
     /** True when this moving light may find its faces this tick. */
@@ -324,7 +368,7 @@ public final class ClientBeam {
         length = 0;
         brightness = 0;
         if (spot != null) {
-            spot.set(null);
+            setSpot(null);
         }
         clearLayers();
     }

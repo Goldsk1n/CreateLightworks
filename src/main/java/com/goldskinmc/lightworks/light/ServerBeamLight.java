@@ -1,5 +1,7 @@
 package com.goldskinmc.lightworks.light;
 
+import com.goldskinmc.lightworks.beam.BeamRays;
+import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -13,18 +15,25 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
 /**
- * Keeps a beam's {@link BeamLightBlock}s in the air just in front of where it lands, one per landing, moving
- * or removing them as the beam changes and leaving alone those that stay, so a re-trace updates no light.
+ * Keeps a beam's {@link BeamLightBlock}s in the air just in front of what it lights: where its rays land and across
+ * the surfaces between them ({@link BeamArea}), moving or removing them as the beam changes and leaving alone those
+ * that stay, so a re-trace updates no light.
  * Owned by the light's block entity; server side only.
  */
 public final class ServerBeamLight {
     /** Landings closer than this share one light, the strongest: block light spreads that far anyway. */
     private static final int MIN_SPACING_SQUARED = 3 * 3;
+    /** The area is searched when the rays land elsewhere, and this often besides, for blocks placed off the rays. */
+    private static final int AREA_REFRESH_TICKS = 40;
 
     private final String tagKey;
     private List<BlockPos> lights = List.of();
+    private List<BeamTrace.Landing> area = List.of();
+    private long areaKey;
+    private long areaDue;
 
     public ServerBeamLight() {
         this("BeamLight");
@@ -40,11 +49,37 @@ public final class ServerBeamLight {
     }
 
     /**
+     * Lights what a beam lights: where its rays land and the surfaces between them.
+     *
+     * @param owner      position of the block entity that owns these lights
+     * @param axis       unit vector the beam points along
+     * @param brightness the light's brightness now, 0 to 15; 0 removes the lights
+     */
+    public void update(Level level, BlockPos owner, Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf, double range,
+            BeamRays rays, int brightness) {
+        List<BeamTrace.Landing> landed = BeamTrace.landings(level, origin, axis, shape, lensHalf, range, rays);
+        long now = level.getGameTime();
+        long key = axis.hashCode();
+        for (BeamTrace.Landing landing : landed) {
+            key = key * 31 + landing.hit().end().hashCode();
+        }
+        if (key != areaKey || now >= areaDue) {
+            area = BeamArea.landings(level, origin, axis, shape, lensHalf, range, landed);
+            areaKey = key;
+            areaDue = now + AREA_REFRESH_TICKS;
+        }
+        List<BeamTrace.Landing> all = new ArrayList<>(landed.size() + area.size());
+        all.addAll(landed);
+        all.addAll(area);
+        update(level, owner, all, brightness);
+    }
+
+    /**
      * @param owner      position of the block entity that owns these lights
      * @param landings   where the beam lands, with its light at full brightness ({@link BeamTrace#landings})
      * @param brightness the light's brightness now, 0 to 15; 0 removes the lights
      */
-    public void update(Level level, BlockPos owner, List<BeamTrace.Landing> landings, int brightness) {
+    private void update(Level level, BlockPos owner, List<BeamTrace.Landing> landings, int brightness) {
         Map<BlockPos, Integer> wanted = new LinkedHashMap<>();
         List<BeamTrace.Landing> strongestFirst = new ArrayList<>(landings);
         strongestFirst.sort(Comparator.comparingDouble(landing -> -landing.light()));

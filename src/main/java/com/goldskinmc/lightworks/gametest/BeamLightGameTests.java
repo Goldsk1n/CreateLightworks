@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ObserverBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -142,6 +143,53 @@ public final class BeamLightGameTests {
             }
             helper.assertTrue(onWall >= 2, "expected the wall round the hole to stay lit at full strength, found " + onWall);
         });
+    }
+
+    /** A level wide beam: its lower rays stop on the ground early, yet a block off every ray is lit where it stands. */
+    @GameTest(template = EMPTY_LONG, timeoutTicks = 1000)
+    public static void blockBetweenAWideBeamsRaysIsLit(GameTestHelper helper) {
+        BlockPos light = levelFloodlightOverFloor(helper);
+        BlockPos stone = new BlockPos(11, 1, 0);
+        helper.setBlock(stone, Blocks.STONE);
+        helper.setBlock(stone.south(), Blocks.AIR);
+        helper.succeedWhen(() -> {
+            int level = LightworksGameTests.blockLight(helper, stone.west());
+            helper.assertTrue(level >= 6, "a block in the beam off its rays has light " + level);
+            helper.assertTrue(helper.getBlockState(light).is(LightworksBlocks.FLOODLIGHT.get()), "the light went");
+        });
+    }
+
+    /** The light goes only on what the lens sees: the ground behind a wall inside the cone stays dark. */
+    @GameTest(template = EMPTY_LONG, timeoutTicks = 200)
+    public static void wideBeamPlacesNoLightBehindAWall(GameTestHelper helper) {
+        levelFloodlightOverFloor(helper);
+        for (int y = 1; y < 5; y++) {
+            for (int z = 0; z < 5; z++) {
+                helper.setBlock(new BlockPos(4, y, z), Blocks.STONE);
+            }
+        }
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(isBeamLight(helper, new BlockPos(3, 2, 2))
+                        || isBeamLight(helper, new BlockPos(3, 1, 2)) || isBeamLight(helper, new BlockPos(3, 3, 2)),
+                        "no light on the wall"))
+                .thenExecuteAfter(60, () -> {
+                    for (BlockPos pos : BlockPos.betweenClosed(new BlockPos(5, 1, 0), new BlockPos(14, 4, 4))) {
+                        helper.assertFalse(isBeamLight(helper, pos), "light behind the wall at " + pos);
+                    }
+                })
+                .thenSucceed();
+    }
+
+    private static BlockPos levelFloodlightOverFloor(GameTestHelper helper) {
+        for (int x = 0; x < 15; x++) {
+            for (int z = 0; z < 5; z++) {
+                helper.setBlock(new BlockPos(x, 0, z), Blocks.STONE);
+            }
+        }
+        BlockPos light = new BlockPos(0, 1, 2);
+        helper.setBlock(light, LightworksBlocks.FLOODLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.UP));
+        ((DirectionalLightBlockEntity) helper.getBlockEntity(light)).aimAlong(new Vec3(1, 0, 0));
+        return light;
     }
 
     /** All of a wide beam's lights go when it is broken, and are saved with it. */

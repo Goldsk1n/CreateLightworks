@@ -71,6 +71,8 @@ public final class ProjectedTint {
     /** A beam nearing its limit fades over this last share of it, so it never vanishes at once. */
     private static final float LIMIT_FADE_SHARE = 0.2f;
     private static final int NOT_SHARED = -1;
+    /** What a beam's light keeps on a face it only grazes. */
+    private static final double SLANT_FLOOR = 0.55;
     /**
      * How far the colour can go: at 1 a lit white block takes the light's colour exactly. This layer also takes
      * away light the beam did not bring, so at much more than this a beam darkens the ground it lights.
@@ -454,18 +456,36 @@ public final class ProjectedTint {
                 }
             }
             if (lighting.size() == 1) {
-                addFace(pos, side, lighting.get(0));
+                addFace(pos, side, facing(sources, lighting.get(0), faceCentre, normal));
             } else if (lighting.size() > 1) {
                 List<Falloff> both = List.copyOf(lighting);
+                for (int i = 0; i < both.size(); i++) {
+                    lighting.set(i, facing(sources, both.get(i), faceCentre, normal));
+                }
+                List<Falloff> turned = List.copyOf(lighting);
                 addFace(pos, side, (x, y, z) -> {
                     float most = 0;
-                    for (Falloff falloff : both) {
+                    for (Falloff falloff : turned) {
                         most = Math.max(most, falloff.at(x, y, z));
                     }
                     return most;
                 });
             }
         }
+    }
+
+    /**
+     * A beam's light on a face it meets at a slant: the same light over more surface looks dimmer. Not all the way down
+     * to nothing as the cosine would, so a level beam's ground stays lit, which is what block light does there too.
+     */
+    private static Falloff facing(List<Source> sources, Falloff falloff, Vec3 faceCentre, Vec3 normal) {
+        Source beam = sources.get(0);
+        if (beam.cellBits() == NOT_SHARED || beam.falloff() != falloff) {
+            return falloff;
+        }
+        double cos = Math.max(0, beam.position().subtract(faceCentre).normalize().dot(normal));
+        float share = (float) (SLANT_FLOOR + (1 - SLANT_FLOOR) * cos);
+        return (x, y, z) -> falloff.at(x, y, z) * share;
     }
 
     private static boolean sees(Level level, Source source, Direction side, Vec3 faceCentre, Vec3 normal, BlockPos pos) {
@@ -528,9 +548,17 @@ public final class ProjectedTint {
     public static void onRenderLevel(RenderLevelStageEvent event) {
         // Shader packs replace the blending, which would turn the tint into glaring patches
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES || ACTIVE.isEmpty()
-                || !LightworksClientConfig.colouredLight()) {
+                || !LightworksClientConfig.colouredLight() || !ClientSafety.works(ClientSafety.LAYERS)) {
             return;
         }
+        try {
+            draw(event);
+        } catch (RuntimeException e) {
+            ClientSafety.failed(ClientSafety.LAYERS, e);
+        }
+    }
+
+    private static void draw(RenderLevelStageEvent event) {
         long start = Timer.start();
         Vec3 camera = event.getCamera().getPosition();
         PoseStack poseStack = event.getPoseStack();
@@ -538,39 +566,42 @@ public final class ProjectedTint {
         VertexConsumer out = buffers.getBuffer(TINT);
         float day = BeamVisual.daylight();
         poseStack.pushPose();
-        poseStack.translate(-camera.x, -camera.y, -camera.z);
-        Matrix4f pose = poseStack.last().pose();
-        long now = Minecraft.getInstance().level == null ? 0 : Minecraft.getInstance().level.getGameTime();
-        ACTIVE.removeIf(tint -> now > tint.expires);
-        int mixed = 0;
-        for (Long2IntOpenHashMap sideFaces : MIXED_FACES) {
-            sideFaces.clear();
-        }
-        for (ProjectedTint tint : ACTIVE) {
-            float amount = STRENGTH * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
-            if (amount > 0.01f && !tint.brightens) {
-                mixed = tint.addToMix(amount, mixed);
+        try {
+            poseStack.translate(-camera.x, -camera.y, -camera.z);
+            Matrix4f pose = poseStack.last().pose();
+            long now = Minecraft.getInstance().level == null ? 0 : Minecraft.getInstance().level.getGameTime();
+            ACTIVE.removeIf(tint -> now > tint.expires);
+            int mixed = 0;
+            for (Long2IntOpenHashMap sideFaces : MIXED_FACES) {
+                sideFaces.clear();
             }
-        }
-        drawMix(out, pose, mixed);
-        buffers.endBatch(TINT);
-        VertexConsumer spots = buffers.getBuffer(SPOT);
-        for (ProjectedTint tint : ACTIVE) {
-            float amount = SPOT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
-            if (amount > 0.01f && tint.brightens) {
-                tint.drawSpot(spots, pose, amount);
+            for (ProjectedTint tint : ACTIVE) {
+                float amount = STRENGTH * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
+                if (amount > 0.01f && !tint.brightens) {
+                    mixed = tint.addToMix(amount, mixed);
+                }
             }
-        }
-        buffers.endBatch(SPOT);
-        VertexConsumer direct = buffers.getBuffer(DIRECT);
-        for (ProjectedTint tint : ACTIVE) {
-            float amount = DIRECT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
-            if (amount > 0.002f && tint.brightens) {
-                tint.drawSpot(direct, pose, amount);
+            drawMix(out, pose, mixed);
+            buffers.endBatch(TINT);
+            VertexConsumer spots = buffers.getBuffer(SPOT);
+            for (ProjectedTint tint : ACTIVE) {
+                float amount = SPOT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
+                if (amount > 0.01f && tint.brightens) {
+                    tint.drawSpot(spots, pose, amount);
+                }
             }
+            buffers.endBatch(SPOT);
+            VertexConsumer direct = buffers.getBuffer(DIRECT);
+            for (ProjectedTint tint : ACTIVE) {
+                float amount = DIRECT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
+                if (amount > 0.002f && tint.brightens) {
+                    tint.drawSpot(direct, pose, amount);
+                }
+            }
+            buffers.endBatch(DIRECT);
+        } finally {
+            poseStack.popPose();
         }
-        poseStack.popPose();
-        buffers.endBatch(DIRECT);
         Timer.TINT.stop(start);
     }
 
