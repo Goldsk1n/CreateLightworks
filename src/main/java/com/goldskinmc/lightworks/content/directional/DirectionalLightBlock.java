@@ -1,6 +1,7 @@
 package com.goldskinmc.lightworks.content.directional;
 
 import com.goldskinmc.lightworks.content.LightType;
+import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
 import com.mojang.serialization.MapCodec;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 import com.simibubi.create.foundation.block.IBE;
@@ -20,6 +21,7 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.DirectionalBlock;
 import net.minecraft.world.level.block.Mirror;
@@ -27,6 +29,7 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -42,6 +45,9 @@ import org.jetbrains.annotations.Nullable;
  * pick it up when sneaking, as usual.
  */
 public class DirectionalLightBlock extends DirectionalBlock implements IBE<DirectionalLightBlockEntity>, IWrenchable {
+    /** Mounted on a Pan-Tilt Head: the base leaves the block model, and the renderer turns it with the head. */
+    public static final BooleanProperty ON_HEAD = BooleanProperty.create("on_head");
+
     private final LightType lightType;
     private final Supplier<? extends BlockEntityType<? extends DirectionalLightBlockEntity>> blockEntityType;
     private final VoxelShaper shape;
@@ -55,7 +61,7 @@ public class DirectionalLightBlock extends DirectionalBlock implements IBE<Direc
         this.blockEntityType = blockEntityType;
         this.shape = VoxelShaper.forDirectional(upShape, Direction.UP);
         this.codec = simpleCodec(p -> new DirectionalLightBlock(p, lightType, blockEntityType, upShape));
-        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.UP));
+        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.UP).setValue(ON_HEAD, false));
     }
 
     public LightType lightType() {
@@ -69,12 +75,26 @@ public class DirectionalLightBlock extends DirectionalBlock implements IBE<Direc
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING);
+        builder.add(FACING, ON_HEAD);
     }
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return defaultBlockState().setValue(FACING, context.getClickedFace());
+        Direction facing = context.getClickedFace();
+        BlockState mount = context.getLevel().getBlockState(context.getClickedPos().relative(facing.getOpposite()));
+        return defaultBlockState().setValue(FACING, facing).setValue(ON_HEAD, isHeadFor(facing, mount));
+    }
+
+    /** True if {@code mount}, the block behind a light facing {@code facing}, is a head that turns it. */
+    static boolean isHeadFor(Direction facing, BlockState mount) {
+        return mount.getBlock() instanceof PanTiltHeadBlock && mount.getValue(PanTiltHeadBlock.FACING) == facing;
+    }
+
+    @Override
+    protected BlockState updateShape(BlockState state, Direction direction, BlockState neighbour, LevelAccessor level,
+            BlockPos pos, BlockPos neighbourPos) {
+        Direction facing = state.getValue(FACING);
+        return direction == facing.getOpposite() ? state.setValue(ON_HEAD, isHeadFor(facing, neighbour)) : state;
     }
 
     /** Placed level, facing away from the player (see {@link DirectionalLightBlockEntity#aimLevel}). */

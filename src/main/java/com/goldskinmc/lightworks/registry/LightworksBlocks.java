@@ -155,8 +155,8 @@ public final class LightworksBlocks {
         return REGISTRATE.block(name, p -> new DirectionalLightBlock(p, type, blockEntity, upShape))
                 .initialProperties(() -> Blocks.IRON_BLOCK)
                 .properties(p -> p.strength(2.0f).sound(SoundType.COPPER).noOcclusion())
-                .blockstate((c, p) -> p.directionalBlock(c.get(),
-                        p.models().getExistingFile(p.modLoc("block/" + name + "/base"))))
+                .blockstate((c, p) -> p.directionalBlock(c.get(), state -> p.models().getExistingFile(p.modLoc(
+                        "block/" + name + (state.getValue(DirectionalLightBlock.ON_HEAD) ? "/no_base" : "/base")))))
                 .onRegister(MovementBehaviour.movementBehaviour(new DirectionalLightMovement(type)))
                 .tag(BlockTags.MINEABLE_WITH_PICKAXE, weight)
                 .lang(lang)

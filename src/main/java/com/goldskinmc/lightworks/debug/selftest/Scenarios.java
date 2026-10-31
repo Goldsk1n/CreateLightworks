@@ -53,6 +53,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
@@ -85,6 +86,7 @@ final class Scenarios {
         ALL.put("floodlight", Scenarios::floodlight);
         ALL.put("pantilt", Scenarios::panTilt);
         ALL.put("sweep", Scenarios::sweep);
+        ALL.put("head-base", Scenarios::headBase);
         ALL.put("beacon", Scenarios::beacon);
         ALL.put("warning", Scenarios::warning);
         ALL.put("navigation", Scenarios::navigation);
@@ -394,6 +396,84 @@ final class Scenarios {
                     SelfTestBridge.focus = null;
                     setMotorSpeed(stage, at[0], 0);
                     stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * Close looks at a Searchlight's base on a Pan-Tilt Head. In {@code head-base-0-turned} the plate lines up with
+     * the turntable, not the casing. In {@code head-base-1-no-head} the head is gone, and the plate is back in the
+     * block model, square to the block. In {@code head-base-2-on-bearing} a head and light at pan 30 hang from a
+     * turning arm: plate and turntable still line up.
+     */
+    static Script headBase() {
+        BlockPos[] at = new BlockPos[3];
+        BlockPos[] arm = new BlockPos[1];
+        return new Script("head-base")
+                .run(stage -> {
+                    stage.night();
+                    at[0] = stage.at(0, 0, 4);
+                    at[1] = at[0].above();
+                    at[2] = at[1].above();
+                    stage.set(at[0], AllBlocks.CREATIVE_MOTOR.getDefaultState().setValue(CreativeMotorBlock.FACING, Direction.UP));
+                    stage.set(at[1], LightworksBlocks.PAN_TILT_HEAD.getDefaultState()
+                            .setValue(PanTiltHeadBlock.FACING, Direction.UP));
+                    stage.set(at[2], searchlight(Direction.UP));
+                    setMotorSpeed(stage, at[0], 16);
+                    stage.hover(1.5, 4, 2.5);
+                    SelfTestBridge.focus = Vec3.atCenterOf(at[2]);
+                })
+                // About 30 degrees at 16 RPM
+                .waitTicks(7)
+                .run(stage -> setMotorSpeed(stage, at[0], 0))
+                .waitTicks(20)
+                .run(stage -> stage.log("head-base: on a head, on_head %s",
+                        stage.level.getBlockState(at[2]).getValue(DirectionalLightBlock.ON_HEAD)))
+                .shot("head-base-0-turned")
+                .run(stage -> stage.set(at[1], AllBlocks.BRASS_CASING.getDefaultState()))
+                .waitTicks(10)
+                .run(stage -> stage.log("head-base: head removed, on_head %s",
+                        stage.level.getBlockState(at[2]).getValue(DirectionalLightBlock.ON_HEAD)))
+                .shot("head-base-1-no-head")
+                .run(stage -> {
+                    BlockPos motor = stage.at(0, 9, 8);
+                    BlockPos bearing = motor.above();
+                    arm[0] = motor;
+                    stage.reserve(bearing.offset(-4, -1, -4), bearing.offset(4, 2, 4));
+                    for (int x = 0; x <= 3; x++) {
+                        stage.set(bearing.offset(x, 1, 0), Blocks.OAK_PLANKS.defaultBlockState());
+                    }
+                    BlockPos head = bearing.offset(3, 0, 0);
+                    stage.set(head, LightworksBlocks.PAN_TILT_HEAD.getDefaultState()
+                            .setValue(PanTiltHeadBlock.FACING, Direction.DOWN));
+                    stage.set(head.below(), searchlight(Direction.DOWN));
+                    PanTiltHeadBlockEntity entity = (PanTiltHeadBlockEntity) stage.level.getBlockEntity(head);
+                    CompoundTag tag = entity.saveWithFullMetadata(stage.level.registryAccess());
+                    tag.putFloat("Pan", 30);
+                    entity.loadWithComponents(tag, stage.level.registryAccess());
+                    entity.sendData();
+                    stage.level.addFreshEntity(new SuperGlueEntity(stage.level,
+                            AABB.encapsulatingFullBlocks(bearing.above(), bearing.offset(3, 1, 0))));
+                    stage.level.addFreshEntity(new SuperGlueEntity(stage.level,
+                            AABB.encapsulatingFullBlocks(head.below(), bearing.offset(3, 1, 0))));
+                    stage.set(bearing, AllBlocks.MECHANICAL_BEARING.getDefaultState()
+                            .setValue(DirectionalKineticBlock.FACING, Direction.UP));
+                    stage.hover(4.5, 6.5, 5.5);
+                    SelfTestBridge.focus = Vec3.atCenterOf(bearing.below());
+                })
+                // Time for the light to read the head, so the contraption takes on_head and the angles along
+                .waitTicks(10)
+                .run(stage -> {
+                    stage.set(arm[0], AllBlocks.CREATIVE_MOTOR.getDefaultState().setValue(CreativeMotorBlock.FACING, Direction.UP));
+                    setMotorSpeed(stage, arm[0], 4);
+                })
+                .waitTicks(40)
+                .shot("head-base-2-on-bearing")
+                .run(stage -> {
+                    setMotorSpeed(stage, arm[0], 0);
+                    SelfTestBridge.focus = null;
+                    stage.discardContraptions(arm[0], 6);
+                    stage.restoreBlocks();
+                    stage.discardContraptions(arm[0], 6);
                 });
     }
 

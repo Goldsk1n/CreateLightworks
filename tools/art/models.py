@@ -229,6 +229,7 @@ def yoke_arm(x0, x1, top, outside, bolt_row):
 # Searchlight: slim drum with a flared brass bezel on a yoke
 b = Block('searchlight', BRASS_CASING)
 b.part('base', *plate())
+b.part('no_base')   # On a Pan-Tilt Head the renderer draws the base, turning with the head
 b.part('yoke',
        box((4, 3, 4), (12, 4, 12), IRON),
        yoke_arm(2, 4, 11, 'west', 2),
@@ -245,6 +246,7 @@ b.finish('base', 'yoke', 'head', 'lens')
 # collar when level, 3.8 pixels from the pivot: they stay inside that at every pan, or they poke through it
 b = Block('floodlight', BRASS_CASING)
 b.part('base', *plate(collar=2.5))
+b.part('no_base')   # On a Pan-Tilt Head the renderer draws the base, turning with the head
 b.part('yoke',
        box((4, 3, 5), (12, 4, 11), IRON),
        yoke_arm(1, 2, 10, 'west', 1),
@@ -262,6 +264,7 @@ b = Block('headlight', ANDESITE_CASING)
 b.part('base',
        box((4, 0, 4), (12, 2, 12), ANDESITE, down=SEAT),
        box((7, 2, 7), (9, 5, 9), BAR))
+b.part('no_base')   # On a Pan-Tilt Head the renderer draws the base, turning with the head
 b.part('head',
        box((5, 5, 5), (11, 11, 11), HOUSING, down=FINS, up=None),
        box((4, 11, 4), (12, 12.5, 12), ANDESITE, up=own('andesite_ring')))

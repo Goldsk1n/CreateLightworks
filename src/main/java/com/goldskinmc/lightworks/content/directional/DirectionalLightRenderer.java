@@ -18,7 +18,7 @@ import org.joml.Vector3f;
 
 /**
  * Draws a directional light's moving parts: the yoke turned by the aim's yaw, the head and lens turned by
- * yaw and elevation (the base is the block model). A placed light also draws its lens glow and cosmetic
+ * yaw and elevation (the base is the block model, except on a Pan-Tilt Head, where it turns with the rest). A placed light also draws its lens glow and cosmetic
  * beam; on a Sable vehicle, Sable applies the vehicle's pose. Inside a contraption Create draws this
  * renderer for the block entity copy, which shows the head; lens and beam come from the movement
  * behaviour there, which knows whether the light is lit.
@@ -33,6 +33,9 @@ public class DirectionalLightRenderer implements BlockEntityRenderer<Directional
         float[] aim = light.aimAngles(partialTick);
         boolean inContraption = light.getLevel() instanceof VirtualRenderWorld;
         float lit = inContraption ? -1 : light.beam().brightness() / 15f;
+        if (light.getBlockState().getValue(DirectionalLightBlock.ON_HEAD)) {
+            renderBase(poseStack, buffers, light.lightType(), light.mountFacing(), aim[0], packedLight);
+        }
         renderHead(poseStack, buffers, light.lightType(), light.mountFacing(), aim[0], aim[1],
                 light.lightState().rgb(light.lightType()), lit, packedLight);
         if (inContraption) {
@@ -42,6 +45,17 @@ public class DirectionalLightRenderer implements BlockEntityRenderer<Directional
         Vector3f axis = new Vector3f((float) direction.x, (float) direction.y, (float) direction.z);
         Vector3f lens = new Vector3f(0.5f).add(new Vector3f(axis).mul((float) light.lightType().lensDistance()));
         BeamVisual.render(poseStack, buffers, lens, axis, light.beam(), light.lightState().rgb(light.lightType()));
+    }
+
+    /** The base of a light on a Pan-Tilt Head, bolted to the turntable; on anything else it is the block model. */
+    private static void renderBase(PoseStack poseStack, MultiBufferSource buffers, LightType type, Direction facing,
+            float yaw, int packedLight) {
+        poseStack.pushPose();
+        MountFrame.enter(poseStack, facing);
+        MountFrame.yaw(poseStack, yaw);
+        MountFrame.toCorner(poseStack);
+        PartRenderer.solid(poseStack, buffers, Partials.get(type.name() + "/base"), packedLight);
+        poseStack.popPose();
     }
 
     /**

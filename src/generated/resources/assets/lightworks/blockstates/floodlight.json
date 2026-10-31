@@ -1,28 +1,54 @@
 {
   "variants": {
-    "facing=down": {
+    "facing=down,on_head=false": {
       "model": "lightworks:block/floodlight/base",
       "x": 180
     },
-    "facing=east": {
+    "facing=down,on_head=true": {
+      "model": "lightworks:block/floodlight/no_base",
+      "x": 180
+    },
+    "facing=east,on_head=false": {
       "model": "lightworks:block/floodlight/base",
       "x": 90,
       "y": 90
     },
-    "facing=north": {
+    "facing=east,on_head=true": {
+      "model": "lightworks:block/floodlight/no_base",
+      "x": 90,
+      "y": 90
+    },
+    "facing=north,on_head=false": {
       "model": "lightworks:block/floodlight/base",
       "x": 90
     },
-    "facing=south": {
+    "facing=north,on_head=true": {
+      "model": "lightworks:block/floodlight/no_base",
+      "x": 90
+    },
+    "facing=south,on_head=false": {
       "model": "lightworks:block/floodlight/base",
       "x": 90,
       "y": 180
     },
-    "facing=up": {
+    "facing=south,on_head=true": {
+      "model": "lightworks:block/floodlight/no_base",
+      "x": 90,
+      "y": 180
+    },
+    "facing=up,on_head=false": {
       "model": "lightworks:block/floodlight/base"
     },
-    "facing=west": {
+    "facing=up,on_head=true": {
+      "model": "lightworks:block/floodlight/no_base"
+    },
+    "facing=west,on_head=false": {
       "model": "lightworks:block/floodlight/base",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,on_head=true": {
+      "model": "lightworks:block/floodlight/no_base",
       "x": 90,
       "y": 270
     }
