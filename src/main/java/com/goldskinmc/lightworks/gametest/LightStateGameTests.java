@@ -11,10 +11,12 @@ import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
 import com.goldskinmc.lightworks.light.BeamLightBlock;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
+import com.goldskinmc.lightworks.registry.LightworksTags;
 import com.simibubi.create.content.contraptions.StructureTransform;
 import com.simibubi.create.foundation.blockEntity.behaviour.ValueBoxTransform;
 import com.simibubi.create.foundation.blockEntity.behaviour.ValueSettingsPacket;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -154,6 +156,23 @@ public final class LightStateGameTests {
                 light.getBlockState());
         client.handleUpdateTag(light.getUpdateTag(registries), registries);
         helper.assertTrue(client.aim().equals(aim), "aim missing from the client update, got " + client.aim());
+        helper.succeed();
+    }
+
+    /** Weights on a Sable vehicle: lantern-sized lamps weigh as a lantern, placed by the hundred or not. */
+    @GameTest(template = EMPTY)
+    public static void lampsWeighTheirSize(GameTestHelper helper) {
+        for (BlockState lamp : List.of(LightworksBlocks.WARNING_LIGHT.getDefaultState(),
+                LightworksBlocks.TAIL_LIGHT.getDefaultState(), LightworksBlocks.NAVIGATION_LIGHT.getDefaultState(),
+                LightworksBlocks.EDGE_LIGHT.getDefaultState())) {
+            helper.assertTrue(lamp.is(LightworksTags.SABLE_SUPER_LIGHT) && !lamp.is(LightworksTags.SABLE_LIGHT),
+                    lamp.getBlock() + " is in the wrong weight class");
+        }
+        BlockState headlight = LightworksBlocks.HEADLIGHT.getDefaultState();
+        helper.assertTrue(headlight.is(LightworksTags.SABLE_LIGHT) && !headlight.is(LightworksTags.SABLE_SUPER_LIGHT),
+                "Headlight is in the wrong weight class");
+        helper.assertTrue(LightworksBlocks.SEARCHLIGHT.getDefaultState().is(LightworksTags.LIGHT_FIXTURES),
+                "Searchlight is in the wrong weight class");
         helper.succeed();
     }
 

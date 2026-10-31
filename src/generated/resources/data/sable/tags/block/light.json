@@ -1,9 +1,5 @@
 {
   "values": [
-    "lightworks:headlight",
-    "lightworks:warning_light",
-    "lightworks:tail_light",
-    "lightworks:navigation_light",
-    "lightworks:edge_light"
+    "lightworks:headlight"
   ]
 }
