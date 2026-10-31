@@ -98,7 +98,7 @@ public final class LightworksBlocks {
                             .condition(EdgeLightBlock.FACING, facing);
                 }
             })
-            .tag(BlockTags.MINEABLE_WITH_PICKAXE, LightworksTags.SABLE_LIGHT)
+            .tag(BlockTags.MINEABLE_WITH_PICKAXE, LightworksTags.SABLE_SUPER_LIGHT)
             .lang("Edge Light")
             .item().model((c, p) -> {
             }).build()
@@ -138,7 +138,7 @@ public final class LightworksBlocks {
                 .blockstate((c, p) -> p.directionalBlock(c.get(),
                         p.models().getExistingFile(p.modLoc("block/" + name + "/base"))))
                 .onRegister(MovementBehaviour.movementBehaviour(new SignalLampMovement(type)))
-                .tag(BlockTags.MINEABLE_WITH_PICKAXE, LightworksTags.SABLE_LIGHT)
+                .tag(BlockTags.MINEABLE_WITH_PICKAXE, LightworksTags.SABLE_SUPER_LIGHT)
                 .lang(lang)
                 .item().model((c, p) -> {
                 }).build()
