@@ -130,7 +130,7 @@ public final class LightworksLang {
                 behaviour("When placed", "Always lit: a Searchlight with a shorter, wider beam, pointing _level_."),
                 action("When R-click is held on Pan or Tilt", "Turns it round, or tilts it up and down."),
                 action("When R-clicked with Dye", "Colours the lens, the beam and the light it casts."));
-        tooltip("pan_tilt_head", "A kinetic mount for a _Searchlight_ or _Floodlight_ placed on top of it.",
+        tooltip("pan_tilt_head", "A kinetic mount for a _Searchlight_, _Floodlight_ or _Headlight_ placed on top of it.",
                 behaviour("When rotated", "_Pans_ the light round, as fast as the shaft turns."),
                 behaviour("When powered by Redstone", "_Tilts_ the light up 6° per signal level, straight up at 15."),
                 action("When R-click is held on the box", "Makes it _sweep_ back and forth, this far either way of where it points now."));

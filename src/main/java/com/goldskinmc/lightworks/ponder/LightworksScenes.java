@@ -311,7 +311,7 @@ final class LightworksScenes {
         scene.idle(20);
 
         scene.overlay().showText(70)
-                .text("A Pan-Tilt Head turns the Searchlight or Floodlight on top of it")
+                .text("A Pan-Tilt Head turns the Searchlight, Floodlight or Headlight on top of it")
                 .placeNearTarget()
                 .pointAt(util.vector().blockSurface(head, Direction.WEST));
         scene.idle(80);
