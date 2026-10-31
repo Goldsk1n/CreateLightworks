@@ -3,6 +3,7 @@ package com.goldskinmc.lightworks.ponder;
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.beam.Aim;
 import com.goldskinmc.lightworks.content.LightState;
+import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.signal.NavigationColour;
 import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
@@ -86,7 +87,8 @@ public final class PonderSchematics implements DataProvider {
                 .setValue(BlockStateProperties.FACING, Direction.UP));
         panTilt.set(Layouts.PanTilt.HEAD, LightworksBlocks.PAN_TILT_HEAD.getDefaultState()
                 .setValue(BlockStateProperties.FACING, Direction.UP));
-        panTilt.light(Layouts.PanTilt.LIGHT, LightworksBlocks.SEARCHLIGHT.getDefaultState(), Direction.UP, Aim.STRAIGHT);
+        panTilt.light(Layouts.PanTilt.LIGHT, LightworksBlocks.SEARCHLIGHT.getDefaultState()
+                .setValue(DirectionalLightBlock.ON_HEAD, true), Direction.UP, Aim.STRAIGHT);
         panTilt.set(Layouts.PanTilt.LEVER_BASE, AllBlocks.BRASS_CASING.getDefaultState());
         panTilt.set(Layouts.PanTilt.LEVER, AllBlocks.ANALOG_LEVER.getDefaultState()
                 .setValue(BlockStateProperties.ATTACH_FACE, AttachFace.FLOOR)

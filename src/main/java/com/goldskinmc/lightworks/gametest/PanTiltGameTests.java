@@ -78,6 +78,34 @@ public final class PanTiltGameTests {
                 .thenSucceed();
     }
 
+    /** A light's base turns with a head under it: the block state follows the head coming, going and turning away. */
+    @GameTest(template = EMPTY, timeoutTicks = 100)
+    public static void lightKnowsWhenItIsOnAHead(GameTestHelper helper) {
+        BlockPos head = new BlockPos(2, 1, 2);
+        BlockPos light = head.above();
+        // Placed directly rather than by a player, so the block entity has to find the head by itself
+        helper.setBlock(head, LightworksBlocks.PAN_TILT_HEAD.getDefaultState().setValue(PanTiltHeadBlock.FACING, Direction.UP));
+        helper.setBlock(light, LightworksBlocks.SEARCHLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.UP));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> assertOnHead(helper, light, true))
+                .thenExecute(() -> helper.setBlock(head, AllBlocks.BRASS_CASING.getDefaultState()))
+                .thenExecute(() -> assertOnHead(helper, light, false))
+                .thenExecute(() -> helper.setBlock(head, LightworksBlocks.PAN_TILT_HEAD.getDefaultState()
+                        .setValue(PanTiltHeadBlock.FACING, Direction.UP)))
+                .thenExecute(() -> assertOnHead(helper, light, true))
+                // A head facing another way does not carry the light
+                .thenExecute(() -> helper.setBlock(head, LightworksBlocks.PAN_TILT_HEAD.getDefaultState()
+                        .setValue(PanTiltHeadBlock.FACING, Direction.NORTH)))
+                .thenExecute(() -> assertOnHead(helper, light, false))
+                .thenSucceed();
+    }
+
+    private static void assertOnHead(GameTestHelper helper, BlockPos light, boolean expected) {
+        helper.assertTrue(helper.getBlockState(light).getValue(DirectionalLightBlock.ON_HEAD) == expected,
+                "on_head should be " + expected);
+    }
+
     /** With the box set the pan bounces between the arc's ends; set back to 0 it goes on round. */
     @GameTest(template = EMPTY, timeoutTicks = 400)
     public static void headSweepsInsideItsArc(GameTestHelper helper) {

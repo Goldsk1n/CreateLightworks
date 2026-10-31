@@ -15,9 +15,9 @@ import net.neoforged.neoforge.client.event.ModelEvent;
  */
 public final class Partials {
     private static final String[] PATHS = {
-            "searchlight/yoke", "searchlight/head", "searchlight/lens", "searchlight/lens_core",
-            "floodlight/yoke", "floodlight/head", "floodlight/lens", "floodlight/lens_core",
-            "headlight/head", "headlight/lens", "headlight/lens_core",
+            "searchlight/base", "searchlight/yoke", "searchlight/head", "searchlight/lens", "searchlight/lens_core",
+            "floodlight/base", "floodlight/yoke", "floodlight/head", "floodlight/lens", "floodlight/lens_core",
+            "headlight/base", "headlight/head", "headlight/lens", "headlight/lens_core",
             "pan_tilt_head/turntable",
             "rotating_beacon/rotor", "rotating_beacon/lens", "rotating_beacon/lens_core",
             "warning_light/lens", "warning_light/lens_core", "tail_light/lens", "tail_light/lens_core",

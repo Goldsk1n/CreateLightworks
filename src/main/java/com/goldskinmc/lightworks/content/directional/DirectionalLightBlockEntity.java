@@ -33,6 +33,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -295,6 +296,20 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         super.initialize();
         if (level != null && !level.isClientSide) {
             updateSignal();
+            updateMount();
+        }
+    }
+
+    /** Placed by a contraption, a schematic or a command, nothing told the block what it stands on. */
+    private void updateMount() {
+        BlockState block = getBlockState();
+        Direction facing = mountFacing();
+        BlockPos below = worldPosition.relative(facing.getOpposite());
+        if (level.isLoaded(below)) {
+            boolean onHead = DirectionalLightBlock.isHeadFor(facing, level.getBlockState(below));
+            if (block.getValue(DirectionalLightBlock.ON_HEAD) != onHead) {
+                level.setBlock(worldPosition, block.setValue(DirectionalLightBlock.ON_HEAD, onHead), Block.UPDATE_CLIENTS);
+            }
         }
     }
 
@@ -490,12 +505,13 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
             tag.putInt(BOARD_PAN, board.pan());
             tag.putInt(BOARD_TILT, board.tilt());
         }
+        // In client packets too: Create syncs a contraption to clients with this block entity's update tag
+        if (headAngles != null) {
+            tag.putFloat(HEAD_YAW, headAngles[0]);
+            tag.putFloat(HEAD_ELEVATION, headAngles[1]);
+        }
         if (!clientPacket) {
             serverLight.save(tag);
-            if (headAngles != null) {
-                tag.putFloat(HEAD_YAW, headAngles[0]);
-                tag.putFloat(HEAD_ELEVATION, headAngles[1]);
-            }
         }
     }
 
