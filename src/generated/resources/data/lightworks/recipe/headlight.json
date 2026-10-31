@@ -2,8 +2,8 @@
   "type": "minecraft:crafting_shaped",
   "category": "redstone",
   "key": {
-    "A": {
-      "item": "create:andesite_casing"
+    "B": {
+      "tag": "c:plates/brass"
     },
     "G": {
       "tag": "c:glass_blocks/colorless"
@@ -18,7 +18,7 @@
   "pattern": [
     " G ",
     "ITI",
-    " A "
+    " B "
   ],
   "result": {
     "count": 2,
