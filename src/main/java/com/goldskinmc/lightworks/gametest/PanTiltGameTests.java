@@ -15,6 +15,9 @@ import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LeverBlock;
+import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -75,6 +78,31 @@ public final class PanTiltGameTests {
                 })
                 .thenExecute(() -> setSpeed(helper, motor, 0))
                 .thenWaitUntil(() -> helper.assertTrue(beamLights(helper) == 1, "stopped light has no server light block"))
+                .thenSucceed();
+    }
+
+    /** A signal into the head tilts the light; it does not reach through the head and dim it as well. */
+    @GameTest(template = EMPTY, timeoutTicks = 100)
+    public static void headSignalTiltsWithoutDimmingTheLight(GameTestHelper helper) {
+        BlockPos head = new BlockPos(2, 1, 2);
+        BlockPos light = head.above();
+        helper.setBlock(head, LightworksBlocks.PAN_TILT_HEAD.getDefaultState().setValue(PanTiltHeadBlock.FACING, Direction.UP));
+        helper.setBlock(light, LightworksBlocks.SEARCHLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.UP));
+        // A lever on the head's side powers the head hard, as dust aimed at it does
+        helper.setBlock(head.east(), Blocks.LEVER.defaultBlockState().setValue(LeverBlock.FACE, AttachFace.WALL)
+                .setValue(LeverBlock.FACING, Direction.EAST).setValue(LeverBlock.POWERED, true));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    PanTiltHeadBlockEntity pan = helper.getBlockEntity(head);
+                    helper.assertTrue(pan.signal() == 15, "head reads signal " + pan.signal());
+                })
+                .thenIdle(5)
+                .thenExecute(() -> {
+                    DirectionalLightBlockEntity searchlight = helper.getBlockEntity(light);
+                    helper.assertTrue(searchlight.lightState().signal() == 0,
+                            "light reads signal " + searchlight.lightState().signal() + " through the head");
+                })
                 .thenSucceed();
     }
 

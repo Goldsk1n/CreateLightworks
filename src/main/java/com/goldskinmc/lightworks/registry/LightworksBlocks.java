@@ -47,7 +47,9 @@ public final class LightworksBlocks {
     public static final BlockEntry<PanTiltHeadBlock> PAN_TILT_HEAD = REGISTRATE
             .block("pan_tilt_head", PanTiltHeadBlock::new)
             .initialProperties(() -> Blocks.ANDESITE)
-            .properties(p -> p.strength(2.0f).sound(SoundType.WOOD).noOcclusion())
+            // Not a conductor: a signal into the head tilts the light on top, it must not dim it as well
+            .properties(p -> p.strength(2.0f).sound(SoundType.WOOD).noOcclusion()
+                    .isRedstoneConductor((state, level, pos) -> false))
             .blockstate((c, p) -> p.directionalBlock(c.get(), p.models().getExistingFile(p.modLoc("block/pan_tilt_head/base"))))
             .onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 2.0))
             .tag(BlockTags.MINEABLE_WITH_PICKAXE, BlockTags.MINEABLE_WITH_AXE)
