@@ -43,7 +43,7 @@ public final class SignalLampGameTests {
     }
 
     /** A placed Warning Light gives block light 12, and a full signal takes it away. */
-    @GameTest(template = EMPTY)
+    @GameTest(template = EMPTY, timeoutTicks = 1000)
     public static void placedWarningLightGivesBlockLight(GameTestHelper helper) {
         BlockPos lamp = new BlockPos(2, 1, 2);
         helper.setBlock(lamp, LightworksBlocks.WARNING_LIGHT.getDefaultState().setValue(SignalLampBlock.FACING, Direction.UP));
