@@ -441,12 +441,7 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         notifyUpdate();
     }
 
-    private void gogglesBeamHit(List<Component> tooltip, BeamTrace.Hit hit, int light) {
-        LightGoggles.line(tooltip, "beam_hit", ChatFormatting.WHITE,
-                level.getBlockState(hit.block()).getBlock().getName(), String.format("%.1f", hit.distance()), light);
-    }
-
-    /** Engineer's Goggles: state, aim, where the beam lands and how it lights. Client side. */
+    /** Engineer's Goggles: state, aim and colour, and a warning when the beam can light nothing. Client side. */
     @Override
     public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
         LightGoggles.title(tooltip, getBlockState().getBlock().getName());
@@ -465,24 +460,9 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
             LightGoggles.line(tooltip, "aim", ChatFormatting.AQUA, pan(panTilt()), tilt(panTilt()));
         }
         if (state.on() && brightness() > 0 && level != null) {
-            BeamPose beam = tickBeam();
-            BeamTrace.Hit hit = BeamTrace.trace(level, beam.origin(), beam.direction(), BeamTrace.range(shape));
-            // Past a notch or a wall's edge the centre ray misses while the rest of the beam still lights a block
-            BeamTrace.Landing edge = hit.hitBlock() ? null
-                    : BeamTrace.edgeLanding(level, beam.origin(), beam.direction(), shape, type.lensHalf(),
-                            BeamTrace.range(shape));
-            if (hit.hitBlock()) {
-                gogglesBeamHit(tooltip, hit, lightLevelAt(hit));
-            } else if (edge != null) {
-                gogglesBeamHit(tooltip, edge.hit(), lightLevel(edge.light()));
-            } else {
-                LightGoggles.line(tooltip, "beam_miss", ChatFormatting.WHITE, (int) BeamTrace.range(shape));
-            }
-            if (beam.moving()) {
-                LightGoggles.line(tooltip, DynamicLights.present() ? "moving_dynamic" : "moving_beam_only",
+            if (!DynamicLights.present() && (tickBeam().moving() || !LightworksConfig.serverLightBlocks())) {
+                LightGoggles.line(tooltip, tickBeam().moving() ? "moving_beam_only" : "no_light_path",
                         ChatFormatting.YELLOW);
-            } else if (!LightworksConfig.serverLightBlocks() && !DynamicLights.present()) {
-                LightGoggles.line(tooltip, "no_light_path", ChatFormatting.YELLOW);
             }
         }
         LightGoggles.colour(tooltip, state.colour());

@@ -38,8 +38,7 @@ First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 
   contraption, train or Sable vehicle. Drawn by the mod itself, so it
   works with the vanilla renderer and Sodium; off under Iris shader packs, and switchable with the client
   config `colouredLight`. Block light itself stays white (Minecraft has no coloured block light).
-- Engineer's Goggles show a light's state, brightness, aim, where its beam lands and its colour, and draw
-  beam paths while worn.
+- Engineer's Goggles show a light's state, brightness, aim and colour.
 - Players without LambDynamicLights still get light from fixed lights (server light blocks) and see
   every beam; with it, moving lights light the world too.
 - The visible beam is a square, Minecraft-style truncated pyramid that starts flush on the lens and

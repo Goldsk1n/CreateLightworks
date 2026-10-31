@@ -22,7 +22,7 @@ trains and [Create Aeronautics](https://modrinth.com/mod/create-aeronautics) veh
 
 Redstone dims every light (brightness = 15 − signal); the server config `invertRedstone` makes lights
 off unless powered. Dyed lights and signal lamps colour what they light (client config `colouredLight`;
-off under shader packs; Edge Lights only colour their own lens). Engineer's Goggles show a light's state and draw its beam. Every block has a recipe,
+off under shader packs; Edge Lights only colour their own lens). Engineer's Goggles show a light's state. Every block has a recipe,
 a tooltip and a Ponder scene.
 
 ## How light reaches the world

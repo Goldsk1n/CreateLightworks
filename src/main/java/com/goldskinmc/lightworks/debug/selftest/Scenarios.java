@@ -416,13 +416,9 @@ final class Scenarios {
         int cell = 5;
         int across = grounds.length * cell;
         int along = colours.length * cell;
-        ItemStack[] helmet = new ItemStack[1];
         Script script = new Script("surfaces")
                 .run(stage -> {
                     stage.night();
-                    // Goggles would draw every beam's debug line over the light being judged
-                    helmet[0] = stage.player.getItemBySlot(EquipmentSlot.HEAD);
-                    stage.player.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
                     for (int g = 0; g < grounds.length; g++) {
                         for (int x = 0; x < cell; x++) {
                             for (int z = 0; z < along; z++) {
@@ -458,7 +454,6 @@ final class Scenarios {
         script.shot("surfaces-field");
         return script.run(stage -> {
             SelfTestBridge.focus = null;
-            stage.player.setItemSlot(EquipmentSlot.HEAD, helmet[0]);
             stage.restoreBlocks();
         });
     }
@@ -1313,8 +1308,8 @@ final class Scenarios {
 
     /**
      * Engineer's Goggles: the player wears them and looks at a dyed, dimmed Searchlight lighting a wall,
-     * then at a Warning Light, with the GUI shown: the overlay should list state, aim, beam and colour, and
-     * the beam path should be drawn.
+     * then at a Warning Light, with the GUI shown: the overlay should list state, aim and colour, and no beam
+     * details or debug lines should show.
      */
     static Script goggles() {
         BlockPos[] at = new BlockPos[2];
