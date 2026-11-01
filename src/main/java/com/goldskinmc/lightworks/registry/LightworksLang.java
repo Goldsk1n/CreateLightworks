@@ -62,11 +62,6 @@ public final class LightworksLang {
         add("lightworks.goggles.brake", "brightens for a second when the vehicle slows");
         add("lightworks.goggles.brake_now.label", "Brake light:");
         add("lightworks.goggles.brake_now", "on, the vehicle is slowing");
-        add("lightworks.goggles.side.label", "Side:");
-        add("lightworks.goggles.side", "%s");
-        add("lightworks.navigation.port", "port (red)");
-        add("lightworks.navigation.starboard", "starboard (green)");
-        add("lightworks.navigation.stern", "stern (white)");
         add("lightworks.goggles.hint.aim", "Hold R-click on Pan or Tilt to aim");
         add("lightworks.goggles.hint.on_head", "Aimed by the Pan-Tilt Head below");
         add("lightworks.goggles.hint.dye", "Dye: colour the lens, beam and light");
@@ -82,7 +77,6 @@ public final class LightworksLang {
         add("lightworks.pan_tilt_head.arc", "±%s°");
         add("lightworks.goggles.hint.beacon", "Shaft speed sets the sweep");
         add("lightworks.goggles.hint.pattern", "Hold R-click on the box to pick the pattern, and always or night only");
-        add("lightworks.goggles.hint.navigation", "Wrench: change the side colour");
         add("lightworks.warning_light.pattern", "Pattern");
         add("lightworks.warning_light.always", "Always: %s");
         add("lightworks.warning_light.night", "Night only: %s");
@@ -143,10 +137,6 @@ public final class LightworksLang {
                 behaviour("When placed", "Glows dim red and gives a little block light."),
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
                 action("When R-clicked with Dye", "Changes its colour."));
-        tooltip("navigation_light", "A _red_, _green_ or _white_ marker for a vehicle's port side, starboard side and stern.",
-                behaviour("When placed", "Facing your left it turns _red_, facing your right _green_, otherwise _white_."),
-                behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
-                action("When R-clicked with a Wrench", "Cycles red, green and white."));
         tooltip("edge_light", "A low _marker_ for runway, taxiway and platform edges, bright enough to read from the air. Vehicles and players pass over it, and hundreds cost next to nothing.",
                 behaviour("When placed", "Glows _white_ and gives a little block light."),
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),

@@ -339,14 +339,6 @@ b.part('base',
 b.part('lens', box((4, 2, 5), (12, 2.8, 11), LENS, down=None))
 b.finish('base', 'lens')
 
-# Navigation Light: small dome on a brass foot
-b = Block('navigation_light', BRASS_CASING)
-b.part('base', box((5, 0, 5), (11, 2, 11), BRASS_BAND, up=FOOT_TOP, down=SEAT))
-b.part('lens',
-       box((6, 2, 6), (10, 5, 10), LENS, down=None),
-       box((7, 5, 7), (9, 5.5, 9), LENS, down=None))
-b.finish('base', 'lens')
-
 # Edge Light: a low lens on a flat brass foot, one baked model (see glowing)
 b = Block('edge_light', BRASS_CASING)
 b.part('base',

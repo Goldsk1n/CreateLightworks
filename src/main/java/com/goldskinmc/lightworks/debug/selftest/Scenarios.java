@@ -11,7 +11,6 @@ import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlockEntity;
 import com.goldskinmc.lightworks.content.signal.EdgeLightBlock;
-import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.light.ProjectedTint;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
@@ -81,7 +80,7 @@ final class Scenarios {
     static final Map<String, Supplier<Script>> ALL = new LinkedHashMap<>();
     /** What {@code -Pselftest=true} runs. */
     static final String DEFAULT =
-            "fixed,aim,floodlight,pantilt,pantilt-level,beacon,warning,navigation,edge,sweep,goggles,colour,vehicle,bearing,piston,vehicle-fast";
+            "fixed,aim,floodlight,pantilt,pantilt-level,beacon,warning,edge,sweep,goggles,colour,vehicle,bearing,piston,vehicle-fast";
 
     static {
         ALL.put("fixed", Scenarios::fixed);
@@ -100,7 +99,6 @@ final class Scenarios {
         ALL.put("load-level", Scenarios::loadLevel);
         ALL.put("beacon", Scenarios::beacon);
         ALL.put("warning", Scenarios::warning);
-        ALL.put("navigation", Scenarios::navigation);
         ALL.put("goggles", Scenarios::goggles);
         ALL.put("colour", Scenarios::colour);
         ALL.put("colour-mix", Scenarios::colourMix);
@@ -1012,49 +1010,13 @@ final class Scenarios {
     }
 
     /**
-     * Three Navigation Lights placed the way a player does, looking north: on the west face of a block
-     * (port, red), the east face (starboard, green) and the south face (stern, white).
-     */
-    static Script navigation() {
-        BlockPos[] post = new BlockPos[1];
-        return new Script("navigation")
-                .run(stage -> {
-                    stage.night();
-                    stage.stand(0, 0);
-                    post[0] = stage.at(0, 1, -5);
-                    stage.set(post[0].below(), Blocks.STONE.defaultBlockState());
-                    stage.set(post[0], Blocks.STONE.defaultBlockState());
-                    stage.player.setYRot(180);
-                    StringBuilder colours = new StringBuilder();
-                    for (Direction face : new Direction[] {Direction.WEST, Direction.EAST, Direction.SOUTH}) {
-                        BlockPos pos = post[0].relative(face);
-                        BlockPlaceContext place = new BlockPlaceContext(stage.player, InteractionHand.MAIN_HAND,
-                                new ItemStack(LightworksBlocks.NAVIGATION_LIGHT.get()),
-                                new BlockHitResult(Vec3.atCenterOf(post[0]).relative(face, 0.5), face, post[0], false));
-                        BlockState state = LightworksBlocks.NAVIGATION_LIGHT.get().getStateForPlacement(place);
-                        stage.set(pos, state);
-                        colours.append(' ').append(face.getSerializedName()).append('=')
-                                .append(state.getValue(NavigationLightBlock.COLOUR).getSerializedName());
-                    }
-                    stage.log("navigation: placed looking north:%s", colours);
-                    SelfTestBridge.focus = Vec3.atCenterOf(post[0]);
-                })
-                .waitTicks(30)
-                .shot("navigation-0")
-                .run(stage -> {
-                    SelfTestBridge.focus = null;
-                    stage.restoreBlocks();
-                });
-    }
-
-    /**
      * Ponder: opens every block's scene in turn and photographs it three times as it plays (5, 12 and 19
      * seconds in). Ponder pauses the game, so the client does this alone while the server waits. Read the
      * shots for the beam, lens and text.
      */
     static Script ponder() {
         String plan = String.join(",", Stream.of("searchlight", "floodlight", "pan_tilt_head", "rotating_beacon",
-                "warning_light", "headlight", "tail_light", "navigation_light", "edge_light")
+                "warning_light", "headlight", "tail_light", "edge_light")
                 .map(block -> Lightworks.MOD_ID + ":" + block).toList());
         return new Script("ponder")
                 .run(stage -> {
@@ -1108,8 +1070,6 @@ final class Scenarios {
                             .setValue(SignalLampBlock.FACING, Direction.SOUTH));
                     stage.set(d.offset(3, 0, 2), LightworksBlocks.TAIL_LIGHT.getDefaultState()
                             .setValue(SignalLampBlock.FACING, Direction.SOUTH));
-                    stage.set(d.offset(-5, 0, 0), navigationLight(Direction.WEST, "port"));
-                    stage.set(d.offset(5, 0, 0), navigationLight(Direction.EAST, "starboard"));
                     SelfTestBridge.focus = Vec3.atCenterOf(d.above());
                 })
                 .waitTicks(40)
@@ -1170,7 +1130,6 @@ final class Scenarios {
                 new View("floodlight", 0, 0, -2, new Vec3(0.9, 0.6, -1.3)),
                 new View("headlight", 3, 0, -2, front),
                 new View("tail-light", 3, 0, 2, new Vec3(0.7, 0.8, 1.5)),
-                new View("navigation-light", 5, 0, 0, new Vec3(1.5, 0.8, -0.7)),
                 new View("beacon-underside", -1, 3, -3, new Vec3(0.9, -1.2, -1.2)));
         script.run(stage -> stage.set(deck[0].offset(-1, 3, -3), LightworksBlocks.ROTATING_BEACON.getDefaultState()
                 .setValue(RotatingBeaconBlock.FACING, Direction.UP)));
@@ -1412,16 +1371,6 @@ final class Scenarios {
                 });
     }
 
-    private static BlockState navigationLight(Direction facing, String colour) {
-        BlockState state = LightworksBlocks.NAVIGATION_LIGHT.getDefaultState().setValue(SignalLampBlock.FACING, facing);
-        for (var value : NavigationLightBlock.COLOUR.getPossibleValues()) {
-            if (value.getSerializedName().equals(colour)) {
-                state = state.setValue(NavigationLightBlock.COLOUR, value);
-            }
-        }
-        return state;
-    }
-
     /**
      * Overlapping coloured light, at night on white wool: red, green and blue Floodlights side by side, lighting
      * one wall. Where two overlap it should read yellow, cyan or magenta and where all three do near white,
@@ -1485,8 +1434,7 @@ final class Scenarios {
 
     /**
      * Coloured light, at night on white wool: a red-dyed Searchlight on a wool wall, a blue-dyed Floodlight
-     * on the wool floor, and a Tail Light (red), a starboard Navigation Light (green) and a Warning Light
-     * (amber) each beside the wall. The wool takes their colours ({@code ProjectedTint}); the shot's log
+     * on the wool floor, and a Tail Light (red) and a Warning Light (amber) each beside the wall. The wool takes their colours ({@code ProjectedTint}); the shot's log
      * line gives the number of tinted faces.
      */
     static Script colour() {
@@ -1515,7 +1463,6 @@ final class Scenarios {
                     stage.lightAt(blue).notifyUpdate();
                     stage.set(stage.at(-5, 0, 9), LightworksBlocks.TAIL_LIGHT.getDefaultState()
                             .setValue(SignalLampBlock.FACING, Direction.UP));
-                    stage.set(stage.at(0, 0, 9), navigationLight(Direction.UP, "starboard"));
                     stage.set(stage.at(5, 0, 9), LightworksBlocks.WARNING_LIGHT.getDefaultState()
                             .setValue(SignalLampBlock.FACING, Direction.UP));
                     SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 1, 8));
@@ -1838,8 +1785,8 @@ final class Scenarios {
      * while flying. Each phase logs our server and client time and the client's frame times.
      * <p>
      * With {@code mix}, the 50 lights are every kind instead: under the deck 20 Searchlights and 10
-     * Floodlights pointing down; on top 5 Rotating Beacons (two beams each), 5 Warning Lights,
-     * 6 Tail and Brake Lights and 4 Navigation Lights.
+     * Floodlights pointing down; on top 5 Rotating Beacons (two beams each), and Warning Lights and Tail and Brake
+     * Lights by turns.
      */
     static Script load(String name, boolean mix) {
         Script script = new Script(name);
@@ -1865,11 +1812,8 @@ final class Scenarios {
                             stage.set(deck[0].offset(x, -1, 0), searchlight(Direction.DOWN));
                             stage.set(deck[0].offset(x, -1, 2), LightworksBlocks.FLOODLIGHT.getDefaultState()
                                     .setValue(DirectionalLightBlock.FACING, Direction.DOWN));
-                            BlockState top = switch ((x + 4) % 4) {
-                                case 0 -> LightworksBlocks.WARNING_LIGHT.getDefaultState();
-                                case 1 -> LightworksBlocks.TAIL_LIGHT.getDefaultState();
-                                default -> LightworksBlocks.NAVIGATION_LIGHT.getDefaultState();
-                            };
+                            BlockState top = (x + 4) % 2 == 0 ? LightworksBlocks.WARNING_LIGHT.getDefaultState()
+                                    : LightworksBlocks.TAIL_LIGHT.getDefaultState();
                             stage.set(deck[0].offset(x, 1, -1), top.setValue(SignalLampBlock.FACING, Direction.UP));
                             stage.set(deck[0].offset(x, 1, 1), x % 2 == 0
                                     ? LightworksBlocks.ROTATING_BEACON.getDefaultState()

@@ -30,7 +30,7 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * A lamp whose job is to be seen: Warning Light, Tail and Brake Light, Navigation Light. Mounted on the
+ * A lamp whose job is to be seen: Warning Light, Tail and Brake Light. Mounted on the
  * {@link #FACING} side; placed, it gives block light ({@link #LIGHT}, from its brightness, and for a
  * Warning Light its pattern), while its lens shows the pattern or brake state. Signal lamps add no dynamic light on vehicles: each moving
  * spot costs chunk rebuilds, and their light is for looking at, not for lighting the ground.

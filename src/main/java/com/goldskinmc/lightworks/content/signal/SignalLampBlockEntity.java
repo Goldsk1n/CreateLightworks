@@ -98,12 +98,9 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
         return LightClipboard.KEY;
     }
 
-    /** The colour; a Warning Light's pattern is on the Clipboard through its value box. A Navigation Light takes no dye. */
+    /** The colour; a Warning Light's pattern is on the Clipboard through its value box. */
     @Override
     public boolean writeToClipboard(HolderLookup.Provider registries, CompoundTag tag, Direction side) {
-        if (lightType().kind() == LightType.Kind.NAVIGATION) {
-            return false;
-        }
         LightClipboard.writeColour(tag, state);
         return true;
     }
@@ -111,7 +108,7 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
     @Override
     public boolean readFromClipboard(HolderLookup.Provider registries, CompoundTag tag, Player player, Direction side,
             boolean simulate) {
-        if (lightType().kind() == LightType.Kind.NAVIGATION || !LightClipboard.hasColour(tag)) {
+        if (!LightClipboard.hasColour(tag)) {
             return false;
         }
         if (simulate) {
@@ -127,11 +124,8 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
         brake.trigger();
     }
 
-    /** Lens colour, 0xRRGGBB: the Navigation Light's side colour, otherwise the dye or the type's own. */
+    /** Lens colour, 0xRRGGBB: the dye or the type's own. */
     public int rgb() {
-        if (getBlockState().hasProperty(NavigationLightBlock.COLOUR)) {
-            return getBlockState().getValue(NavigationLightBlock.COLOUR).rgb();
-        }
         return state.rgb(lightType());
     }
 
@@ -284,25 +278,16 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
             case WARNING -> LightGoggles.line(tooltip, "pattern", ChatFormatting.AQUA,
                     PatternBoard.named(Component.translatable(pattern().getTranslationKey()), state.nightOnly()));
             case TAIL -> LightGoggles.line(tooltip, brake.braking() ? "brake_now" : "brake", ChatFormatting.AQUA);
-            case NAVIGATION -> LightGoggles.line(tooltip, "side", ChatFormatting.AQUA, Component.translatable(
-                    "lightworks.navigation." + getBlockState().getValue(NavigationLightBlock.COLOUR).getSerializedName()));
             default -> {
             }
         }
-        if (type.kind() != LightType.Kind.NAVIGATION) {
-            LightGoggles.colour(tooltip, state.colour());
-        }
+        LightGoggles.colour(tooltip, state.colour());
         if (isPlayerSneaking) {
-            switch (type.kind()) {
-                case WARNING -> LightGoggles.hint(tooltip, "pattern");
-                case NAVIGATION -> LightGoggles.hint(tooltip, "navigation");
-                default -> {
-                }
+            if (type.kind() == LightType.Kind.WARNING) {
+                LightGoggles.hint(tooltip, "pattern");
             }
-            if (type.kind() != LightType.Kind.NAVIGATION) {
-                LightGoggles.hint(tooltip, "dye");
-                LightGoggles.hint(tooltip, "clipboard");
-            }
+            LightGoggles.hint(tooltip, "dye");
+            LightGoggles.hint(tooltip, "clipboard");
             LightGoggles.hint(tooltip, LightworksConfig.invertRedstone() ? "redstone_inverted" : "redstone");
         }
         return true;

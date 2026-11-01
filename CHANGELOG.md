@@ -21,7 +21,6 @@ First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 
   Headlights facing the way it travels light up, so they swap when it reverses. Powered at assembly, a
   Headlight stays lit both ways.
 - **Tail and Brake Light**: red lamp that brightens for a second when its vehicle slows down.
-- **Navigation Light**: red, green or white marker, coloured by how it is placed; the Wrench cycles it.
 - **Edge Light**: low marker for runways, taxiways and platforms. Dye colours its lens, redstone dims it, you can
   walk and roll over it, and it moves with contraptions and Sable vehicles. Nothing ticks, so it can be placed by
   the hundred; a recipe makes eight.

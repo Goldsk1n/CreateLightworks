@@ -17,7 +17,6 @@ trains and [Create Aeronautics](https://modrinth.com/mod/create-aeronautics) veh
 | Warning Light | Amber lamp: steady, blink, opposite blink, pulse, double flash or strobe, always or only at night | Value box, redstone, dye |
 | Headlight | Forward beam; on a moving vehicle only the leading ones light | Redstone at assembly keeps it lit both ways |
 | Tail and Brake Light | Red lamp; brightens for a second when the vehicle slows | Redstone, dye |
-| Navigation Light | Red (port), green (starboard) or white (stern), set by placement | Wrench cycles the colour |
 | Edge Light | Low marker for runways, taxiways and platforms; no collision, nothing ticks, eight from a recipe | Redstone, dye |
 
 Redstone dims every light (brightness = 15 − signal); the server config `invertRedstone` makes lights

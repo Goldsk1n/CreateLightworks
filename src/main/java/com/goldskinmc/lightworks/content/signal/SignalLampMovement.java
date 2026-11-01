@@ -111,8 +111,7 @@ public class SignalLampMovement implements MovementBehaviour {
     }
 
     private int rgb(MovementContext context, Moving moving) {
-        return context.state.hasProperty(NavigationLightBlock.COLOUR)
-                ? context.state.getValue(NavigationLightBlock.COLOUR).rgb() : moving.state.rgb(type);
+        return moving.state.rgb(type);
     }
 
     /** Also called when a piston or bearing reverses: a stop, so the brake light shows. */

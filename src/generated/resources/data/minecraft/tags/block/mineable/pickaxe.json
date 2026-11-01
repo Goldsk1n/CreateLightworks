@@ -7,7 +7,6 @@
     "lightworks:rotating_beacon",
     "lightworks:warning_light",
     "lightworks:tail_light",
-    "lightworks:navigation_light",
     "lightworks:edge_light"
   ]
 }

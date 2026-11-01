@@ -34,7 +34,7 @@ public final class LightworksCreativeTab {
     public static List<ItemLike> contents() {
         return List.of(LightworksBlocks.SEARCHLIGHT, LightworksBlocks.FLOODLIGHT, LightworksBlocks.PAN_TILT_HEAD,
                 LightworksBlocks.ROTATING_BEACON, LightworksBlocks.WARNING_LIGHT, LightworksBlocks.HEADLIGHT,
-                LightworksBlocks.TAIL_LIGHT, LightworksBlocks.NAVIGATION_LIGHT, LightworksBlocks.EDGE_LIGHT);
+                LightworksBlocks.TAIL_LIGHT, LightworksBlocks.EDGE_LIGHT);
     }
 
     public static void register(IEventBus modBus) {

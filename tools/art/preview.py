@@ -28,10 +28,10 @@ ASSETS = MOD / 'src/main/resources/assets/lightworks'
 CREATE = MOD.parent / 'reference/create/src/main/resources/assets/create'
 
 BLOCKS = ['searchlight', 'floodlight', 'headlight', 'pan_tilt_head', 'rotating_beacon', 'warning_light',
-          'tail_light', 'navigation_light']
-# Default lens colours (LightType); the Navigation Light shown red (port)
+          'tail_light']
+# Default lens colours (LightType)
 TINT = {'searchlight': 0xFFEDC7, 'floodlight': 0xFFEDC7, 'headlight': 0xFFEDC7, 'rotating_beacon': 0xFFF4DC,
-        'warning_light': 0xFFA21A, 'tail_light': 0xFF2418, 'navigation_light': 0xFF2A1E}
+        'warning_light': 0xFFA21A, 'tail_light': 0xFF2418}
 KINETIC = {'pan_tilt_head', 'rotating_beacon'}
 UNLIT_LENS = 0.3          # PartRenderer.UNLIT_LENS
 CORE_WHITE = 0xFFF6E6     # PartRenderer: colour of a lit lens core

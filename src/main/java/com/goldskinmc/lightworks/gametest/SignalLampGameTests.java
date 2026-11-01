@@ -2,8 +2,6 @@ package com.goldskinmc.lightworks.gametest;
 
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.content.signal.EdgeLightBlock;
-import com.goldskinmc.lightworks.content.signal.NavigationColour;
-import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
 import com.goldskinmc.lightworks.content.signal.WarningPattern;
@@ -31,8 +29,7 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
- * Signal lamps: block light when placed, dimmed by redstone and blinking with a Warning Light's pattern;
- * Navigation Light colours from placement.
+ * Signal lamps: block light when placed, dimmed by redstone and blinking with a Warning Light's pattern.
  */
 @GameTestHolder(Lightworks.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -122,22 +119,6 @@ public final class SignalLampGameTests {
                         "a night-only lamp should shine at night"))
                 .thenExecute(() -> helper.getLevel().setDayTime(before))
                 .thenSucceed();
-    }
-
-    /** Facing the placer's left is port (red), their right starboard (green), anything else stern (white). */
-    @GameTest(template = EMPTY)
-    public static void navigationColourFollowsPlacement(GameTestHelper helper) {
-        helper.assertTrue(NavigationLightBlock.colourFor(Direction.WEST, Direction.NORTH) == NavigationColour.PORT,
-                "facing left of a north-looking placer should be port");
-        helper.assertTrue(NavigationLightBlock.colourFor(Direction.EAST, Direction.NORTH) == NavigationColour.STARBOARD,
-                "facing right of a north-looking placer should be starboard");
-        helper.assertTrue(NavigationLightBlock.colourFor(Direction.SOUTH, Direction.NORTH) == NavigationColour.STERN,
-                "facing back at the placer should be stern");
-        helper.assertTrue(NavigationLightBlock.colourFor(Direction.UP, Direction.EAST) == NavigationColour.STERN,
-                "facing up should be stern");
-        helper.assertTrue(NavigationLightBlock.colourFor(Direction.NORTH, Direction.EAST) == NavigationColour.PORT,
-                "facing left of an east-looking placer should be port");
-        helper.succeed();
     }
 
     /** Placed by the hundred: an Edge Light never ticks, and nothing collides with it. */

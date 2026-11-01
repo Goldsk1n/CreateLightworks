@@ -71,16 +71,6 @@ final class Layouts {
         static final BlockPos[] RIGHT = {new BlockPos(5, 1, 1), new BlockPos(5, 1, 3), new BlockPos(5, 1, 5)};
     }
 
-    /** 7x7 plate: a deck heading south, away from the camera, with port, starboard and stern lights. */
-    static final class Navigation {
-        static final int SIZE = 7;
-        static final BlockPos DECK_FROM = new BlockPos(1, 1, 1);
-        static final BlockPos DECK_TO = new BlockPos(5, 1, 5);
-        static final BlockPos PORT = new BlockPos(5, 2, 3);
-        static final BlockPos STARBOARD = new BlockPos(1, 2, 3);
-        static final BlockPos STERN = new BlockPos(3, 2, 1);
-    }
-
     private Layouts() {
     }
 }

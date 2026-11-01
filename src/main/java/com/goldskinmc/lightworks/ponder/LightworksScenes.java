@@ -7,7 +7,6 @@ import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlockEntity;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlockEntity;
 import com.goldskinmc.lightworks.content.signal.EdgeLightBlock;
-import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
 import com.goldskinmc.lightworks.content.signal.WarningPattern;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
@@ -60,8 +59,6 @@ final class LightworksScenes {
                 .addStoryBoard("warning_light", LightworksScenes::warningLight, LIGHTS);
         scenes.forComponents(LightworksBlocks.HEADLIGHT).addStoryBoard("headlight", LightworksScenes::headlight, LIGHTS);
         scenes.forComponents(LightworksBlocks.TAIL_LIGHT).addStoryBoard("tail_light", LightworksScenes::tailLight, LIGHTS);
-        scenes.forComponents(LightworksBlocks.NAVIGATION_LIGHT)
-                .addStoryBoard("navigation_light", LightworksScenes::navigationLight, LIGHTS);
         scenes.forComponents(LightworksBlocks.EDGE_LIGHT)
                 .addStoryBoard("edge_light", LightworksScenes::edgeLight, LIGHTS);
     }
@@ -82,7 +79,6 @@ final class LightworksScenes {
                 .add(LightworksBlocks.WARNING_LIGHT)
                 .add(LightworksBlocks.HEADLIGHT)
                 .add(LightworksBlocks.TAIL_LIGHT)
-                .add(LightworksBlocks.NAVIGATION_LIGHT)
                 .add(LightworksBlocks.EDGE_LIGHT);
         tags.addToTag(AllCreatePonderTags.KINETIC_APPLIANCES)
                 .add(LightworksBlocks.PAN_TILT_HEAD)
@@ -518,68 +514,6 @@ final class LightworksScenes {
                 .placeNearTarget()
                 .pointAt(util.vector().topOf(left));
         scene.idle(90);
-        scene.markAsFinished();
-    }
-
-    static void navigationLight(SceneBuilder builder, SceneBuildingUtil util) {
-        CreateSceneBuilder scene = new CreateSceneBuilder(builder);
-        scene.title("navigation_light", "Navigation Lights");
-        scene.configureBasePlate(0, 0, Layouts.Navigation.SIZE);
-        scene.showBasePlate();
-        scene.idle(10);
-        scene.world().showSection(util.select().fromTo(Layouts.Navigation.DECK_FROM, Layouts.Navigation.DECK_TO),
-                Direction.DOWN);
-        scene.idle(20);
-
-        BlockPos port = Layouts.Navigation.PORT;
-        BlockPos starboard = Layouts.Navigation.STARBOARD;
-        BlockPos stern = Layouts.Navigation.STERN;
-        scene.world().showSection(util.select().position(port), Direction.DOWN);
-        scene.idle(5);
-        scene.overlay().showText(60)
-                .colored(PonderPalette.RED)
-                .text("Navigation Lights show which way a vehicle faces: red on its left side...")
-                .placeNearTarget()
-                .pointAt(util.vector().topOf(port));
-        scene.idle(70);
-        scene.world().showSection(util.select().position(starboard), Direction.DOWN);
-        scene.idle(5);
-        scene.overlay().showText(60)
-                .colored(PonderPalette.GREEN)
-                .text("...green on its right...")
-                .placeNearTarget()
-                .pointAt(util.vector().topOf(starboard));
-        scene.idle(70);
-        scene.world().showSection(util.select().position(stern), Direction.DOWN);
-        scene.idle(5);
-        scene.overlay().showText(60)
-                .colored(PonderPalette.WHITE)
-                .text("...and white at the back")
-                .placeNearTarget()
-                .pointAt(util.vector().topOf(stern));
-        scene.idle(70);
-
-        scene.overlay().showText(100)
-                .attachKeyFrame()
-                .text("Each takes its colour as you place it: facing your left it turns red, facing your right green, otherwise white")
-                .placeNearTarget()
-                .pointAt(util.vector().topOf(port));
-        scene.idle(110);
-
-        Vec3 top = util.vector().topOf(stern);
-        scene.overlay().showControls(top, Pointing.DOWN, 40).rightClick().withItem(AllItems.WRENCH.asStack());
-        scene.idle(7);
-        scene.world().cycleBlockProperty(stern, NavigationLightBlock.COLOUR);
-        scene.overlay().showText(70)
-                .attachKeyFrame()
-                .text("Right-click with a Wrench to change it")
-                .placeNearTarget()
-                .pointAt(top);
-        scene.idle(40);
-        scene.world().cycleBlockProperty(stern, NavigationLightBlock.COLOUR);
-        scene.idle(20);
-        scene.world().cycleBlockProperty(stern, NavigationLightBlock.COLOUR);
-        scene.idle(30);
         scene.markAsFinished();
     }
 

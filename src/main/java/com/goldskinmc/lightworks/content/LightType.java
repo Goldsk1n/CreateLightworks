@@ -29,9 +29,7 @@ public record LightType(String name, @Nullable ConeFalloff beam, Kind kind, int 
         /** Omni lamp with a steady, blink, pulse or flash pattern. */
         WARNING,
         /** Dim red, brighter for a second when the vehicle slows. */
-        TAIL,
-        /** Red, green or white marker. */
-        NAVIGATION
+        TAIL
     }
 
     public static final int WARM_WHITE = 0xFFEDC7;
@@ -54,8 +52,6 @@ public record LightType(String name, @Nullable ConeFalloff beam, Kind kind, int 
             null, Kind.WARNING, 0xFFA21A, 12, 0, 0, BeamRays.SINGLE);
     public static final LightType TAIL_LIGHT = new LightType("tail_light",
             null, Kind.TAIL, 0xFF2418, 6, 0, 0, BeamRays.SINGLE);
-    public static final LightType NAVIGATION_LIGHT = new LightType("navigation_light",
-            null, Kind.NAVIGATION, 0xFFFFFF, 6, 0, 0, BeamRays.SINGLE);
 
     public boolean hasBeam() {
         return beam != null;
