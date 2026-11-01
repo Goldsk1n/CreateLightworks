@@ -6,7 +6,9 @@ import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity
 import com.goldskinmc.lightworks.light.BeamLightBlock;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -178,6 +180,30 @@ public final class BeamLightGameTests {
                     }
                 })
                 .thenSucceed();
+    }
+
+    /** With nothing changing, every search of the area must keep the lights where they are: moving them shows as a flicker. */
+    @GameTest(template = EMPTY_LONG, timeoutTicks = 300)
+    public static void wideBeamsLightsStayPutWhenNothingChanges(GameTestHelper helper) {
+        levelFloodlightOverFloor(helper);
+        Set<BlockPos> first = new HashSet<>();
+        helper.startSequence()
+                .thenExecuteAfter(60, () -> first.addAll(lightsOverFloor(helper)))
+                .thenExecuteAfter(40, () -> helper.assertTrue(first.equals(lightsOverFloor(helper)), "lights moved at a search"))
+                .thenExecuteAfter(40, () -> helper.assertTrue(first.equals(lightsOverFloor(helper)), "lights moved at a search"))
+                .thenExecuteAfter(40, () -> helper.assertTrue(first.equals(lightsOverFloor(helper)), "lights moved at a search"))
+                .thenExecute(() -> helper.assertTrue(first.size() > 1, "no lights to watch"))
+                .thenSucceed();
+    }
+
+    private static Set<BlockPos> lightsOverFloor(GameTestHelper helper) {
+        Set<BlockPos> found = new HashSet<>();
+        for (BlockPos pos : BlockPos.betweenClosed(new BlockPos(0, 1, 0), new BlockPos(14, 4, 4))) {
+            if (isBeamLight(helper, pos)) {
+                found.add(pos.immutable());
+            }
+        }
+        return found;
     }
 
     private static BlockPos levelFloodlightOverFloor(GameTestHelper helper) {
