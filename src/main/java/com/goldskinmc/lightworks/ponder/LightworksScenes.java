@@ -265,7 +265,7 @@ final class LightworksScenes {
         scene.overlay().showText(70)
                 .text("Tail and Brake Lights glow dim red at the back of a vehicle")
                 .placeNearTarget()
-                .pointAt(util.vector().blockSurface(tail, Direction.WEST));
+                .pointAt(onLamp(tail, 13, 8, 8));
         scene.idle(80);
 
         scene.world().moveSection(cart, new Vec3(1, 0, 0), 40);
@@ -275,7 +275,7 @@ final class LightworksScenes {
                 .attachKeyFrame()
                 .text("When the vehicle slows down or stops, they brighten for a second, like brake lights")
                 .placeNearTarget()
-                .pointAt(util.vector().topOf(tail.offset(1, 0, 0)));
+                .pointAt(onLamp(tail.offset(1, 0, 0), 13, 8, 8));
         scene.idle(100);
 
         brightness(scene, util, front, 0);
@@ -285,7 +285,7 @@ final class LightworksScenes {
         scene.overlay().showText(80)
                 .text("This works on contraptions, trains and Sable vehicles. Placed in the world, they just glow")
                 .placeNearTarget()
-                .pointAt(util.vector().topOf(tail.offset(-1, 0, 0)));
+                .pointAt(onLamp(tail.offset(-1, 0, 0), 13, 8, 8));
         scene.idle(90);
         scene.markAsFinished();
     }
@@ -416,7 +416,7 @@ final class LightworksScenes {
         scene.overlay().showText(70)
                 .text("Warning Lights glow amber and give block light where they stand")
                 .placeNearTarget()
-                .pointAt(util.vector().topOf(lamp));
+                .pointAt(onLamp(lamp, 8, 10, 8));
         scene.idle(80);
 
         scene.overlay().showCenteredScrollInput(lamp, Direction.WEST, 60);
@@ -426,7 +426,7 @@ final class LightworksScenes {
                 .attachKeyFrame()
                 .text("Hold right-click on its box to pick a pattern: steady, blink, opposite blink, pulse, double flash or strobe")
                 .placeNearTarget()
-                .pointAt(util.vector().blockSurface(lamp, Direction.WEST));
+                .pointAt(onLamp(lamp, 4, 5, 8));
         scene.idle(70);
         pattern(scene, lamp, WarningPattern.PULSE);
         scene.idle(60);
@@ -436,16 +436,16 @@ final class LightworksScenes {
         scene.overlay().showText(70)
                 .text("The board's lower row runs the same patterns only at night")
                 .placeNearTarget()
-                .pointAt(util.vector().blockSurface(lamp, Direction.WEST));
+                .pointAt(onLamp(lamp, 4, 5, 8));
         scene.idle(80);
 
         scene.overlay().showText(80)
                 .text("The light it casts follows the pattern too, like a redstone lamp on a clock")
                 .placeNearTarget()
-                .pointAt(util.vector().topOf(lamp));
+                .pointAt(onLamp(lamp, 8, 10, 8));
         scene.idle(90);
 
-        Vec3 top = util.vector().topOf(lamp);
+        Vec3 top = onLamp(lamp, 8, 10, 8);
         scene.overlay().showControls(top, Pointing.DOWN, 40).rightClick().withItem(new ItemStack(Items.RED_DYE));
         scene.idle(7);
         dye(scene, util, lamp, SignalLampBlockEntity.class, DyeColor.RED);
@@ -478,15 +478,15 @@ final class LightworksScenes {
                 .attachKeyFrame()
                 .text("Edge Lights mark the sides of runways, taxiways and platforms, and read clearly from the air")
                 .placeNearTarget()
-                .pointAt(util.vector().topOf(left));
+                .pointAt(onLamp(left, 8, 3, 8));
         scene.idle(90);
         scene.overlay().showText(70)
                 .text("Vehicles and players pass over them")
                 .placeNearTarget()
-                .pointAt(util.vector().topOf(Layouts.Edge.RIGHT[1]));
+                .pointAt(onLamp(Layouts.Edge.RIGHT[1], 8, 3, 8));
         scene.idle(80);
 
-        scene.overlay().showControls(util.vector().topOf(left), Pointing.DOWN, 40).rightClick()
+        scene.overlay().showControls(onLamp(left, 8, 3, 8), Pointing.DOWN, 40).rightClick()
                 .withItem(new ItemStack(Items.BLUE_DYE));
         scene.idle(7);
         for (BlockPos pos : Layouts.Edge.LEFT) {
@@ -499,7 +499,7 @@ final class LightworksScenes {
                 .attachKeyFrame()
                 .text("Right-click with a dye to colour its lens")
                 .placeNearTarget()
-                .pointAt(util.vector().topOf(left));
+                .pointAt(onLamp(left, 8, 3, 8));
         scene.idle(90);
 
         for (BlockPos pos : Layouts.Edge.LEFT) {
@@ -512,9 +512,17 @@ final class LightworksScenes {
                 .attachKeyFrame()
                 .sharedText("redstone")
                 .placeNearTarget()
-                .pointAt(util.vector().topOf(left));
+                .pointAt(onLamp(left, 8, 3, 8));
         scene.idle(90);
         scene.markAsFinished();
+    }
+
+    /**
+     * A point on a lamp smaller than its block, in sixteenths: {@code topOf} and {@code blockSurface} mean the whole
+     * block's space, so a line aimed with them ends in the air beside the lamp.
+     */
+    private static Vec3 onLamp(BlockPos pos, double x, double y, double z) {
+        return Vec3.atLowerCornerOf(pos).add(x / 16, y / 16, z / 16);
     }
 
     /** Changes a light's saved state the way a block entity would load it. */
