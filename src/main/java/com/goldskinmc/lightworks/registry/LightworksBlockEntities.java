@@ -42,8 +42,6 @@ public final class LightworksBlockEntities {
             LightworksBlocks.WARNING_LIGHT);
     public static final BlockEntityEntry<SignalLampBlockEntity> TAIL_LIGHT = signal("tail_light",
             LightworksBlocks.TAIL_LIGHT);
-    public static final BlockEntityEntry<SignalLampBlockEntity> NAVIGATION_LIGHT = signal("navigation_light",
-            LightworksBlocks.NAVIGATION_LIGHT);
 
     public static final BlockEntityEntry<EdgeLightBlockEntity> EDGE_LIGHT = REGISTRATE
             .blockEntity("edge_light", EdgeLightBlockEntity::new)

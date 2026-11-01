@@ -10,7 +10,6 @@ import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlock;
 import com.goldskinmc.lightworks.content.beacon.RotatingBeaconMovement;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
 import com.goldskinmc.lightworks.content.signal.EdgeLightBlock;
-import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
 import com.goldskinmc.lightworks.content.signal.SignalLampMovement;
@@ -78,9 +77,6 @@ public final class LightworksBlocks {
     public static final BlockEntry<SignalLampBlock> TAIL_LIGHT = signal("tail_light", LightType.TAIL_LIGHT,
             SignalLampBlock::new, () -> LightworksBlockEntities.TAIL_LIGHT.get(), Block.box(3, 0, 4, 13, 3, 12),
             "Tail and Brake Light");
-    public static final BlockEntry<NavigationLightBlock> NAVIGATION_LIGHT = signal("navigation_light",
-            LightType.NAVIGATION_LIGHT, NavigationLightBlock::new, () -> LightworksBlockEntities.NAVIGATION_LIGHT.get(),
-            Block.box(5, 0, 5, 11, 6, 11), "Navigation Light");
 
     public static final BlockEntry<EdgeLightBlock> EDGE_LIGHT = REGISTRATE
             .block("edge_light", EdgeLightBlock::new)

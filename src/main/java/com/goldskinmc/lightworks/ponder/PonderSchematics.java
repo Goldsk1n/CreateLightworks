@@ -4,8 +4,6 @@ import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.beam.Aim;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
-import com.goldskinmc.lightworks.content.signal.NavigationColour;
-import com.goldskinmc.lightworks.content.signal.NavigationLightBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.google.common.hash.Hashing;
@@ -105,13 +103,6 @@ public final class PonderSchematics implements DataProvider {
         warning.lamp(Layouts.Warning.LAMP, LightworksBlocks.WARNING_LIGHT.getDefaultState(), Direction.UP);
         all.add(warning);
 
-        Schematic navigation = new Schematic("navigation_light", Layouts.Navigation.SIZE, 4);
-        navigation.fill(Layouts.Navigation.DECK_FROM, Layouts.Navigation.DECK_TO, Blocks.SPRUCE_PLANKS.defaultBlockState());
-        navigation.lamp(Layouts.Navigation.PORT, navigationLight(NavigationColour.PORT), Direction.UP);
-        navigation.lamp(Layouts.Navigation.STARBOARD, navigationLight(NavigationColour.STARBOARD), Direction.UP);
-        navigation.lamp(Layouts.Navigation.STERN, navigationLight(NavigationColour.STERN), Direction.UP);
-        all.add(navigation);
-
         Schematic edge = new Schematic("edge_light", Layouts.Edge.SIZE, 3);
         edge.fill(Layouts.Edge.STRIP_FROM, Layouts.Edge.STRIP_TO, Blocks.GRAY_CARPET.defaultBlockState());
         for (BlockPos pos : Layouts.Edge.LEFT) {
@@ -128,10 +119,6 @@ public final class PonderSchematics implements DataProvider {
         Schematic cart = new Schematic(name, Layouts.Cart.SIZE, 4);
         cart.fill(Layouts.Cart.BODY_FROM, Layouts.Cart.BODY_TO, AllBlocks.BRASS_CASING.getDefaultState());
         return cart;
-    }
-
-    private static BlockState navigationLight(NavigationColour colour) {
-        return LightworksBlocks.NAVIGATION_LIGHT.getDefaultState().setValue(NavigationLightBlock.COLOUR, colour);
     }
 
     private static BlockState floorLever() {
