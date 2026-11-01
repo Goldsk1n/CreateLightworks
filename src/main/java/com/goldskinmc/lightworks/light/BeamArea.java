@@ -79,7 +79,9 @@ final class BeamArea {
                 }
                 double light = shape.lightInBeam(face.x - origin.x, face.y - origin.y, face.z - origin.z, axis.x, axis.y, axis.z,
                         u[0], u[1], u[2], v[0], v[1], v[2], lensHalf);
-                if (light < MIN_LIGHT || !level.getBlockState(neighbour.setWithOffset(pos, side)).isAir()) {
+                // Our own lights count as air, or the next search would avoid every place this one chose
+                BlockState inFront = level.getBlockState(neighbour.setWithOffset(pos, side));
+                if (light < MIN_LIGHT || !(inFront.isAir() || inFront.is(LightworksBlocks.BEAM_LIGHT.get()))) {
                     continue;
                 }
                 lit = true;
