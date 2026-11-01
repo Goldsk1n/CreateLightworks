@@ -402,6 +402,15 @@
           ],
           "texture": "#sheet"
         }
+      },
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          8
+        ],
+        "axis": "x",
+        "angle": -45
       }
     },
     {
@@ -470,6 +479,15 @@
           ],
           "texture": "#sheet"
         }
+      },
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          8
+        ],
+        "axis": "x",
+        "angle": -45
       }
     },
     {
@@ -538,6 +556,15 @@
           ],
           "texture": "#sheet"
         }
+      },
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          8
+        ],
+        "axis": "x",
+        "angle": -45
       }
     },
     {
@@ -606,6 +633,15 @@
           ],
           "texture": "#sheet"
         }
+      },
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          8
+        ],
+        "axis": "x",
+        "angle": -45
       }
     },
     {
@@ -674,6 +710,15 @@
           ],
           "texture": "#sheet"
         }
+      },
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          8
+        ],
+        "axis": "x",
+        "angle": -45
       }
     }
   ]
