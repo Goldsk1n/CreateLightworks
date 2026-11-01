@@ -2,7 +2,7 @@
 the game, as a presentation sheet, without launching Minecraft.
 
 python tools/art/preview.py [--out FILE] [--compare ASSETS_DIR [--compare-label TEXT]]... [--label TEXT]
-                            [--front-off] [block ...]
+                            [--front-off] [--items] [block ...]
 
 Each block is drawn from the front above (lenses lit, as at night) and from behind below (lenses off,
 showing the shaft in a kinetic block's bottom), next to Create's casings for comparison. Parts are the
@@ -11,6 +11,8 @@ full-bright when lit, as PartRenderer does (lens_core parts glow warm white on t
 Create's half shaft, as render/KineticParts draws it. create: textures are read from the reference
 clone (../reference/create). --compare renders another assets folder (an older version or a variant)
 after each block; repeat it for more. --front-off adds an unlit front view (how a light looks by day).
+--items draws the item models instead, at the angle their icons have, each with an inventory-sized copy
+(build/art-preview/items.png by default).
 Output defaults to build/art-preview/preview.png. Needs Python 3, Pillow and numpy.
 """
 import argparse
@@ -106,8 +108,10 @@ def load_model(file):
         faces = {}
         for face, d in e.get('faces', {}).items():
             faces[face] = dict(uv=d.get('uv') or default_uv(face, e['from'], e['to']),
-                               texture=resolve(d['texture']), rotation=d.get('rotation', 0))
-        out.append(dict(f=e['from'], t=e['to'], faces=faces, shade=e.get('shade', True), glow='neoforge_data' in e))
+                               texture=resolve(d['texture']), rotation=d.get('rotation', 0), tinted='tintindex' in d)
+        # Our models only ever turn an element about the block centre's x axis
+        out.append(dict(f=e['from'], t=e['to'], faces=faces, shade=e.get('shade', True), glow='neoforge_data' in e,
+                        turned=e.get('rotation', {}).get('angle', 0)))
     return out
 
 
@@ -121,7 +125,7 @@ class Canvas:
         return Image.fromarray((np.clip(self.rgb, 0, 1) * 255).astype(np.uint8), 'RGB')
 
 
-def draw_part(canvas, textures, elements, origin, yaw, pitch, tint=(1, 1, 1), lit=False, transform=None):
+def draw_part(canvas, textures, elements, origin, yaw, pitch, tint=(1, 1, 1), lit=False, transform=None, lens_tint=None):
     """Draws elements with an orthographic camera; lit parts are unshaded (full-bright lenses)."""
     cy, sy = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
     cp, sp = math.cos(math.radians(pitch)), math.sin(math.radians(pitch))
@@ -140,12 +144,13 @@ def draw_part(canvas, textures, elements, origin, yaw, pitch, tint=(1, 1, 1), li
         return sp * y + cp * z1
 
     for e in elements:
+        turn = tilt(e['turned']) if e.get('turned') else transform
         for face, d in e['faces'].items():
             pts = corners(face, e['f'], e['t'])
             normal = NORMALS[face]
-            if transform:
-                pts = [transform(p) for p in pts]
-                normal = tuple(np.subtract(transform(np.add((8, 8, 8), normal)), transform((8, 8, 8))))
+            if turn:
+                pts = [turn(p) for p in pts]
+                normal = tuple(np.subtract(turn(np.add((8, 8, 8), normal)), turn((8, 8, 8))))
             if project_dir(normal) <= 1e-4:
                 continue
             tex = textures.get(d['texture'])
@@ -184,6 +189,8 @@ def draw_part(canvas, textures, elements, origin, yaw, pitch, tint=(1, 1, 1), li
             draw = inside & (texel[..., 3] >= 0.5) & (depth > region)
             shade = 1.0 if lit or not e['shade'] else face_shade(normal)
             colour = texel[..., :3] * shade * np.array(tint, np.float32)
+            if lens_tint and d.get('tinted'):
+                colour = colour * np.array(lens_tint, np.float32)
             canvas.rgb[y0:y1, x0:x1][draw] = colour[draw]
             region[draw] = depth[draw]
 
@@ -243,6 +250,35 @@ def render_block(textures, assets, block, view):
     return canvas.image()
 
 
+def render_item(textures, assets, item):
+    """An item model at its icon's angle: display.gui, or block/block's when it has none."""
+    file = assets / 'models/item' / f'{item}.json'
+    gui = json.loads(file.read_text(encoding='utf-8')).get('display', {}).get('gui', {})
+    pitch, spin, _ = gui.get('rotation', (30, 225, 0))
+    size = int(SCALE * 26)
+    canvas = Canvas(size, size, (139, 139, 139))
+    draw_part(canvas, textures, load_model(file), (size / 2, size / 2), -spin % 360, pitch,
+              lens_tint=rgb01(TINT.get(item, 0xFFFFFF)))
+    icon = canvas.image()
+    icon.paste(icon.resize((48, 48), Image.NEAREST), (size - 52, 4))
+    return icon
+
+
+def items_sheet(out):
+    assets = ASSETS
+    items = sorted(f.stem for f in (assets / 'models/item').glob('*.json'))
+    size = int(SCALE * 26)
+    sheet = Image.new('RGB', (4 * size, (len(items) + 3) // 4 * (size + 18)), (24, 24, 28))
+    d = ImageDraw.Draw(sheet)
+    for i, item in enumerate(items):
+        x, y = i % 4 * size, i // 4 * (size + 18)
+        sheet.paste(render_item(Textures(assets), assets, item), (x, y + 18))
+        d.text((x + 6, y + 3), item, fill=(235, 235, 235))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(out)
+    print('preview written to', out)
+
+
 def render_cube(textures, texture, view):
     _, yaw, pitch, _ = view
     size = int(SCALE * 24)
@@ -256,13 +292,17 @@ def render_cube(textures, texture, view):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('blocks', nargs='*', default=BLOCKS)
-    ap.add_argument('--out', default=str(MOD / 'build/art-preview/preview.png'))
+    ap.add_argument('--out')
     ap.add_argument('--compare', action='append', default=[],
                     help='another assets/lightworks folder, drawn after each block (repeatable)')
     ap.add_argument('--label', default='current')
     ap.add_argument('--compare-label', action='append', default=[], help='a label per --compare')
     ap.add_argument('--front-off', action='store_true', help='add an unlit front view')
+    ap.add_argument('--items', action='store_true', help='draw the item icons instead')
     args = ap.parse_args()
+    if args.items:
+        items_sheet(Path(args.out or MOD / 'build/art-preview/items.png'))
+        return
     views = VIEWS[:1] + [('front, off', 45, 30, False)] + VIEWS[1:] if args.front_off else VIEWS
     sets = [(args.label, ASSETS)]
     for i, folder in enumerate(args.compare):
@@ -290,7 +330,7 @@ def main():
             x, y = c * cell, r * (cell + 18)
             sheet.paste(im, (x, y + 18))
             d.text((x + 6, y + 3), name, fill=(235, 235, 235))
-    out = Path(args.out)
+    out = Path(args.out or MOD / 'build/art-preview/preview.png')
     out.parent.mkdir(parents=True, exist_ok=True)
     sheet.save(out)
     print('preview written to', out)

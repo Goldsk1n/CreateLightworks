@@ -87,6 +87,43 @@ def write_json(path, model):
     file.write_text(json.dumps(model, indent=2) + '\n')
 
 
+# How an item icon shows a light that aims: lights are modelled pointing up, and that hides what they are
+AIM_UP = '45 degrees up'
+AIM_LEVEL = 'level'
+TURNED_FACE = {'up': 'north', 'north': 'down', 'down': 'south', 'south': 'up', 'east': 'east', 'west': 'west'}
+
+
+def face_corners(face, f, t):
+    """A face's corners as its texture's top-left, top-right, bottom-right and bottom-left."""
+    x1, y1, z1 = f
+    x2, y2, z2 = t
+    return {
+        'north': [(x2, y2, z1), (x1, y2, z1), (x1, y1, z1), (x2, y1, z1)],
+        'south': [(x1, y2, z2), (x2, y2, z2), (x2, y1, z2), (x1, y1, z2)],
+        'east': [(x2, y2, z2), (x2, y2, z1), (x2, y1, z1), (x2, y1, z2)],
+        'west': [(x1, y2, z1), (x1, y2, z2), (x1, y1, z2), (x1, y1, z1)],
+        'up': [(x1, y2, z1), (x2, y2, z1), (x2, y2, z2), (x1, y2, z2)],
+        'down': [(x1, y1, z2), (x2, y1, z2), (x2, y1, z1), (x1, y1, z1)],
+    }[face]
+
+
+def turned_level(element):
+    """An element turned 90 degrees about the block centre, up to north: more than a model's rotation can do."""
+    def turn(p):
+        return (p[0], p[2], 16 - p[1])
+
+    a, b = turn(element['from']), turn(element['to'])
+    f = [min(a[i], b[i]) for i in range(3)]
+    t = [max(a[i], b[i]) for i in range(3)]
+    faces = {}
+    for face, data in element['faces'].items():
+        new_face = TURNED_FACE[face]
+        first = turn(face_corners(face, element['from'], element['to'])[0])
+        steps = face_corners(new_face, f, t).index(first)
+        faces[new_face] = {**data, 'rotation': steps * 90} if steps else data
+    return {**element, 'from': f, 'to': t, 'faces': faces}
+
+
 CORE_GAP = 0.02
 OUTWARD = {'north': (2, -1), 'south': (2, 1), 'west': (0, -1), 'east': (0, 1), 'down': (1, -1), 'up': (1, 1)}
 
@@ -125,7 +162,9 @@ class Block:
             self.parts['lens_core'] = [core_face(e, face) for e in elements for face in e['faces']]
         return part
 
-    def finish(self, *item_parts):
+    def finish(self, *item_parts, aim=None, tinted_lens=False):
+        """aim: how the item shows its head and lens (AIM_UP, AIM_LEVEL), turned toward the icon's right.
+        tinted_lens: the item's lens takes the light's colour (LampItemColours)."""
         layout, sheet = self._pack()
         create_keys = {}
         for e in (e for elements in self.parts.values() for e in elements):
@@ -166,7 +205,20 @@ class Block:
 
         for part, elements in self.parts.items():
             write_json(f'block/{self.name}/{part}', resolve(elements))
-        write_json(f'item/{self.name}', resolve([e for p in item_parts for e in self.parts[p]]))
+        item = resolve([e for p in item_parts for e in self.parts[p]])
+        names = [p for p in item_parts for _ in self.parts[p]]
+        elements = []
+        for name, element in zip(names, item['elements']):
+            if name == 'lens' and tinted_lens:
+                for face in element['faces'].values():
+                    face['tintindex'] = 0
+            if name in ('head', 'lens') and aim == AIM_UP:
+                element['rotation'] = {'origin': [8, 8, 8], 'axis': 'x', 'angle': -45}
+            elif name in ('head', 'lens') and aim == AIM_LEVEL:
+                element = turned_level(element)
+            elements.append(element)
+        item['elements'] = elements
+        write_json(f'item/{self.name}', item)
 
     def _pack(self):
         """Shelf-packs every distinct painted face onto the smallest square sheet that holds them."""
@@ -237,7 +289,7 @@ b.part('head',
        box((4, 7, 7), (5, 9, 9), BRASS_PLATE),
        box((11, 7, 7), (12, 9, 9), BRASS_PLATE))
 b.part('lens', box((5, 15, 5), (11, 15.4, 11), FRESNEL_LENS))   # lens 7.4/16 from the centre, 6 wide: LightType
-b.finish('base', 'yoke', 'head', 'lens')
+b.finish('base', 'yoke', 'head', 'lens', aim=AIM_UP)
 
 # Floodlight: wide flat head with one big lens, on a wide yoke. The lens comes down past the yoke plate and the
 # collar when level, 3.8 pixels from the pivot: they stay inside that at every pan, or they poke through it
@@ -254,7 +306,7 @@ b.part('head',
        box((2, 5.5, 2), (14, 10.5, 14), HOUSING, down=FINS, up=None),
        box((2, 10.5, 2), (14, 11.5, 14), BRASS_BAND, up=own('bezel_top'), down=None))
 b.part('lens', box((2.5, 11.5, 2.5), (13.5, 11.8, 13.5), PRISM_LENS))   # 3.8/16 from the centre, 11 wide: LightType
-b.finish('base', 'yoke', 'head', 'lens')
+b.finish('base', 'yoke', 'head', 'lens', aim=AIM_UP)
 
 FOOT_TOP = own('plate_top')
 
@@ -268,7 +320,7 @@ b.part('head',
        box((5, 5, 5), (11, 11, 11), HOUSING, down=FINS, up=None),
        box((4, 11, 4), (12, 12.5, 12), BRASS_BAND, up=own('bezel_top'), down=BRASS_PLATE))
 b.part('lens', box((5, 12.5, 5), (11, 12.8, 11), LENS))   # 4.8/16 from the centre, 6 wide
-b.finish('base', 'head', 'lens')
+b.finish('base', 'head', 'lens', aim=AIM_LEVEL)
 
 
 def recessed_bottom(x0, x1, frame):
@@ -328,7 +380,7 @@ b.part('base',
        box((5, 8, 5), (11, 9, 11), BRASS_BAND, up=BRASS_PLATE, down=None),
        box((7, 9, 7), (9, 10, 9), BRASS_PLATE, down=None))
 b.part('lens', box((5, 2, 5), (11, 8, 11), own('lens', style='dome'), down=None, up=None))
-b.finish('base', 'lens')
+b.finish('base', 'lens', tinted_lens=True)
 
 # Tail and Brake Light: flat rectangular lamp, an iron body with a brass frame round the lens. Its long sides are
 # too wide for brass band: all brass reads as a slab
@@ -337,7 +389,7 @@ b.part('base',
        box((3, 0, 4), (13, 2, 12), IRON, down=SEAT),
        *rim(3, 4, 13, 12, 2, 3))
 b.part('lens', box((4, 2, 5), (12, 2.8, 11), LENS, down=None))
-b.finish('base', 'lens')
+b.finish('base', 'lens', tinted_lens=True)
 
 # Edge Light: a low lens on a flat brass foot, one baked model (see glowing)
 b = Block('edge_light', BRASS_CASING)
