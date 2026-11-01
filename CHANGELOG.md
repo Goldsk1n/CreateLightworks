@@ -28,6 +28,7 @@ First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 
 
 ### Everywhere
 
+- Colour and the lit square land on slabs, stairs, carpet, snow, paths and farmland, and follow blocks as they are placed and broken.
 - A beam lights everything inside it: block light goes across the whole lit surface, not only where rays land.
 - Create's Clipboard copies settings between lights: aim, dye colour, a Warning Light's pattern, a head's sweep.
 - Lights keep landing where they point on Create contraptions, trains and Sable (Create Aeronautics)

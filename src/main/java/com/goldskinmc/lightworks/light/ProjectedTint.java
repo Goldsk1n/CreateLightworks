@@ -30,6 +30,15 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.CarpetBlock;
+import net.minecraft.world.level.block.DirtPathBlock;
+import net.minecraft.world.level.block.FarmBlock;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.SnowLayerBlock;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -71,6 +80,9 @@ public final class ProjectedTint {
     /** A beam nearing its limit fades over this last share of it, so it never vanishes at once. */
     private static final float LIMIT_FADE_SHARE = 0.2f;
     private static final int NOT_SHARED = -1;
+    private static final List<AABB> FULL_BLOCK = List.of(new AABB(0, 0, 0, 1, 1, 1));
+    /** Boxes painted per block: a stair has up to three. */
+    private static final int MAX_PARTS = 4;
     /** What a beam's light keeps on a face it only grazes. */
     private static final double SLANT_FLOOR = 0.55;
     /**
@@ -142,8 +154,8 @@ public final class ProjectedTint {
      */
     private static final Long2BooleanOpenHashMap[] SEEN_BY_BEAM = new Long2BooleanOpenHashMap[Direction.values().length];
 
-    /** Which faces are in the mix, per side: block position to place in the two arrays below. */
-    private static final Long2IntOpenHashMap[] MIXED_FACES = new Long2IntOpenHashMap[Direction.values().length];
+    /** Which faces are in the mix, per part and side: block position to place in the two arrays below. */
+    private static final Long2IntOpenHashMap[] MIXED_FACES = new Long2IntOpenHashMap[MAX_PARTS * Direction.values().length];
     /** Per mixed face: its corners' x, y, z and sums of red, green, blue and strength. */
     private static float[] mixedPlaces = new float[0];
     private static float[] mixedLight = new float[0];
@@ -152,15 +164,15 @@ public final class ProjectedTint {
         for (int side = 0; side < SEEN_BY_BEAM.length; side++) {
             SEEN_BY_BEAM[side] = new Long2BooleanOpenHashMap();
         }
-        for (int side = 0; side < MIXED_FACES.length; side++) {
-            MIXED_FACES[side] = new Long2IntOpenHashMap();
-            MIXED_FACES[side].defaultReturnValue(-1);
+        for (int face = 0; face < MIXED_FACES.length; face++) {
+            MIXED_FACES[face] = new Long2IntOpenHashMap();
+            MIXED_FACES[face].defaultReturnValue(-1);
         }
     }
 
     /** Per face: (GRID + 1)^2 corners of x, y, z and light 0 to 1. */
     private float[] corners = new float[0];
-    /** Per face: which block and side it is. */
+    /** Per face: which block it is on, and which part of the block and side, as one number. */
     private long[] facePositions = new long[0];
     private byte[] faceSides = new byte[0];
     /** Per face: the same light at all its corners, so a spot draws it as one quad. */
@@ -255,8 +267,7 @@ public final class ProjectedTint {
         BlockPos.MutableBlockPos neighbour = new BlockPos.MutableBlockPos();
         while (!queue.isEmpty() && lit.size() <= maxFaces) {
             pos.set(queue.dequeueLong());
-            if (level.isLoaded(pos) && level.getBlockState(pos).isSolidRender(level, pos)
-                    && hasLitFace(level, pos, neighbour, beam)) {
+            if (level.isLoaded(pos) && hasLitFace(level, pos, neighbour, beam)) {
                 lit.add(pos.asLong());
                 enqueueAround(pos, visited, queue);
             }
@@ -278,18 +289,19 @@ public final class ProjectedTint {
     }
 
     private static boolean hasLitFace(Level level, BlockPos pos, BlockPos.MutableBlockPos neighbour, Source source) {
-        for (Direction side : Direction.values()) {
-            neighbour.setWithOffset(pos, side);
-            Vec3 faceCentre = Vec3.atCenterOf(pos).add(Vec3.atLowerCornerOf(side.getNormal()).scale(0.5));
-            if (source.position().subtract(faceCentre).dot(Vec3.atLowerCornerOf(side.getNormal())) <= 0
-                    || level.getBlockState(neighbour).isSolidRender(level, neighbour)) {
-                continue;
-            }
-            for (int a = 0; a <= GRID; a++) {
-                for (int b = 0; b <= GRID; b++) {
-                    double[] p = facePoint(pos, side, a, b);
-                    if (source.falloff().at(p[0], p[1], p[2]) > 0.01f) {
-                        return true;
+        for (AABB box : boxes(level, pos)) {
+            for (Direction side : Direction.values()) {
+                Vec3 normal = Vec3.atLowerCornerOf(side.getNormal());
+                if (source.position().subtract(faceCentre(pos, box, side)).dot(normal) <= 0
+                        || coveredByNeighbour(level, pos, box, side, neighbour)) {
+                    continue;
+                }
+                for (int a = 0; a <= GRID; a++) {
+                    for (int b = 0; b <= GRID; b++) {
+                        double[] p = facePoint(pos, box, side, a, b);
+                        if (source.falloff().at(p[0], p[1], p[2]) > 0.01f) {
+                            return true;
+                        }
                     }
                 }
             }
@@ -297,15 +309,46 @@ public final class ProjectedTint {
         return false;
     }
 
+    /**
+     * The boxes of a block that can be painted, relative to it. Only blocks drawn just as their shape says, or a flower
+     * would get a box of colour round it; none for the rest.
+     */
+    private static List<AABB> boxes(Level level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (state.isSolidRender(level, pos)) {
+            return FULL_BLOCK;
+        }
+        Block block = state.getBlock();
+        if (block instanceof SlabBlock || block instanceof StairBlock || block instanceof CarpetBlock
+                || block instanceof SnowLayerBlock || block instanceof FarmBlock || block instanceof DirtPathBlock) {
+            return state.getShape(level, pos).toAabbs();
+        }
+        return List.of();
+    }
+
+    /** A face on the block's edge with a full block against it. What other blocks hide, the depth test hides. */
+    private static boolean coveredByNeighbour(Level level, BlockPos pos, AABB box, Direction side, BlockPos.MutableBlockPos neighbour) {
+        boolean onEdge = side.getAxisDirection() == Direction.AxisDirection.POSITIVE
+                ? box.max(side.getAxis()) >= 1 : box.min(side.getAxis()) <= 0;
+        return onEdge && level.getBlockState(neighbour.setWithOffset(pos, side)).isSolidRender(level, neighbour);
+    }
+
+    private static Vec3 faceCentre(BlockPos pos, AABB box, Direction side) {
+        Direction.Axis axis = side.getAxis();
+        double face = side.getAxisDirection() == Direction.AxisDirection.POSITIVE ? box.max(axis) : box.min(axis);
+        return box.getCenter().with(axis, face).add(pos.getX(), pos.getY(), pos.getZ());
+    }
+
     /** Corner (a, b) of the {@link #GRID} squares on a face, lifted off the block. */
-    private static double[] facePoint(BlockPos pos, Direction side, int a, int b) {
+    private static double[] facePoint(BlockPos pos, AABB box, Direction side, int a, int b) {
         Direction.Axis axis = side.getAxis();
         Direction.Axis u = axis == Direction.Axis.X ? Direction.Axis.Y : Direction.Axis.X;
         Direction.Axis v = axis == Direction.Axis.Z ? Direction.Axis.Y : Direction.Axis.Z;
         double[] p = new double[3];
-        p[axis.ordinal()] = (side.getAxisDirection() == Direction.AxisDirection.POSITIVE ? 1 + LIFT : -LIFT) + pos.get(axis);
-        p[u.ordinal()] = pos.get(u) + (double) a / GRID;
-        p[v.ordinal()] = pos.get(v) + (double) b / GRID;
+        p[axis.ordinal()] = pos.get(axis) + (side.getAxisDirection() == Direction.AxisDirection.POSITIVE
+                ? box.max(axis) + LIFT : box.min(axis) - LIFT);
+        p[u.ordinal()] = pos.get(u) + box.min(u) + (box.max(u) - box.min(u)) * a / GRID;
+        p[v.ordinal()] = pos.get(v) + box.min(v) + (box.max(v) - box.min(v)) * b / GRID;
         return p;
     }
 
@@ -404,7 +447,7 @@ public final class ProjectedTint {
     }
 
     /**
-     * Finds the exposed faces of full blocks among {@code blocks} and in the regions; each face is tinted by the
+     * Finds the exposed faces of paintable blocks among {@code blocks} and in the regions; each face is tinted by the
      * strongest of the sources that face it and see it. False if it stopped at {@code maxFaces}.
      */
     private boolean project(Level level, LongOpenHashSet blocks, List<Region> regions, List<Source> sources, int maxFaces) {
@@ -430,7 +473,7 @@ public final class ProjectedTint {
                     return false;
                 }
                 if (Vec3.atCenterOf(pos).distanceToSqr(region.centre()) > limit || !seen.add(pos.asLong())
-                        || !level.getBlockState(pos).isSolidRender(level, pos)) {
+                        || boxes(level, pos).isEmpty()) {
                     continue;
                 }
                 projectBlock(level, pos, sources, neighbour, lighting);
@@ -441,35 +484,38 @@ public final class ProjectedTint {
 
     private void projectBlock(Level level, BlockPos pos, List<Source> sources, BlockPos.MutableBlockPos neighbour,
             List<Falloff> lighting) {
-        for (Direction side : Direction.values()) {
-            neighbour.setWithOffset(pos, side);
-            if (level.getBlockState(neighbour).isSolidRender(level, neighbour)) {
-                continue;
-            }
-            Vec3 normal = Vec3.atLowerCornerOf(side.getNormal());
-            Vec3 faceCentre = Vec3.atCenterOf(pos).add(normal.scale(0.5));
-            lighting.clear();
-            for (Source source : sources) {
-                if (source.position().subtract(faceCentre).dot(normal) > 0
-                        && sees(level, source, side, faceCentre, normal, pos)) {
-                    lighting.add(source.falloff());
+        List<AABB> boxes = boxes(level, pos);
+        for (int part = 0; part < Math.min(boxes.size(), MAX_PARTS); part++) {
+            AABB box = boxes.get(part);
+            for (Direction side : Direction.values()) {
+                if (coveredByNeighbour(level, pos, box, side, neighbour)) {
+                    continue;
                 }
-            }
-            if (lighting.size() == 1) {
-                addFace(pos, side, facing(sources, lighting.get(0), faceCentre, normal));
-            } else if (lighting.size() > 1) {
-                List<Falloff> both = List.copyOf(lighting);
-                for (int i = 0; i < both.size(); i++) {
-                    lighting.set(i, facing(sources, both.get(i), faceCentre, normal));
-                }
-                List<Falloff> turned = List.copyOf(lighting);
-                addFace(pos, side, (x, y, z) -> {
-                    float most = 0;
-                    for (Falloff falloff : turned) {
-                        most = Math.max(most, falloff.at(x, y, z));
+                Vec3 normal = Vec3.atLowerCornerOf(side.getNormal());
+                Vec3 faceCentre = faceCentre(pos, box, side);
+                lighting.clear();
+                for (Source source : sources) {
+                    if (source.position().subtract(faceCentre).dot(normal) > 0
+                            && sees(level, source, side, faceCentre, normal, pos)) {
+                        lighting.add(source.falloff());
                     }
-                    return most;
-                });
+                }
+                if (lighting.size() == 1) {
+                    addFace(pos, box, part, side, facing(sources, lighting.get(0), faceCentre, normal));
+                } else if (lighting.size() > 1) {
+                    List<Falloff> both = List.copyOf(lighting);
+                    for (int i = 0; i < both.size(); i++) {
+                        lighting.set(i, facing(sources, both.get(i), faceCentre, normal));
+                    }
+                    List<Falloff> turned = List.copyOf(lighting);
+                    addFace(pos, box, part, side, (x, y, z) -> {
+                        float most = 0;
+                        for (Falloff falloff : turned) {
+                            most = Math.max(most, falloff.at(x, y, z));
+                        }
+                        return most;
+                    });
+                }
             }
         }
     }
@@ -511,7 +557,7 @@ public final class ProjectedTint {
         return hit.getType() == HitResult.Type.MISS || hit.getBlockPos().equals(pos);
     }
 
-    private void addFace(BlockPos pos, Direction side, Falloff falloff) {
+    private void addFace(BlockPos pos, AABB box, int part, Direction side, Falloff falloff) {
         int base = faces * FLOATS_PER_FACE;
         if (corners.length < base + FLOATS_PER_FACE) {
             corners = Arrays.copyOf(corners, Math.max(FLOATS_PER_FACE * 8, corners.length * 2));
@@ -521,7 +567,7 @@ public final class ProjectedTint {
         int i = base;
         for (int a = 0; a <= GRID; a++) {
             for (int b = 0; b <= GRID; b++) {
-                double[] p = facePoint(pos, side, a, b);
+                double[] p = facePoint(pos, box, side, a, b);
                 float light = falloff.at(p[0], p[1], p[2]);
                 corners[i++] = (float) p[0];
                 corners[i++] = (float) p[1];
@@ -538,7 +584,7 @@ public final class ProjectedTint {
                 faceEven = Arrays.copyOf(faceEven, facePositions.length);
             }
             facePositions[faces] = pos.asLong();
-            faceSides[faces] = (byte) side.ordinal();
+            faceSides[faces] = (byte) (part * Direction.values().length + side.ordinal());
             faceEven[faces] = least == lit;
             faces++;
         }
