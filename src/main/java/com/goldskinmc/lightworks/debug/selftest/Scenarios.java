@@ -60,6 +60,8 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.level.block.SnowLayerBlock;
+import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
@@ -92,6 +94,7 @@ final class Scenarios {
         ALL.put("moving-flood", Scenarios::movingFlood);
         ALL.put("flood-block", Scenarios::floodBlock);
         ALL.put("block-change", Scenarios::blockChange);
+        ALL.put("shapes", Scenarios::shapes);
         ALL.put("load-flood", Scenarios::loadFlood);
         ALL.put("level-dyed", Scenarios::levelDyed);
         ALL.put("load-level", Scenarios::loadLevel);
@@ -586,6 +589,44 @@ final class Scenarios {
                 .run(stage -> stage.level.setBlock(stage.at(5, 0, 13), Blocks.AIR.defaultBlockState(), 3))
                 .waitTicks(5).run(stage -> stage.log("block-change: stone broken, %d faces", ProjectedTint.activeFaces()))
                 .shot("block-change-broken")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * Slabs, stairs, carpet, snow, a path and farmland under a Floodlight looking straight down, undyed and then red:
+     * the lit square must lie on their real shape, level with their tops, and not float at a full block's height. The
+     * poppy keeps no paint, being drawn nothing like its shape.
+     */
+    static Script shapes() {
+        BlockPos[] lamp = new BlockPos[1];
+        return new Script("shapes").run(stage -> {
+            stage.night();
+            lamp[0] = stage.at(0, 4, 2);
+            stage.set(lamp[0], LightworksBlocks.FLOODLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.DOWN));
+            stage.set(stage.at(-3, 0, 1), Blocks.STONE_SLAB.defaultBlockState());
+            stage.set(stage.at(-2, 0, 1), Blocks.STONE_SLAB.defaultBlockState());
+            stage.set(stage.at(-1, 0, 1), Blocks.OAK_SLAB.defaultBlockState());
+            Direction[] sides = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+            for (int i = 0; i < sides.length; i++) {
+                stage.set(stage.at(1 + i, 0, 1), Blocks.OAK_STAIRS.defaultBlockState().setValue(StairBlock.FACING, sides[i]));
+            }
+            stage.set(stage.at(-3, 0, 3), Blocks.WHITE_CARPET.defaultBlockState());
+            stage.set(stage.at(-2, 0, 3), Blocks.SNOW.defaultBlockState().setValue(SnowLayerBlock.LAYERS, 3));
+            stage.set(stage.at(-1, 0, 3), Blocks.DIRT_PATH.defaultBlockState());
+            stage.set(stage.at(1, 0, 3), Blocks.FARMLAND.defaultBlockState());
+            stage.set(stage.at(2, 0, 3), Blocks.POPPY.defaultBlockState());
+            stage.set(stage.at(3, 0, 3), Blocks.STONE.defaultBlockState());
+            stage.hover(-1, 4, -4);
+            SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 0, 2)).add(0.5, 0, 0.5);
+        }).waitTicks(40).run(stage -> stage.log("shapes: %d faces", ProjectedTint.activeFaces())).shot("shapes-white")
+                .run(stage -> {
+                    stage.lightAt(lamp[0]).lightState().setColour(DyeColor.RED);
+                    stage.lightAt(lamp[0]).notifyUpdate();
+                })
+                .waitTicks(20).shot("shapes-red")
                 .run(stage -> {
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
