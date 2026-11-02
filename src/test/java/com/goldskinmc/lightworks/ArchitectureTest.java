@@ -11,9 +11,6 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-/**
- * Enforces the dependency rules in the workspace CLAUDE.md, so breaking one fails the build.
- */
 class ArchitectureTest {
     private static JavaClasses mod;
 

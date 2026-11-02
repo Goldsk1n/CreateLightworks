@@ -56,8 +56,6 @@ Requires JDK 21.
 ./gradlew runClient           # dev client
 ```
 
-Dev runtime profiles, the in-game self-test, hot-swap and other options are described in the workspace
-`CLAUDE.md` (`-Prun_profile=latest|lite|floor`, `-Pselftest=...`, `-Pdev_perf=true`).
 
 ## Licence
 
