@@ -100,26 +100,26 @@ final class LightworksScenes {
         scene.idle(20);
 
         scene.overlay().showOutline(PonderPalette.WHITE, "target", util.select().position(target), 80);
-        scene.overlay().showText(80)
+        scene.overlay().showText(60)
                 .attachKeyFrame()
-                .text("Searchlights throw a long, narrow beam and light up the block it lands on")
+                .text("Searchlights throw a long, narrow beam")
                 .placeNearTarget()
                 .pointAt(util.vector().blockSurface(target, Direction.WEST));
-        scene.idle(90);
+        scene.idle(70);
         Vec3 top = util.vector().topOf(light);
-        scene.overlay().showText(70)
-                .text("The beam is at full strength out to 32 blocks and fades out by 48")
+        scene.overlay().showText(60)
+                .text("It lights the block it lands on")
                 .placeNearTarget()
                 .pointAt(top);
-        scene.idle(80);
+        scene.idle(70);
 
         Vec3 boards = util.vector().blockSurface(light, Direction.WEST).add(0, -0.25, 0);
         scene.overlay().showControls(boards, Pointing.LEFT, 40).rightClick();
         scene.idle(7);
         aim(scene, util, light, Direction.UP,
                 PonderSchematics.face(Layouts.Searchlight.TARGET_AFTER_AIM, Direction.WEST));
-        scene.overlay().showText(80).attachKeyFrame().sharedText("aim").placeNearTarget().pointAt(boards);
-        scene.idle(90);
+        scene.overlay().showText(70).attachKeyFrame().sharedText("aim").placeNearTarget().pointAt(boards);
+        scene.idle(80);
 
         BlockPos lever = Layouts.Searchlight.LEVER;
         scene.world().showSection(util.select().position(lever), Direction.DOWN);
@@ -127,12 +127,12 @@ final class LightworksScenes {
         scene.world().toggleRedstonePower(util.select().position(lever));
         scene.effects().indicateRedstone(lever);
         power(scene, util, light, 15);
-        scene.overlay().showText(80)
+        scene.overlay().showText(70)
                 .attachKeyFrame()
                 .sharedText("redstone")
                 .placeNearTarget()
                 .pointAt(util.vector().topOf(lever));
-        scene.idle(90);
+        scene.idle(80);
         scene.world().toggleRedstonePower(util.select().position(lever));
         power(scene, util, light, 0);
         scene.idle(20);
@@ -140,13 +140,13 @@ final class LightworksScenes {
         scene.overlay().showControls(top, Pointing.DOWN, 40).rightClick().withItem(new ItemStack(Items.LIGHT_BLUE_DYE));
         scene.idle(7);
         dye(scene, util, light, DyeColor.LIGHT_BLUE);
-        scene.overlay().showText(80).attachKeyFrame().sharedText("dye").placeNearTarget().pointAt(top);
-        scene.idle(90);
-        scene.overlay().showText(90)
-                .text("On contraptions, trains and Sable vehicles the beam keeps landing where it points")
+        scene.overlay().showText(60).attachKeyFrame().sharedText("dye").placeNearTarget().pointAt(top);
+        scene.idle(70);
+        scene.overlay().showText(80)
+                .text("On moving vehicles, the beam still lands where it points")
                 .placeNearTarget()
                 .pointAt(top);
-        scene.idle(100);
+        scene.idle(90);
         scene.markAsFinished();
     }
 
@@ -166,15 +166,15 @@ final class LightworksScenes {
 
         scene.overlay().showOutline(PonderPalette.WHITE, "area", util.select().fromTo(target.offset(-1, 0, -1),
                 target.offset(1, 0, 1)), 80);
-        scene.overlay().showText(80)
+        scene.overlay().showText(60)
                 .attachKeyFrame()
-                .text("Floodlights spread a wide cone: bright out to 12 blocks and dark by 20")
+                .text("Floodlights spread a wide beam")
                 .placeNearTarget()
                 .pointAt(util.vector().topOf(target));
-        scene.idle(90);
+        scene.idle(70);
         Vec3 side = util.vector().blockSurface(light, Direction.WEST);
         scene.overlay().showText(80)
-                .text("Mount one high on a wall or post and aim it down to light the ground below")
+                .text("Mount one high and aim it down to light an area")
                 .placeNearTarget()
                 .pointAt(side);
         scene.idle(90);
@@ -185,19 +185,19 @@ final class LightworksScenes {
         scene.idle(7);
         aim(scene, util, light, Direction.EAST,
                 PonderSchematics.face(Layouts.Floodlight.TARGET_AFTER_AIM, Direction.UP));
-        scene.overlay().showText(80).attachKeyFrame().sharedText("aim").placeNearTarget().pointAt(boards);
-        scene.idle(90);
-        scene.overlay().showText(80)
-                .text("It always points away from the face it is mounted on")
+        scene.overlay().showText(70).attachKeyFrame().sharedText("aim").placeNearTarget().pointAt(boards);
+        scene.idle(80);
+        scene.overlay().showText(60)
+                .text("It mounts on floors, walls and ceilings")
                 .placeNearTarget()
                 .pointAt(side);
-        scene.idle(90);
+        scene.idle(70);
 
         scene.overlay().showControls(front, Pointing.DOWN, 40).rightClick().withItem(new ItemStack(Items.YELLOW_DYE));
         scene.idle(7);
         dye(scene, util, light, DyeColor.YELLOW);
-        scene.overlay().showText(80).attachKeyFrame().sharedText("dye").placeNearTarget().pointAt(front);
-        scene.idle(90);
+        scene.overlay().showText(60).attachKeyFrame().sharedText("dye").placeNearTarget().pointAt(front);
+        scene.idle(70);
         scene.markAsFinished();
     }
 
@@ -222,7 +222,7 @@ final class LightworksScenes {
         brightness(scene, util, rear, 0);
         scene.overlay().showText(90)
                 .attachKeyFrame()
-                .text("On a moving contraption, train or Sable vehicle, only those facing the way it travels light up")
+                .text("On the move, only those facing forward light up")
                 .placeNearTarget()
                 .pointAt(util.vector().topOf(front));
         scene.world().moveSection(cart, new Vec3(1, 0, 0), 40);
@@ -242,7 +242,7 @@ final class LightworksScenes {
         power(scene, util, rear, 4);
         scene.overlay().showText(90)
                 .attachKeyFrame()
-                .text("Power a Headlight with redstone before the vehicle assembles to keep it lit both ways, dimmed by the signal")
+                .text("Power one with redstone before assembly to keep it lit both ways")
                 .placeNearTarget()
                 .pointAt(util.vector().topOf(rear.offset(-1, 0, 0)));
         scene.world().moveSection(cart, new Vec3(1, 0, 0), 40);
@@ -262,18 +262,18 @@ final class LightworksScenes {
                 util.select().fromTo(tail, front), Direction.DOWN);
         scene.idle(20);
 
-        scene.overlay().showText(70)
-                .text("Tail and Brake Lights glow dim red at the back of a vehicle")
+        scene.overlay().showText(80)
+                .text("Tail and Brake Lights glow dim red at the back")
                 .placeNearTarget()
                 .pointAt(onLamp(tail, 13, 8, 8));
-        scene.idle(80);
+        scene.idle(90);
 
         scene.world().moveSection(cart, new Vec3(1, 0, 0), 40);
         scene.idle(40);
         brake(scene, tail);
         scene.overlay().showText(90)
                 .attachKeyFrame()
-                .text("When the vehicle slows down or stops, they brighten for a second, like brake lights")
+                .text("They brighten for a second when the vehicle slows or stops")
                 .placeNearTarget()
                 .pointAt(onLamp(tail.offset(1, 0, 0), 13, 8, 8));
         scene.idle(100);
@@ -282,11 +282,11 @@ final class LightworksScenes {
         scene.world().moveSection(cart, new Vec3(-2, 0, 0), 50);
         scene.idle(50);
         brake(scene, tail);
-        scene.overlay().showText(80)
-                .text("This works on contraptions, trains and Sable vehicles. Placed in the world, they just glow")
+        scene.overlay().showText(70)
+                .text("Placed in the world, they just glow")
                 .placeNearTarget()
                 .pointAt(onLamp(tail.offset(-1, 0, 0), 13, 8, 8));
-        scene.idle(90);
+        scene.idle(80);
         scene.markAsFinished();
     }
 
@@ -306,18 +306,18 @@ final class LightworksScenes {
         scene.world().showSection(util.select().position(light), Direction.DOWN);
         scene.idle(20);
 
-        scene.overlay().showText(70)
-                .text("A Pan-Tilt Head turns the Searchlight, Floodlight or Headlight on top of it")
+        scene.overlay().showText(80)
+                .text("A Pan-Tilt Head turns the light on top of it")
                 .placeNearTarget()
                 .pointAt(util.vector().blockSurface(head, Direction.WEST));
-        scene.idle(80);
+        scene.idle(90);
 
         Selection kinetics = util.select().fromTo(motor, head);
         scene.world().setKineticSpeed(kinetics, 16);
         scene.effects().rotationSpeedIndicator(motor);
         scene.overlay().showText(80)
                 .attachKeyFrame()
-                .text("Shaft rotation pans it round, exactly as fast as the shaft turns")
+                .text("The shaft pans it, as fast as the shaft turns")
                 .placeNearTarget()
                 .pointAt(util.vector().blockSurface(motor, Direction.WEST));
         scene.idle(100);
@@ -326,9 +326,9 @@ final class LightworksScenes {
         scene.world().showSection(util.select().fromTo(Layouts.PanTilt.LEVER_BASE, lever), Direction.DOWN);
         scene.idle(15);
         tilt(scene, util, head, lever, 5);
-        scene.overlay().showText(90)
+        scene.overlay().showText(130)
                 .attachKeyFrame()
-                .text("An analog redstone signal tilts it up 6° per level, straight up at 15")
+                .text("Redstone tilts it up: 6° per level, straight up at 15")
                 .placeNearTarget()
                 .pointAt(util.vector().topOf(lever));
         scene.idle(70);
@@ -340,18 +340,18 @@ final class LightworksScenes {
         scene.overlay().showControls(util.vector().blockSurface(head, Direction.NORTH), Pointing.RIGHT, 40).rightClick();
         scene.overlay().showText(100)
                 .attachKeyFrame()
-                .text("Hold right-click on the box to make it sweep back and forth, this far either way of where it points now; the shaft sets how fast")
+                .text("Hold right-click on its box to sweep back and forth")
                 .placeNearTarget()
                 .pointAt(util.vector().blockSurface(head, Direction.NORTH));
         scene.idle(120);
 
         scene.world().setKineticSpeed(kinetics, 0);
-        scene.overlay().showText(80)
+        scene.overlay().showText(60)
                 .attachKeyFrame()
-                .text("Stopped, the light holds its aim and lights its spot like a fixed Searchlight")
+                .text("Stopped, the light holds its aim")
                 .placeNearTarget()
                 .pointAt(util.vector().topOf(light));
-        scene.idle(90);
+        scene.idle(70);
         scene.markAsFinished();
     }
 
@@ -370,25 +370,25 @@ final class LightworksScenes {
 
         Selection kinetics = util.select().fromTo(motor, beacon);
         scene.world().setKineticSpeed(kinetics, 8);
-        scene.overlay().showText(80)
+        scene.overlay().showText(70)
                 .text("Rotating Beacons sweep two opposite beams round")
                 .placeNearTarget()
                 .pointAt(util.vector().blockSurface(beacon, Direction.WEST));
-        scene.idle(90);
+        scene.idle(80);
 
         scene.world().setKineticSpeed(kinetics, 32);
         scene.effects().rotationSpeedIndicator(motor);
-        scene.overlay().showText(80)
+        scene.overlay().showText(70)
                 .attachKeyFrame()
-                .text("They turn with the shaft: the faster the shaft, the faster the sweep")
+                .text("The faster the shaft, the faster the sweep")
                 .placeNearTarget()
                 .pointAt(util.vector().blockSurface(motor, Direction.WEST));
-        scene.idle(90);
+        scene.idle(80);
 
         scene.world().setKineticSpeed(kinetics, 0);
         scene.overlay().showText(80)
                 .attachKeyFrame()
-                .text("Stopped, the beams hold still and light where they land, like two fixed Searchlights")
+                .text("Stopped, the beams hold still and light where they land")
                 .placeNearTarget()
                 .pointAt(util.vector().topOf(beacon));
         scene.idle(90);
@@ -398,8 +398,8 @@ final class LightworksScenes {
         scene.idle(7);
         dye(scene, util, beacon, RotatingBeaconBlockEntity.class, DyeColor.RED);
         scene.world().setKineticSpeed(kinetics, 16);
-        scene.overlay().showText(80).attachKeyFrame().sharedText("dye").placeNearTarget().pointAt(top);
-        scene.idle(90);
+        scene.overlay().showText(60).attachKeyFrame().sharedText("dye").placeNearTarget().pointAt(top);
+        scene.idle(70);
         scene.markAsFinished();
     }
 
@@ -414,7 +414,7 @@ final class LightworksScenes {
         scene.idle(20);
 
         scene.overlay().showText(70)
-                .text("Warning Lights glow amber and give block light where they stand")
+                .text("Warning Lights glow amber and give block light")
                 .placeNearTarget()
                 .pointAt(onLamp(lamp, 8, 10, 8));
         scene.idle(80);
@@ -422,9 +422,9 @@ final class LightworksScenes {
         scene.overlay().showCenteredScrollInput(lamp, Direction.WEST, 60);
         scene.idle(10);
         pattern(scene, lamp, WarningPattern.BLINK);
-        scene.overlay().showText(80)
+        scene.overlay().showText(190)
                 .attachKeyFrame()
-                .text("Hold right-click on its box to pick a pattern: steady, blink, opposite blink, pulse, double flash or strobe")
+                .text("Hold right-click on its box to pick a pattern")
                 .placeNearTarget()
                 .pointAt(onLamp(lamp, 4, 5, 8));
         scene.idle(70);
@@ -433,28 +433,28 @@ final class LightworksScenes {
         pattern(scene, lamp, WarningPattern.DOUBLE_FLASH);
         scene.idle(60);
         pattern(scene, lamp, WarningPattern.STROBE);
-        scene.overlay().showText(70)
-                .text("The board's lower row runs the same patterns only at night")
+        scene.overlay().showText(80)
+                .text("The lower row runs the same patterns only at night")
                 .placeNearTarget()
                 .pointAt(onLamp(lamp, 4, 5, 8));
-        scene.idle(80);
+        scene.idle(90);
 
-        scene.overlay().showText(80)
-                .text("The light it casts follows the pattern too, like a redstone lamp on a clock")
+        scene.overlay().showText(60)
+                .text("Its light follows the pattern too")
                 .placeNearTarget()
                 .pointAt(onLamp(lamp, 8, 10, 8));
-        scene.idle(90);
+        scene.idle(70);
 
         Vec3 top = onLamp(lamp, 8, 10, 8);
         scene.overlay().showControls(top, Pointing.DOWN, 40).rightClick().withItem(new ItemStack(Items.RED_DYE));
         scene.idle(7);
         dye(scene, util, lamp, SignalLampBlockEntity.class, DyeColor.RED);
-        scene.overlay().showText(70)
+        scene.overlay().showText(60)
                 .attachKeyFrame()
-                .text("Right-click with a dye to change its colour")
+                .sharedText("dye")
                 .placeNearTarget()
                 .pointAt(top);
-        scene.idle(80);
+        scene.idle(70);
         scene.markAsFinished();
     }
 
@@ -474,12 +474,12 @@ final class LightworksScenes {
         scene.idle(10);
 
         BlockPos left = Layouts.Edge.LEFT[1];
-        scene.overlay().showText(80)
+        scene.overlay().showText(70)
                 .attachKeyFrame()
-                .text("Edge Lights mark the sides of runways, taxiways and platforms, and read clearly from the air")
+                .text("Edge Lights mark runways, taxiways and platforms")
                 .placeNearTarget()
                 .pointAt(onLamp(left, 8, 3, 8));
-        scene.idle(90);
+        scene.idle(80);
         scene.overlay().showText(70)
                 .text("Vehicles and players pass over them")
                 .placeNearTarget()
@@ -495,12 +495,12 @@ final class LightworksScenes {
         for (BlockPos pos : Layouts.Edge.RIGHT) {
             scene.world().modifyBlock(pos, state -> state.setValue(EdgeLightBlock.COLOUR, DyeColor.BLUE), false);
         }
-        scene.overlay().showText(80)
+        scene.overlay().showText(60)
                 .attachKeyFrame()
-                .text("Right-click with a dye to colour its lens")
+                .sharedText("dye")
                 .placeNearTarget()
                 .pointAt(onLamp(left, 8, 3, 8));
-        scene.idle(90);
+        scene.idle(70);
 
         for (BlockPos pos : Layouts.Edge.LEFT) {
             scene.world().modifyBlock(pos, state -> state.setValue(EdgeLightBlock.BRIGHTNESS, 0), false);
@@ -508,12 +508,12 @@ final class LightworksScenes {
         for (BlockPos pos : Layouts.Edge.RIGHT) {
             scene.world().modifyBlock(pos, state -> state.setValue(EdgeLightBlock.BRIGHTNESS, 0), false);
         }
-        scene.overlay().showText(80)
+        scene.overlay().showText(70)
                 .attachKeyFrame()
                 .sharedText("redstone")
                 .placeNearTarget()
                 .pointAt(onLamp(left, 8, 3, 8));
-        scene.idle(90);
+        scene.idle(80);
         scene.markAsFinished();
     }
 
