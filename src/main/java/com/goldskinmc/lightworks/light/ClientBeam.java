@@ -214,6 +214,9 @@ public final class ClientBeam {
         ProjectedTint.newBeam();
         float strength = brightness / 15f
                 * (float) Math.min(1, (LAYER_DISTANCE - camera) / (LAYER_DISTANCE - LAYER_FADE_DISTANCE));
+        // The white light the beam leaves round its spot (light block or dynamic light)
+        double glowRadius = lit == null ? 0 : lit.light() * brightness / 15.0 * GLOW_PER_LEVEL;
+        Vec3 glowCentre = lit == null ? at.origin() : lit.hit().end().subtract(lit.direction().scale(0.5));
         if (tintRgb < 0) {
             if (tint != null) {
                 tint.clear();
@@ -222,9 +225,7 @@ public final class ClientBeam {
             if (tint == null) {
                 tint = new ProjectedTint();
             }
-            // The white light the beam leaves round its spot (light block or dynamic light) is tinted too
-            double glowRadius = lit == null ? 0 : lit.light() * brightness / 15.0 * GLOW_PER_LEVEL;
-            Vec3 glowCentre = lit == null ? at.origin() : lit.hit().end().subtract(lit.direction().scale(0.5));
+            // That light is tinted too
             tint.beam(level, at.origin(), at.direction(), shape, lensHalf, ends, glowCentre, glowRadius, tintRgb, strength,
                     at.moving());
         }
@@ -232,7 +233,7 @@ public final class ClientBeam {
             spotLayer = new ProjectedTint();
         }
         spotLayer.spot(level, at.origin(), at.direction(), shape, lensHalf, ends, tintRgb < 0 ? WHITE_SPOT : tintRgb, strength,
-                at.moving());
+                at.moving(), at.moving() && !DynamicLights.present(), glowCentre, glowRadius);
         if (at.moving()) {
             if (spotLayer.faces() > 0) {
                 layersAverageNanos += (System.nanoTime() - start - layersAverageNanos) * (sample ? 0.5 : 0.1);
