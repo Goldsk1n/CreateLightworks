@@ -107,6 +107,32 @@ def face_corners(face, f, t):
     }[face]
 
 
+def hold_display(lift, scale, icon_scale, eye_raise=0, icon_up=0, icon_right=0):
+    """Display settings holding a small model by its own middle. Same poses as block/block, moved: the hand holds a
+    full block's centre, and a low model would hang off it. Turning x by the pose's angle splits the lift over two axes."""
+    display = {}
+    if lift or scale != 1 or eye_raise:
+        size = 0.375 * scale
+        third = {'rotation': [75, 45, 0],
+                 'translation': [0, round(2.5 + lift * size * math.cos(math.radians(75)), 2),
+                                 round(lift * size * math.sin(math.radians(75)), 2)],
+                 'scale': [round(size, 3)] * 3}
+        size = 0.4 * scale
+        first = {'translation': [0, round(lift * size + eye_raise, 2), 0], 'scale': [round(size, 3)] * 3}
+        display['thirdperson_righthand'] = third
+        display['thirdperson_lefthand'] = third
+        display['firstperson_righthand'] = {'rotation': [0, 45, 0], **first}
+        display['firstperson_lefthand'] = {'rotation': [0, 225, 0], **first}
+    if icon_scale:
+        size = 0.625 * icon_scale
+        display['gui'] = {'rotation': [30, 225, 0],
+                          'translation': [0, round(lift * size * math.cos(math.radians(30)), 2), 0],
+                          'scale': [round(size, 3)] * 3}
+    if icon_up or icon_right:
+        display['gui'] = {'rotation': [30, 225, 0], 'translation': [icon_right, icon_up, 0], 'scale': [0.625, 0.625, 0.625]}
+    return display
+
+
 def turned_level(element):
     """An element turned 90 degrees about the block centre, up to north: more than a model's rotation can do."""
     def turn(p):
@@ -162,9 +188,13 @@ class Block:
             self.parts['lens_core'] = [core_face(e, face) for e in elements for face in e['faces']]
         return part
 
-    def finish(self, *item_parts, aim=None, tinted_lens=False):
+    def finish(self, *item_parts, aim=None, tinted_lens=False, hold_lift=0, hold_scale=1, icon_scale=None, eye_raise=0, icon_up=0, icon_right=0):
         """aim: how the item shows its head and lens (AIM_UP, AIM_LEVEL), turned toward the icon's right.
-        tinted_lens: the item's lens takes the light's colour (LampItemColours)."""
+        tinted_lens: the item's lens takes the light's colour (LampItemColours).
+        hold_lift: how far below a full block's centre the model sits, in pixels: lifted back into the hand.
+        hold_scale: drawn this much larger in the hand. icon_scale: the same for the inventory icon, centred.
+        eye_raise: pixels higher in first person, for a model so flat that the screen's edge hides it.
+        icon_up, icon_right: how far the inventory icon moves to sit in the middle of its slot, in the slot's pixels."""
         layout, sheet = self._pack()
         create_keys = {}
         for e in (e for elements in self.parts.values() for e in elements):
@@ -218,6 +248,9 @@ class Block:
                 element = turned_level(element)
             elements.append(element)
         item['elements'] = elements
+        display = hold_display(hold_lift, hold_scale, icon_scale, eye_raise, icon_up, icon_right)
+        if display:
+            item['display'] = display
         write_json(f'item/{self.name}', item)
 
     def _pack(self):
@@ -306,7 +339,7 @@ b.part('head',
        box((2, 5.5, 2), (14, 10.5, 14), HOUSING, down=FINS, up=None),
        box((2, 10.5, 2), (14, 11.5, 14), BRASS_BAND, up=own('bezel_top'), down=None))
 b.part('lens', box((2.5, 11.5, 2.5), (13.5, 11.8, 13.5), PRISM_LENS))   # 3.8/16 from the centre, 11 wide: LightType
-b.finish('base', 'yoke', 'head', 'lens', aim=AIM_UP)
+b.finish('base', 'yoke', 'head', 'lens', aim=AIM_UP, hold_lift=2)
 
 FOOT_TOP = own('plate_top')
 
@@ -320,7 +353,7 @@ b.part('head',
        box((5, 5, 5), (11, 11, 11), HOUSING, down=FINS, up=None),
        box((4, 11, 4), (12, 12.5, 12), BRASS_BAND, up=own('bezel_top'), down=BRASS_PLATE))
 b.part('lens', box((5, 12.5, 5), (11, 12.8, 11), LENS))   # 4.8/16 from the centre, 6 wide
-b.finish('base', 'head', 'lens', aim=AIM_LEVEL)
+b.finish('base', 'head', 'lens', aim=AIM_LEVEL, hold_lift=2, icon_up=1.6, icon_right=-0.5)
 
 
 def recessed_bottom(x0, x1, frame):
@@ -362,7 +395,7 @@ b.part('rotor',
 b.part('lens',
        box((5, 5, 12.5), (11, 11, 12.8), FRESNEL_LENS),   # 4.8/16 from the centre, 6 wide
        box((5, 5, 3.2), (11, 11, 3.5), FRESNEL_LENS))
-b.finish('base', 'rotor', 'lens')
+b.finish('base', 'rotor', 'lens', eye_raise=2, icon_up=2.1)
 
 
 def rim(x0, z0, x1, z1, y0, y1):
@@ -380,7 +413,7 @@ b.part('base',
        box((5, 8, 5), (11, 9, 11), BRASS_BAND, up=BRASS_PLATE, down=None),
        box((7, 9, 7), (9, 10, 9), BRASS_PLATE, down=None))
 b.part('lens', box((5, 2, 5), (11, 8, 11), own('lens', style='dome'), down=None, up=None))
-b.finish('base', 'lens', tinted_lens=True)
+b.finish('base', 'lens', tinted_lens=True, hold_lift=3, eye_raise=1.5, icon_up=2.1)
 
 # Tail and Brake Light: flat rectangular lamp, an iron body with a brass frame round the lens. Its long sides are
 # too wide for brass band: all brass reads as a slab
@@ -389,7 +422,7 @@ b.part('base',
        box((3, 0, 4), (13, 2, 12), IRON, down=SEAT),
        *rim(3, 4, 13, 12, 2, 3))
 b.part('lens', box((4, 2, 5), (12, 2.8, 11), LENS, down=None))
-b.finish('base', 'lens', tinted_lens=True)
+b.finish('base', 'lens', tinted_lens=True, hold_lift=6.5, eye_raise=1.5, icon_up=3.5)
 
 # Edge Light: a low lens on a flat brass foot, one baked model (see glowing)
 b = Block('edge_light', BRASS_CASING)
@@ -398,6 +431,6 @@ b.part('base',
        glowing(box((6, 1, 6), (10, 3, 10), LENS, down=None)))
 # Drawn over it in Ponder scenes only, which light every block alike (EdgeLightRenderer)
 b.part('lens', box((6, 1, 6), (10, 3, 10), LENS, down=None))
-b.finish('base')
+b.finish('base', hold_lift=6.5, hold_scale=1.5, icon_scale=1.6, eye_raise=1.5)
 
 print('models and sheets written to', ASSETS)

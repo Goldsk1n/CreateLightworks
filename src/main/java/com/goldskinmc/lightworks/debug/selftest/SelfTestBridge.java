@@ -21,6 +21,8 @@ final class SelfTestBridge {
     static volatile Vec3 focus;
     /** Shows the GUI during a scenario (goggle overlay shots); it is hidden otherwise. */
     static volatile boolean showGui;
+    /** Shows the player from the front during a scenario (items in the hand). */
+    static volatile boolean thirdPerson;
     /**
      * Comma-separated item ids whose Ponder scenes the client walks through, photographing each. Ponder's
      * screen pauses a singleplayer game, so the client runs this alone and sets {@code ponderDone}.
@@ -70,6 +72,7 @@ final class SelfTestBridge {
         focus = null;
         dynamicLightsOff = false;
         showGui = false;
+        thirdPerson = false;
         ponderPlan = null;
         beamsOff = false;
         frameStats = null;

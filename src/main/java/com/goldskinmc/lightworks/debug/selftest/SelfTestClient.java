@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import net.createmod.ponder.foundation.ui.PonderUI;
 import net.minecraft.Util;
+import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.core.BlockPos;
@@ -154,6 +155,10 @@ public final class SelfTestClient {
         }
         if (active) {
             mc.options.hideGui = !SelfTestBridge.showGui;
+            CameraType camera = SelfTestBridge.thirdPerson ? CameraType.THIRD_PERSON_FRONT : CameraType.FIRST_PERSON;
+            if (mc.options.getCameraType() != camera) {
+                mc.options.setCameraType(camera);
+            }
             BlockPos board = SelfTestBridge.valueBoard;
             if (board == null && mc.screen instanceof ValueSettingsScreen) {
                 mc.setScreen(null);

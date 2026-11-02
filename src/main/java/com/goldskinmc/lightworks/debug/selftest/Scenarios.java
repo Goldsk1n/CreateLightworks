@@ -64,6 +64,7 @@ import net.minecraft.world.level.block.SnowLayerBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
@@ -94,6 +95,7 @@ final class Scenarios {
         ALL.put("moving-flood", Scenarios::movingFlood);
         ALL.put("flood-block", Scenarios::floodBlock);
         ALL.put("block-change", Scenarios::blockChange);
+        ALL.put("held", Scenarios::held);
         ALL.put("shapes", Scenarios::shapes);
         ALL.put("wall-sides", Scenarios::wallSides);
         ALL.put("load-flood", Scenarios::loadFlood);
@@ -666,6 +668,35 @@ final class Scenarios {
         return script.run(stage -> {
             SelfTestBridge.focus = null;
             stage.restoreBlocks();
+        });
+    }
+
+    /**
+     * Every block's item in the hand, by day, from the player's eyes (with the hotbar, for its icon) and from the front:
+     * each must sit in the hand and not hang off it.
+     */
+    static Script held() {
+        ItemStack[] saved = new ItemStack[1];
+        Script script = new Script("held").run(stage -> {
+            stage.level.setDayTime(6000);
+            stage.stand(0, 0);
+            saved[0] = stage.player.getMainHandItem().copy();
+            SelfTestBridge.showGui = true;
+        });
+        for (ItemLike item : List.of(LightworksBlocks.SEARCHLIGHT, LightworksBlocks.FLOODLIGHT, LightworksBlocks.HEADLIGHT,
+                LightworksBlocks.PAN_TILT_HEAD, LightworksBlocks.ROTATING_BEACON, LightworksBlocks.WARNING_LIGHT,
+                LightworksBlocks.TAIL_LIGHT, LightworksBlocks.EDGE_LIGHT)) {
+            String name = BuiltInRegistries.ITEM.getKey(item.asItem()).getPath();
+            script.run(stage -> {
+                stage.player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(item));
+                SelfTestBridge.thirdPerson = false;
+            }).waitTicks(15).shot("held-" + name + "-eyes").run(stage -> SelfTestBridge.thirdPerson = true)
+                    .waitTicks(10).shot("held-" + name + "-front");
+        }
+        return script.run(stage -> {
+            SelfTestBridge.thirdPerson = false;
+            SelfTestBridge.showGui = false;
+            stage.player.setItemInHand(InteractionHand.MAIN_HAND, saved[0]);
         });
     }
 
