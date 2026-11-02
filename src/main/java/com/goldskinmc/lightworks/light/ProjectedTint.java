@@ -99,6 +99,12 @@ public final class ProjectedTint {
     /** How much a spot brightens what it falls on, at full strength: 1 doubles it. */
     private static final float SPOT_STRENGTH = 0.45f;
     /**
+     * Share of that on walls. Minecraft shades a block's faces by the way they face, north and south 0.8, east and west
+     * 0.6, as if lit by the sun. A lamp is not, and brightening keeps the difference: these bring both to the same light, measured on andesite by wall-sides.
+     */
+    private static final float NORTH_SOUTH_SPOT = 0.25f / SPOT_STRENGTH;
+    private static final float EAST_WEST_SPOT = 0.58f / SPOT_STRENGTH;
+    /**
      * How much of a beam goes straight onto what it falls on. Brightening alone leaves what is dark dark: green grass
      * has little red to brighten, and a block no ray landed on, with no block light, has nothing to brighten at all.
      */
@@ -633,7 +639,7 @@ public final class ProjectedTint {
             for (ProjectedTint tint : ACTIVE) {
                 float amount = SPOT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
                 if (amount > 0.01f && tint.brightens) {
-                    tint.drawSpot(spots, pose, amount);
+                    tint.drawSpot(spots, pose, amount, true);
                 }
             }
             buffers.endBatch(SPOT);
@@ -641,7 +647,7 @@ public final class ProjectedTint {
             for (ProjectedTint tint : ACTIVE) {
                 float amount = DIRECT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
                 if (amount > 0.002f && tint.brightens) {
-                    tint.drawSpot(direct, pose, amount);
+                    tint.drawSpot(direct, pose, amount, false);
                 }
             }
             buffers.endBatch(DIRECT);
@@ -683,26 +689,36 @@ public final class ProjectedTint {
         return mixed;
     }
 
-    private void drawSpot(VertexConsumer out, Matrix4f pose, float amount) {
+    /** @param evenWalls makes up for the shading of walls ({@link #NORTH_SOUTH_SPOT}), for what brightens in proportion */
+    private void drawSpot(VertexConsumer out, Matrix4f pose, float amount, boolean evenWalls) {
         int row = GRID + 1;
         for (int f = 0; f < faces; f++) {
             int base = f * FLOATS_PER_FACE;
+            float light = evenWalls ? amount * wallShare(faceSides[f] % Direction.values().length) : amount;
             if (faceEven[f]) {
-                spotCorner(out, pose, base, amount);
-                spotCorner(out, pose, base + GRID * row * 4, amount);
-                spotCorner(out, pose, base + (GRID * row + GRID) * 4, amount);
-                spotCorner(out, pose, base + GRID * 4, amount);
+                spotCorner(out, pose, base, light);
+                spotCorner(out, pose, base + GRID * row * 4, light);
+                spotCorner(out, pose, base + (GRID * row + GRID) * 4, light);
+                spotCorner(out, pose, base + GRID * 4, light);
                 continue;
             }
             for (int a = 0; a < GRID; a++) {
                 for (int b = 0; b < GRID; b++) {
-                    spotCorner(out, pose, base + (a * row + b) * 4, amount);
-                    spotCorner(out, pose, base + ((a + 1) * row + b) * 4, amount);
-                    spotCorner(out, pose, base + ((a + 1) * row + b + 1) * 4, amount);
-                    spotCorner(out, pose, base + (a * row + b + 1) * 4, amount);
+                    spotCorner(out, pose, base + (a * row + b) * 4, light);
+                    spotCorner(out, pose, base + ((a + 1) * row + b) * 4, light);
+                    spotCorner(out, pose, base + ((a + 1) * row + b + 1) * 4, light);
+                    spotCorner(out, pose, base + (a * row + b + 1) * 4, light);
                 }
             }
         }
+    }
+
+    private static float wallShare(int side) {
+        return switch (Direction.values()[side].getAxis()) {
+            case Z -> NORTH_SOUTH_SPOT;
+            case X -> EAST_WEST_SPOT;
+            case Y -> 1;
+        };
     }
 
     private void spotCorner(VertexConsumer out, Matrix4f pose, int i, float amount) {

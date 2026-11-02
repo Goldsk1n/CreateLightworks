@@ -51,6 +51,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
@@ -94,6 +95,7 @@ final class Scenarios {
         ALL.put("flood-block", Scenarios::floodBlock);
         ALL.put("block-change", Scenarios::blockChange);
         ALL.put("shapes", Scenarios::shapes);
+        ALL.put("wall-sides", Scenarios::wallSides);
         ALL.put("load-flood", Scenarios::loadFlood);
         ALL.put("level-dyed", Scenarios::levelDyed);
         ALL.put("load-level", Scenarios::loadLevel);
@@ -629,6 +631,42 @@ final class Scenarios {
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
                 });
+    }
+
+    /**
+     * The same Searchlight on white walls facing north and east, which Minecraft shades 0.8 and 0.6: the spot makes up
+     * for that, so the two shots' centre brightness should nearly match, neither clipped to white.
+     */
+    static Script wallSides() {
+        Script script = new Script("wall-sides").run(stage -> {
+            stage.night();
+            for (Vec3[] light : new Vec3[][] {{new Vec3(0, 1, 2), new Vec3(0, 0, 1)}, {new Vec3(22, 1, 0), new Vec3(-1, 0, 0)}}) {
+                BlockPos lamp = stage.at((int) light[0].x, (int) light[0].y, (int) light[0].z);
+                stage.set(lamp, LightworksBlocks.SEARCHLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.UP));
+                stage.lightAt(lamp).setPanTilt(new PanTilt(0, 0));
+                stage.lightAt(lamp).aimAlong(light[1]);
+            }
+        });
+        for (Block wall : List.of(Blocks.WHITE_CONCRETE, Blocks.DIORITE, Blocks.ANDESITE)) {
+            String name = BuiltInRegistries.BLOCK.getKey(wall).getPath();
+            script.run(stage -> {
+                for (int y = 0; y < 7; y++) {
+                    for (int i = -5; i <= 5; i++) {
+                        stage.set(stage.at(i, y, 8), wall.defaultBlockState());
+                        stage.set(stage.at(16, y, i), wall.defaultBlockState());
+                    }
+                }
+                stage.hover(3, 3, 3);
+                SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 1, 8)).add(0.5, 0.5, 0);
+            }).waitTicks(40).shot("wall-sides-" + name + "-north").run(stage -> {
+                stage.hover(20, 3, 3);
+                SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(17, 1, 0)).add(0, 0.5, 0.5);
+            }).waitTicks(10).shot("wall-sides-" + name + "-east");
+        }
+        return script.run(stage -> {
+            SelfTestBridge.focus = null;
+            stage.restoreBlocks();
+        });
     }
 
     /** 50 fixed Floodlights aimed at the ground: what their rays and light blocks cost the server. */
