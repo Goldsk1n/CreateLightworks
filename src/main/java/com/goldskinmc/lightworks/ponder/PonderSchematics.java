@@ -64,10 +64,11 @@ public final class PonderSchematics implements DataProvider {
         searchlight.set(Layouts.Searchlight.LEVER, floorLever());
         all.add(searchlight);
 
-        Schematic floodlight = new Schematic("floodlight", Layouts.Floodlight.SIZE, 5);
+        Schematic floodlight = new Schematic("floodlight", Layouts.Floodlight.SIZE, Layouts.Floodlight.HEIGHT);
         floodlight.fill(Layouts.Floodlight.PILLAR_FROM, Layouts.Floodlight.PILLAR_TO, Blocks.STONE_BRICKS.defaultBlockState());
-        floodlight.light(Layouts.Floodlight.LIGHT, LightworksBlocks.FLOODLIGHT.getDefaultState(), Direction.EAST,
-                aimAt(Layouts.Floodlight.LIGHT, Direction.EAST, face(Layouts.Floodlight.TARGET, Direction.UP)));
+        floodlight.fill(Layouts.Floodlight.ARM_FROM, Layouts.Floodlight.ARM_TO, Blocks.STONE_BRICKS.defaultBlockState());
+        floodlight.light(Layouts.Floodlight.LIGHT, LightworksBlocks.FLOODLIGHT.getDefaultState(), Direction.DOWN,
+                aimAt(Layouts.Floodlight.LIGHT, Direction.DOWN, face(Layouts.Floodlight.TARGET, Direction.UP)));
         all.add(floodlight);
 
         Schematic headlight = cart("headlight");

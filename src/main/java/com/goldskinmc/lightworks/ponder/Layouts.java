@@ -22,12 +22,16 @@ final class Layouts {
 
     /** 7x7 plate: a Floodlight high on the side of a pillar, aimed at the ground. */
     static final class Floodlight {
-        static final int SIZE = 7;
-        static final BlockPos PILLAR_FROM = new BlockPos(0, 1, 3);
-        static final BlockPos PILLAR_TO = new BlockPos(0, 3, 3);
-        static final BlockPos LIGHT = new BlockPos(1, 3, 3);
-        static final BlockPos TARGET = new BlockPos(4, 0, 3);
-        static final BlockPos TARGET_AFTER_AIM = new BlockPos(4, 0, 5);
+        static final int SIZE = 9;
+        static final int HEIGHT = 8;
+        static final BlockPos PILLAR_FROM = new BlockPos(0, 1, 4);
+        static final BlockPos PILLAR_TO = new BlockPos(0, 6, 4);
+        static final BlockPos ARM_FROM = new BlockPos(1, 6, 4);
+        static final BlockPos ARM_TO = new BlockPos(3, 6, 4);
+        /** Hung from the arm, high enough for its whole wide beam to land on the plate, aimed or not. */
+        static final BlockPos LIGHT = new BlockPos(3, 5, 4);
+        static final BlockPos TARGET = new BlockPos(3, 0, 4);
+        static final BlockPos TARGET_AFTER_AIM = new BlockPos(4, 0, 4);
     }
 
     /** 7x7 plate: a cart of brass casing with a lamp at each end; it travels east and back. */

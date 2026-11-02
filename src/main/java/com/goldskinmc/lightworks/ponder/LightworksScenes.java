@@ -154,18 +154,21 @@ final class LightworksScenes {
         CreateSceneBuilder scene = new CreateSceneBuilder(builder);
         scene.title("floodlight", "Lighting an area with a Floodlight");
         scene.configureBasePlate(0, 0, Layouts.Floodlight.SIZE);
+        // Taller than the other scenes: the lamp hangs high enough for its whole beam to land on the plate
+        scene.scaleSceneView(0.8f);
+        scene.setSceneOffsetY(-1.5f);
         scene.showBasePlate();
         scene.idle(10);
         BlockPos light = Layouts.Floodlight.LIGHT;
         BlockPos target = Layouts.Floodlight.TARGET;
-        scene.world().showSection(util.select().fromTo(Layouts.Floodlight.PILLAR_FROM, Layouts.Floodlight.PILLAR_TO),
-                Direction.DOWN);
+        scene.world().showSection(util.select().fromTo(Layouts.Floodlight.PILLAR_FROM, Layouts.Floodlight.PILLAR_TO)
+                .add(util.select().fromTo(Layouts.Floodlight.ARM_FROM, Layouts.Floodlight.ARM_TO)), Direction.DOWN);
         scene.idle(10);
         scene.world().showSection(util.select().position(light), Direction.WEST);
         scene.idle(20);
 
-        scene.overlay().showOutline(PonderPalette.WHITE, "area", util.select().fromTo(target.offset(-1, 0, -1),
-                target.offset(1, 0, 1)), 80);
+        scene.overlay().showOutline(PonderPalette.WHITE, "area", util.select().fromTo(target.offset(-2, 0, -2),
+                target.offset(2, 0, 2)), 60);
         scene.overlay().showText(60)
                 .attachKeyFrame()
                 .text("Floodlights spread a wide beam")
@@ -179,11 +182,11 @@ final class LightworksScenes {
                 .pointAt(side);
         scene.idle(90);
 
-        Vec3 front = util.vector().topOf(light);
-        Vec3 boards = front.add(-0.25, 0, 0);
-        scene.overlay().showControls(boards, Pointing.DOWN, 40).rightClick();
+        Vec3 front = side;
+        Vec3 boards = side.add(0, -0.25, 0);
+        scene.overlay().showControls(boards, Pointing.LEFT, 40).rightClick();
         scene.idle(7);
-        aim(scene, util, light, Direction.EAST,
+        aim(scene, util, light, Direction.DOWN,
                 PonderSchematics.face(Layouts.Floodlight.TARGET_AFTER_AIM, Direction.UP));
         scene.overlay().showText(70).attachKeyFrame().sharedText("aim").placeNearTarget().pointAt(boards);
         scene.idle(80);
@@ -193,9 +196,9 @@ final class LightworksScenes {
                 .pointAt(side);
         scene.idle(70);
 
-        scene.overlay().showControls(front, Pointing.DOWN, 40).rightClick().withItem(new ItemStack(Items.YELLOW_DYE));
+        scene.overlay().showControls(front, Pointing.LEFT, 40).rightClick().withItem(new ItemStack(Items.RED_DYE));
         scene.idle(7);
-        dye(scene, util, light, DyeColor.YELLOW);
+        dye(scene, util, light, DyeColor.RED);
         scene.overlay().showText(60).attachKeyFrame().sharedText("dye").placeNearTarget().pointAt(front);
         scene.idle(70);
         scene.markAsFinished();

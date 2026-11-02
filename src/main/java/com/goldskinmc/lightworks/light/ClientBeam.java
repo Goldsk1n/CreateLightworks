@@ -98,6 +98,7 @@ public final class ClientBeam {
     private BeamTrace.Landing landing;
     private int brightness;
     private float skyExposure;
+    private boolean preview;
 
     public ClientBeam(ConeFalloff shape, float lensHalf) {
         this.shape = shape;
@@ -110,6 +111,11 @@ public final class ClientBeam {
 
     public ConeFalloff shape() {
         return shape;
+    }
+
+    /** Drawn in a Ponder scene, not the world. */
+    public boolean preview() {
+        return preview;
     }
 
     /**
@@ -145,6 +151,7 @@ public final class ClientBeam {
                 : landing;
         BeamSpot next = lit == null ? null : BeamTrace.spotFor(lit.hit(), lit.direction(), lit.light() * brightness / 15.0);
         this.brightness = brightness;
+        preview = !ClientBeams.isRealWorld(level);
         // Open sky at the lens: daylight washes the visible beam out there (Ponder scenes never)
         skyExposure = ClientBeams.isRealWorld(level)
                 ? level.getBrightness(LightLayer.SKY, BlockPos.containing(at.origin())) / 15f : 0;
