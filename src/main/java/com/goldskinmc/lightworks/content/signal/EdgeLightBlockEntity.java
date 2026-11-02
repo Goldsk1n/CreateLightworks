@@ -5,7 +5,6 @@ import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import java.util.List;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -25,8 +24,6 @@ public class EdgeLightBlockEntity extends BlockEntity implements IHaveGoggleInfo
         shown.setBrightness(state.getValue(EdgeLightBlock.BRIGHTNESS));
         LightGoggles.title(tooltip, state.getBlock().getName());
         LightGoggles.brightness(tooltip, shown);
-        LightGoggles.line(tooltip, "block_light", ChatFormatting.GOLD, EdgeLightBlock.lightLevel(state));
-        LightGoggles.colour(tooltip, state.getValue(EdgeLightBlock.COLOUR));
         if (isPlayerSneaking) {
             LightGoggles.hint(tooltip, "dye");
             LightGoggles.hint(tooltip, LightworksConfig.invertRedstone() ? "redstone_inverted" : "redstone");

@@ -21,7 +21,6 @@ import com.simibubi.create.content.equipment.clipboard.ClipboardCloneable;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import java.util.List;
 import java.util.Objects;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -191,8 +190,6 @@ public class RotatingBeaconBlockEntity extends KineticBlockEntity implements Bea
         super.addToGoggleTooltip(tooltip, isPlayerSneaking);
         LightGoggles.title(tooltip, getBlockState().getBlock().getName());
         LightGoggles.brightness(tooltip, state);
-        LightGoggles.line(tooltip, turning() ? "beacon_turning" : "beacon_stopped", ChatFormatting.AQUA);
-        LightGoggles.colour(tooltip, state.colour());
         if (isPlayerSneaking) {
             LightGoggles.hint(tooltip, "beacon");
             LightGoggles.hint(tooltip, "dye");

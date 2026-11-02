@@ -4,9 +4,6 @@ import com.goldskinmc.lightworks.LightworksConfig;
 import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.world.item.DyeColor;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Lines of the Engineer's Goggles overlay for our lights, in Create's layout: a title, then indented
@@ -45,14 +42,5 @@ public final class LightGoggles {
         } else {
             line(tooltip, "off_powered", ChatFormatting.DARK_RED);
         }
-        if (state.signal() > 0) {
-            line(tooltip, "signal", ChatFormatting.RED, state.signal());
-        }
-    }
-
-    public static void colour(List<Component> tooltip, @Nullable DyeColor colour) {
-        MutableComponent name = colour == null ? Component.translatable("lightworks.goggles.colour.default")
-                : Component.translatable("color.minecraft." + colour.getSerializedName());
-        line(tooltip, "colour", ChatFormatting.AQUA, name);
     }
 }

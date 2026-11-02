@@ -449,25 +449,14 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         if (type.followsMotion()) {
             LightGoggles.line(tooltip, state.signal() == 0 ? "headlight_auto" : "headlight_manual", ChatFormatting.AQUA);
         }
-        PanTiltHeadBlockEntity head = head();
-        if (head != null) {
-            float[] angles = aimAngles(0);
-            Direction f = mountFacing();
-            PanTilt byHead = PanTilt.of(f.getStepX(), f.getStepY(), f.getStepZ(),
-                    new Aim(Math.round(angles[0]), Math.round(angles[1])));
-            LightGoggles.line(tooltip, "aim_head", ChatFormatting.AQUA, pan(byHead), tilt(byHead));
-        } else {
-            LightGoggles.line(tooltip, "aim", ChatFormatting.AQUA, pan(panTilt()), tilt(panTilt()));
-        }
         if (state.on() && brightness() > 0 && level != null) {
             if (!DynamicLights.present() && (tickBeam().moving() || !LightworksConfig.serverLightBlocks())) {
                 LightGoggles.line(tooltip, tickBeam().moving() ? "moving_beam_only" : "no_light_path",
                         ChatFormatting.YELLOW);
             }
         }
-        LightGoggles.colour(tooltip, state.colour());
         if (isPlayerSneaking) {
-            LightGoggles.hint(tooltip, head != null ? "on_head" : "aim");
+            LightGoggles.hint(tooltip, head() != null ? "on_head" : "aim");
             LightGoggles.hint(tooltip, "dye");
             LightGoggles.hint(tooltip, "clipboard");
             LightGoggles.hint(tooltip, LightworksConfig.invertRedstone() ? "redstone_inverted" : "redstone");
@@ -506,14 +495,6 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         }
         notifyUpdate();
         return true;
-    }
-
-    private static String pan(PanTilt aim) {
-        return (aim.pan() < 0 ? "⟲ " : "⟳ ") + Math.abs(aim.pan()) + "°";
-    }
-
-    private static String tilt(PanTilt aim) {
-        return (aim.tilt() < 0 ? "↓ " : "↑ ") + Math.abs(aim.tilt()) + "°";
     }
 
     @Override
