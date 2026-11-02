@@ -232,7 +232,15 @@ public final class ProjectedTint {
         if (!project(level, litBlocks(level, ends, beam, maxFaces), regions, sources, maxFaces)) {
             faces = 0;
         }
-        show(level, ends.get(0), rgb, brightness * limitFade(maxFaces));
+        show(level, inFrontOf(ends.get(0), origin), rgb, brightness * limitFade(maxFaces));
+    }
+
+    /**
+     * A landing point moved a little toward the lamp, into the air. On the face itself it counts as inside the block when
+     * the face looks north, west or down, where the sky light reads nothing: such a wall would not fade by day.
+     */
+    private static Vec3 inFrontOf(Vec3 end, Vec3 lamp) {
+        return end.add(lamp.subtract(end).normalize().scale(0.1));
     }
 
     /** Call before finding one beam's faces: what its lens saw last time no longer holds. */
@@ -275,7 +283,7 @@ public final class ProjectedTint {
         if (!project(level, litBlocks(level, ends, beam, maxFaces), regions, sources, maxFaces)) {
             faces = 0;
         }
-        show(level, ends.get(0), rgb, brightness * limitFade(maxFaces));
+        show(level, inFrontOf(ends.get(0), origin), rgb, brightness * limitFade(maxFaces));
     }
 
     /**
