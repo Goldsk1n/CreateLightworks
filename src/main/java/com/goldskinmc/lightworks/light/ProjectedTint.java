@@ -109,6 +109,12 @@ public final class ProjectedTint {
      * has little red to brighten, and a block no ray landed on, with no block light, has nothing to brighten at all.
      */
     private static final float DIRECT_STRENGTH = 0.12f;
+    /**
+     * Lights whose spot stands in for a dynamic light when no mod gives them one: on dark ground one go shows little, and
+     * going over it again adds up the way light would, keeping the texture. Its glow adds many faces a light, redrawn
+     * every frame, so a vehicle's few lights get this, and a scene of fifty keeps its frame rate with plain spots.
+     */
+    private static final int MAX_STAND_INS = 8;
 
     private static final RenderType TINT = RenderType.create("lightworks_tint", DefaultVertexFormat.POSITION_COLOR,
             VertexFormat.Mode.QUADS, 4096, false, false, RenderType.CompositeState.builder()
@@ -191,6 +197,8 @@ public final class ProjectedTint {
     private float skyExposure;
     /** A {@linkplain #spot spot}: brightens its faces rather than joining the mix of colours. */
     private boolean brightens;
+    /** A spot with no dynamic light under it, which has to stand in for one. */
+    private boolean standsIn;
     /** The colour's brightest channel, 0 to 1: a dark dye gives a faint spot. */
     private float dyeLevel = 1;
     /** Client game time after which this tint stops drawing unless refreshed; MAX for owned tints. */
@@ -244,15 +252,27 @@ public final class ProjectedTint {
      * block light, which cannot show the beam's shape. A spot too big for the limit fades out and is left out whole:
      * a cut one would show its jagged edge, and the block light is still there.
      *
-     * @param rgb    the light's colour, 0xRRGGBB
-     * @param moving a moving light, which finds its faces all the time and keeps to the smaller limits
+     * @param rgb        the light's colour, 0xRRGGBB
+     * @param moving     a moving light, which finds its faces all the time and keeps to the smaller limits
+     * @param standIn    no dynamic light lights the world under this spot: brighter, and with the glow one would leave
+     * @param glowCentre where that light would sit, just in front of the spot
+     * @param glowRadius how far it would reach, in blocks
      */
     public void spot(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf, List<Vec3> ends, int rgb,
-            float brightness, boolean moving) {
+            float brightness, boolean moving, boolean standIn, Vec3 glowCentre, double glowRadius) {
         brightens = true;
+        standsIn = standIn && (standsIn && ACTIVE.contains(this) || standIns() < MAX_STAND_INS);
         int maxFaces = moving ? MAX_FACES_MOVING : MAX_FACES_FIXED;
         Source beam = beamSource(origin, axis, shape, lensHalf, moving);
-        if (!project(level, litBlocks(level, ends, beam, maxFaces), List.of(), List.of(beam), maxFaces)) {
+        List<Region> regions = new ArrayList<>(1);
+        List<Source> sources = new ArrayList<>(2);
+        sources.add(beam);
+        if (standsIn && glowRadius > 0.5) {
+            double radius = Math.min(MAX_RADIUS, glowRadius);
+            regions.add(new Region(glowCentre, radius));
+            sources.add(new Source(glowCentre, glowFalloff(glowCentre, radius, GLOW_WEIGHT), NOT_SHARED));
+        }
+        if (!project(level, litBlocks(level, ends, beam, maxFaces), regions, sources, maxFaces)) {
             faces = 0;
         }
         show(level, ends.get(0), rgb, brightness * limitFade(maxFaces));
@@ -404,6 +424,16 @@ public final class ProjectedTint {
 
     public int faces() {
         return faces;
+    }
+
+    private static int standIns() {
+        int count = 0;
+        for (ProjectedTint tint : ACTIVE) {
+            if (tint.standsIn) {
+                count++;
+            }
+        }
+        return count;
     }
 
     /** Every tinted face being drawn, for debugging. */
@@ -640,6 +670,11 @@ public final class ProjectedTint {
                 float amount = SPOT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
                 if (amount > 0.01f && tint.brightens) {
                     tint.drawSpot(spots, pose, amount, true);
+                    // Not by day: there is no darkness for it to light
+                    float standIn = SPOT_STRENGTH * tint.dyeLevel * tint.strength * (1 - day * tint.skyExposure);
+                    if (tint.standsIn && standIn > 0.01f) {
+                        tint.drawSpot(spots, pose, standIn, true);
+                    }
                 }
             }
             buffers.endBatch(SPOT);

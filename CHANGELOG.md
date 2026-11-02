@@ -40,8 +40,8 @@ First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 
   works with the vanilla renderer and Sodium; off under Iris shader packs, and switchable with the client
   config `colouredLight`. Block light itself stays white (Minecraft has no coloured block light).
 - Engineer's Goggles show a light's state and brightness.
-- Players without LambDynamicLights still get light from fixed lights (server light blocks) and see
-  every beam; with it, moving lights light the world too.
+- Players without LambDynamicLights still get light from fixed lights (server light blocks), see
+  every beam, and moving lights paint a brighter spot with a glow round it; with it, moving lights light the world too.
 - The visible beam is a square, Minecraft-style truncated pyramid that starts flush on the lens and
   stops where it lands, also where only part of it hits a wall. A beam aimed over open ground still
   lights the ground where its lower edge reaches it. It stays a soft haze when you stand in or
