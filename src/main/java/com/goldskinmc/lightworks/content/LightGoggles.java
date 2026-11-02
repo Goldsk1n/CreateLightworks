@@ -33,10 +33,15 @@ public final class LightGoggles {
                 .withStyle(ChatFormatting.DARK_GRAY)));
     }
 
-    /** On or off, with the brightness or the reason it is dark. */
+    /**
+     * How far redstone has dimmed a light, or why it is dark. Nothing at full brightness: that is a setting, not how bright
+     * the lens is now (a tail light at rest glows less, a warning light blinks), so it would only mislead.
+     */
     public static void brightness(List<Component> tooltip, LightState state) {
         if (state.on()) {
-            line(tooltip, "brightness", ChatFormatting.GOLD, state.brightness());
+            if (state.brightness() < 15) {
+                line(tooltip, "brightness", ChatFormatting.GOLD, state.brightness());
+            }
         } else if (LightworksConfig.invertRedstone()) {
             line(tooltip, "off_unpowered", ChatFormatting.DARK_RED);
         } else {
