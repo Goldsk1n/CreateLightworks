@@ -637,7 +637,8 @@ final class Scenarios {
 
     /**
      * The same Searchlight on white walls facing north and east, which Minecraft shades 0.8 and 0.6: the spot makes up
-     * for that, so the two shots' centre brightness should nearly match, neither clipped to white.
+     * for that, so the two shots' centre brightness should nearly match, neither clipped to white. Then by day and dyed
+     * red: both walls' colour must fade alike, whichever way they face.
      */
     static Script wallSides() {
         Script script = new Script("wall-sides").run(stage -> {
@@ -665,6 +666,18 @@ final class Scenarios {
                 SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(17, 1, 0)).add(0, 0.5, 0.5);
             }).waitTicks(10).shot("wall-sides-" + name + "-east");
         }
+        script.run(stage -> {
+            stage.level.setDayTime(6000);
+            for (BlockPos lamp : List.of(stage.at(0, 1, 2), stage.at(22, 1, 0))) {
+                stage.lightAt(lamp).lightState().setColour(DyeColor.RED);
+                stage.lightAt(lamp).notifyUpdate();
+            }
+            stage.hover(3, 3, 3);
+            SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 1, 8)).add(0.5, 0.5, 0);
+        }).waitTicks(20).shot("wall-sides-day-north").run(stage -> {
+            stage.hover(20, 3, 3);
+            SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(17, 1, 0)).add(0, 0.5, 0.5);
+        }).waitTicks(10).shot("wall-sides-day-east");
         return script.run(stage -> {
             SelfTestBridge.focus = null;
             stage.restoreBlocks();
