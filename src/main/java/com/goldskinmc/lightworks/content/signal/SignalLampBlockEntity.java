@@ -273,15 +273,10 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
         LightType type = lightType();
         LightGoggles.title(tooltip, getBlockState().getBlock().getName());
         LightGoggles.brightness(tooltip, state);
-        LightGoggles.line(tooltip, "block_light", ChatFormatting.GOLD, getBlockState().getValue(SignalLampBlock.LIGHT));
-        switch (type.kind()) {
-            case WARNING -> LightGoggles.line(tooltip, "pattern", ChatFormatting.AQUA,
+        if (type.kind() == LightType.Kind.WARNING) {
+            LightGoggles.line(tooltip, "pattern", ChatFormatting.AQUA,
                     PatternBoard.named(Component.translatable(pattern().getTranslationKey()), state.nightOnly()));
-            case TAIL -> LightGoggles.line(tooltip, brake.braking() ? "brake_now" : "brake", ChatFormatting.AQUA);
-            default -> {
-            }
         }
-        LightGoggles.colour(tooltip, state.colour());
         if (isPlayerSneaking) {
             if (type.kind() == LightType.Kind.WARNING) {
                 LightGoggles.hint(tooltip, "pattern");

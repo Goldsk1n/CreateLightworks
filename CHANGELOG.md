@@ -35,11 +35,11 @@ First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 
 - Redstone dims every light (15 − signal); server config `invertRedstone` makes them light only when
   powered. On contraptions the signal is read at assembly, and Contraption Controls switch lights.
 - Dye any light to colour its lens, its beam and the light it casts: a red Searchlight paints a red
-  spot, and overlapping colours add up: red and green make yellow. Signal lamps colour the blocks round them too (amber, red, green), placed or on a moving
+  spot, and overlapping colours add up: red and green make yellow. Signal lamps colour the blocks round them too (amber, red), placed or on a moving
   contraption, train or Sable vehicle. Drawn by the mod itself, so it
   works with the vanilla renderer and Sodium; off under Iris shader packs, and switchable with the client
   config `colouredLight`. Block light itself stays white (Minecraft has no coloured block light).
-- Engineer's Goggles show a light's state, brightness, aim and colour.
+- Engineer's Goggles show a light's state and brightness.
 - Players without LambDynamicLights still get light from fixed lights (server light blocks) and see
   every beam; with it, moving lights light the world too.
 - The visible beam is a square, Minecraft-style truncated pyramid that starts flush on the lens and
