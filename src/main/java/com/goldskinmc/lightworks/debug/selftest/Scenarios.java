@@ -95,6 +95,7 @@ final class Scenarios {
         ALL.put("moving-flood", Scenarios::movingFlood);
         ALL.put("flood-block", Scenarios::floodBlock);
         ALL.put("block-change", Scenarios::blockChange);
+        ALL.put("day-colour", Scenarios::dayColour);
         ALL.put("held", Scenarios::held);
         ALL.put("shapes", Scenarios::shapes);
         ALL.put("wall-sides", Scenarios::wallSides);
@@ -710,6 +711,40 @@ final class Scenarios {
             SelfTestBridge.thirdPerson = false;
             SelfTestBridge.showGui = false;
             stage.player.setItemInHand(InteractionHand.MAIN_HAND, saved[0]);
+        });
+    }
+
+    /**
+     * Dyed Searchlights looking down by day, red and blue, on stone, white wool and grass, under open sky. The colour
+     * should read without looking painted on.
+     */
+    static Script dayColour() {
+        return new Script("day-colour").run(stage -> {
+            stage.level.setDayTime(6000);
+            Block[] floors = {Blocks.STONE, Blocks.WHITE_WOOL, null};
+            DyeColor[] dyes = {DyeColor.RED, DyeColor.BLUE};
+            for (int d = 0; d < dyes.length; d++) {
+                for (int f = 0; f < floors.length; f++) {
+                    int x = -7 + f * 7;
+                    int z = 2 + d * 7;
+                    if (floors[f] != null) {
+                        for (int i = -3; i <= 3; i++) {
+                            for (int j = -3; j <= 3; j++) {
+                                stage.set(stage.at(x + i, 0, z + j), floors[f].defaultBlockState());
+                            }
+                        }
+                    }
+                    BlockPos lamp = stage.at(x, 5, z);
+                    stage.set(lamp, searchlight(Direction.DOWN));
+                    stage.lightAt(lamp).lightState().setColour(dyes[d]);
+                    stage.lightAt(lamp).notifyUpdate();
+                }
+            }
+            stage.hover(0, 13, -8);
+            SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 0, 5)).add(0.5, 0, 0.5);
+        }).waitTicks(40).shot("day-colour").run(stage -> {
+            SelfTestBridge.focus = null;
+            stage.restoreBlocks();
         });
     }
 
