@@ -9,9 +9,7 @@ displayName = "${mod_name}"
 logoFile = "logo.png"
 authors = "GoldskinMC"
 description = '''
-Functional lighting for Create: searchlights, floodlights, rotating beacons, warning lights, edge markers and vehicle lights (headlights, tail and brake lights) that keep landing where they point on contraptions, trains and Sable vehicles.
-
-Optional: LambDynamicLights or Sodium Dynamic Lights (moving lights light the world), Sable with Create Aeronautics.
+Functional lights for Create that keep working on moving contraptions and vehicles.
 '''
 
 [[mixins]]
