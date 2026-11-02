@@ -107,8 +107,11 @@ public final class BeamVisual {
         float spread = (float) Math.tan(BeamTrace.visibleHalfAngle(shape));
         // Starts on the lens glass, lifted just off it so the closed end never fights the glass for depth
         lens = new Vector3f(axis).mul(GLASS_LIFT).add(lens);
-        // A wide beam spreads the same light over more air, so its haze is fainter than a narrow one's
-        alpha *= (float) Math.min(1, Math.sqrt(NARROW_SPREAD / spread));
+        // A wide beam spreads the same light over more air, so its haze is fainter than a narrow one's. Not in a Ponder
+        // scene: it has no darkness to show up against, and the beam is all that shows the light
+        if (!beam.preview()) {
+            alpha *= (float) Math.min(1, Math.sqrt(NARROW_SPREAD / spread));
+        }
 
         // Lens and far points of every corner ray, and how bright the beam still is at each far point
         int corners = BeamFrame.GRID * BeamFrame.GRID;
