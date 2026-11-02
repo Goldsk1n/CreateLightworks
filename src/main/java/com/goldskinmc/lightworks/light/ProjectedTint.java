@@ -92,7 +92,8 @@ public final class ProjectedTint {
     private static final float STRENGTH = 0.5f;
     /** Lifted off the face so it never fights the block for depth. */
     private static final float LIFT = 0.002f;
-    private static final float DAY_FADE = 0.8f;
+    /** Less than the visible beam's: at 80% a dye seems to do nothing in the sun (in daylight tests). */
+    private static final float DAY_FADE = 0.6f;
     /** The glow round a beam's spot is softer than the spot itself. */
     private static final float GLOW_WEIGHT = 0.6f;
     private static final long EXPIRY_TICKS = 5;
