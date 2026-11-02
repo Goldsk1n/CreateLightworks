@@ -60,6 +60,14 @@ class ArchitectureTest {
     }
 
     @Test
+    void usesSodiumDynamicLightsOnlyInItsCompatPackage() {
+        noClasses().that().resideOutsideOfPackage("com.goldskinmc.lightworks.compat.sdl..")
+                .should().dependOnClassesThat().resideInAPackage("toni.sodiumdynamiclights..")
+                .because("Sodium Dynamic Lights is optional and client-only")
+                .check(mod);
+    }
+
+    @Test
     void reachesModSpecificCompatOnlyFromCompat() {
         // Code outside compat/ goes through a guard in compat/ that checks the other mod is loaded
         noClasses().that().resideOutsideOfPackage("com.goldskinmc.lightworks.compat..")

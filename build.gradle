@@ -69,6 +69,8 @@ def quickPlayServer = providers.gradleProperty('quickplay_server').getOrNull()
 def devPerf = providers.gradleProperty('dev_perf').map { it.toBoolean() }.getOrElse(false)
 // -Pdev_ldl=false leaves LambDynamicLights out of `latest` runs: a player without the optional client mod
 def devLdl = providers.gradleProperty('dev_ldl').map { it.toBoolean() }.getOrElse(true)
+// -Pdev_sdl=true adds Sodium Dynamic Lights to `latest` runs instead, with -Pdev_ldl=false and -Pdev_perf=true (Sodium)
+def devSdl = providers.gradleProperty('dev_sdl').map { it.toBoolean() }.getOrElse(false)
 // -Pdev_tools=true adds JEI and The One Probe to `latest`/`lite` runs, for playing by hand: dev only, never shipped
 def devTools = providers.gradleProperty('dev_tools').map { it.toBoolean() }.getOrElse(false)
 // -Pdev_conflicts=contraption-lights,create-train-lights,create-dynamic-lights adds other lighting mods
@@ -153,6 +155,7 @@ dependencies {
     compileOnly("dev.lambdaurora.lambdynamiclights:lambdynamiclights-api:${ldl_version}") {
         attributes { attribute(mappingsAttribute, 'mojmap') }
     }
+    compileOnly("maven.modrinth:sodium-dynamic-lights:${sodium_dynamic_lights_version}") { transitive = false }
 
     // Sable Companion: bundled with an open range; returns safe defaults when Sable is absent
     jarJar("dev.ryanhcode.sable-companion:sable-companion-common-${minecraft_version}") {
@@ -198,6 +201,13 @@ dependencies {
     if (devTools && !floorRun) {
         localRuntime("maven.modrinth:jei:${jei_version}") { transitive = false }
         localRuntime("maven.modrinth:the-one-probe:${the_one_probe_version}") { transitive = false }
+    }
+
+    if (runProfile == 'latest' && devSdl) {
+        if (devLdl || !devPerf) {
+            throw new GradleException('dev_sdl needs -Pdev_ldl=false (LambDynamicLights refuses it) and -Pdev_perf=true (Sodium)')
+        }
+        localRuntime("maven.modrinth:sodium-dynamic-lights:${sodium_dynamic_lights_version}") { transitive = false }
     }
 
     if (runProfile == 'latest') {
