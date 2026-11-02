@@ -29,8 +29,8 @@ a tooltip and a Ponder scene.
 - **Fixed lights** place invisible light blocks where the beam lands, several for a wide beam (server side,
   so it works for every player).
 - **Moving lights** (on contraptions, trains, Sable vehicles, or on a turning Pan-Tilt Head) light the world
-  on each client through [LambDynamicLights](https://modrinth.com/mod/lambdynamiclights), if installed.
-- **Every beam** is also drawn as a faint cone, so players without LambDynamicLights still see where
+  on each client through [LambDynamicLights](https://modrinth.com/mod/lambdynamiclights) or [Sodium Dynamic Lights](https://modrinth.com/mod/sodium-dynamic-lights), if installed.
+- **Every beam** is also drawn as a faint cone, so players without either still see where
   moving lights point. Client config: `beamVisual`, `beamVisualWithShaders`.
 
 ## Requirements
@@ -40,7 +40,7 @@ a tooltip and a Ponder scene.
 | Minecraft | 1.21.1 |
 | NeoForge | 21.1.125 or newer |
 | Create | 6.0.0 or newer, below 6.1.0 |
-| Optional | LambDynamicLights 4+ (client), Sable 1.0.4+ with Create Aeronautics |
+| Optional | LambDynamicLights 4+ or Sodium Dynamic Lights (client), Sable 1.0.4+ with Create Aeronautics |
 
 Tested with Sodium 0.8 and Iris 1.8. Create: Dynamic Lights cannot be installed next to
 LambDynamicLights, so it is not supported.
