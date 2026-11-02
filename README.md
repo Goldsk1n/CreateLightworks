@@ -56,8 +56,6 @@ Requires JDK 21.
 ./gradlew runClient           # dev client
 ```
 
-Dev runtime profiles, hot-swap and other options are described in the workspace
-`CLAUDE.md` (`-Prun_profile=latest|lite|floor`, `-Pdev_perf=true`).
 
 ## Licence
 
