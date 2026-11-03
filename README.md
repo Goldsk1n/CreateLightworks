@@ -1,4 +1,4 @@
-# Create: Lightworks (working title)
+# Create: Lightworks
 
 Functional lighting for [Create](https://modrinth.com/mod/create): searchlights, floodlights, rotating
 beacons, warning lights, edge markers and vehicle lights that keep landing where they point on Create contraptions,
