@@ -19,6 +19,7 @@ public final class LightworksClientConfig {
     private static final ModConfigSpec.EnumValue<BeamVisual> BEAM_VISUAL;
     private static final ModConfigSpec.EnumValue<BeamVisual> BEAM_VISUAL_WITH_SHADERS;
     private static final ModConfigSpec.BooleanValue COLOURED_LIGHT;
+    private static final ModConfigSpec.BooleanValue LENS_GLOW;
     private static final ModConfigSpec.BooleanValue DEBUG_OVERLAY;
 
     static {
@@ -36,6 +37,10 @@ public final class LightworksClientConfig {
                         "Iris shader pack is on: shader packs light the world their own way.")
                 .translation("lightworks.configuration.colouredLight")
                 .define("colouredLight", true);
+        LENS_GLOW = builder
+                .comment("A soft glow round a lamp's lens while you look into its beam. Never strong enough to hide anything.")
+                .translation("lightworks.configuration.lensGlow")
+                .define("lensGlow", true);
         DEBUG_OVERLAY = builder
                 .comment("With the F3 screen open, draw every beam from lens to hit and show details of the light",
                         "under the crosshair.")
@@ -58,6 +63,10 @@ public final class LightworksClientConfig {
     /** Whether dyed lights and signal lamps tint the world (never under a shader pack). */
     public static boolean colouredLight() {
         return (!SPEC.isLoaded() || COLOURED_LIGHT.get()) && !Shaders.inUse();
+    }
+
+    public static boolean lensGlow() {
+        return !SPEC.isLoaded() || LENS_GLOW.get();
     }
 
     public static boolean debugOverlay() {

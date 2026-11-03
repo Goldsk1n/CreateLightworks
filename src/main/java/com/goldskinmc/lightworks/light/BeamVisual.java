@@ -15,6 +15,8 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.util.Mth;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -65,6 +67,33 @@ public final class BeamVisual {
                     .setCullState(RenderStateShard.CULL)
                     .createCompositeState(false));
 
+    /** Strongest the lens glow gets, looking straight into a beam at full brightness. */
+    private static final float GLOW_ALPHA = 0.5f;
+    /** Its size: some of the lens round it, and more with distance, so it stays a similar size on screen. */
+    private static final float GLOW_LENS = 2.5f;
+    private static final float GLOW_PER_BLOCK = 0.06f;
+    /** Drawn this far in front of the lens, toward the eye, so the lamp's own frame does not cut it. */
+    private static final float GLOW_LIFT = 0.3f;
+    private static final int GLOW_SEGMENTS = 16;
+    /** Brightest share of the glow, its core, out to this fraction of its size. */
+    private static final float GLOW_CORE = 0.3f;
+
+    /**
+     * The glow's own render type: the beam's, drawn over everything, since round a low lamp the ground would cut it in
+     * half. Whether a wall hides it is decided by {@link #seen} instead.
+     */
+    private static final RenderType GLOW = RenderType.create("lightworks_lens_glow", DefaultVertexFormat.POSITION_COLOR,
+            VertexFormat.Mode.QUADS, 512, false, true, RenderType.CompositeState.builder()
+                    .setShaderState(RenderStateShard.RENDERTYPE_LIGHTNING_SHADER)
+                    .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                    .setTransparencyState(RenderStateShard.LIGHTNING_TRANSPARENCY)
+                    .setDepthTestState(RenderStateShard.NO_DEPTH_TEST)
+                    .setOutputState(RenderStateShard.WEATHER_TARGET)
+                    .setCullState(RenderStateShard.NO_CULL)
+                    .createCompositeState(false));
+    /** How finely the line from the eye to the lens is checked for blocks, in blocks. */
+    private static final double SIGHT_STEP = 0.25;
+
     private BeamVisual() {
     }
 
@@ -83,6 +112,7 @@ public final class BeamVisual {
         if (ClientSafety.works(ClientSafety.BEAMS)) {
             try {
                 draw(poseStack, buffers, lens, axis, beam, rgb);
+                glow(poseStack, buffers, lens, axis, beam, rgb);
             } catch (RuntimeException e) {
                 ClientSafety.failed(ClientSafety.BEAMS, e);
             }
@@ -167,6 +197,93 @@ public final class BeamVisual {
         Vector3f c3 = near[BeamFrame.corner(-1, 1)];
         float capAlpha = alpha * CAP_ALPHA;
         twoSided(out, pose, c0, c1, c2, c3, capAlpha, capAlpha, capAlpha, red, green, blue);
+    }
+
+    /**
+     * A soft halo round the lens while the eye is inside the beam, strongest looking straight down it: what a lamp
+     * shining at you looks like, without hiding anything. A solid block between the eye and the lens hides it; glass,
+     * leaves and the like do not.
+     */
+    private static void glow(PoseStack poseStack, MultiBufferSource buffers, Vector3f lens, Vector3f axis,
+            ClientBeam beam, int rgb) {
+        if (beam.preview() || beam.brightness() <= 0 || beam.length() <= 0 || !LightworksClientConfig.lensGlow()) {
+            return;
+        }
+        Matrix4f pose = poseStack.last().pose();
+        // The camera sits at the origin of the space the pose leads to
+        Vector3f eye = new Matrix4f(pose).invert().transformPosition(new Vector3f());
+        Vector3f toEye = new Vector3f(eye).sub(lens);
+        float distance = toEye.length();
+        if (distance < 0.5f) {
+            return;
+        }
+        ConeFalloff shape = beam.shape();
+        double[] su = BeamFrame.side(axis.x, axis.y, axis.z);
+        double[] sv = BeamFrame.up(axis.x, axis.y, axis.z, su);
+        double inBeam = shape.lightInBeam(toEye.x, toEye.y, toEye.z, axis.x, axis.y, axis.z,
+                su[0], su[1], su[2], sv[0], sv[1], sv[2], beam.lensHalf()) / 15;
+        toEye.div(distance);
+        float onAxis = (float) Math.pow(Math.max(0, toEye.dot(axis)), 16);
+        // Not faded by day, unlike the beam: a lamp pointed at you shows in the sun, as a car's headlights do
+        float alpha = GLOW_ALPHA * (float) inBeam * beam.brightness() / 15f * (0.35f + 0.65f * onAxis);
+        if (alpha < 0.01f) {
+            return;
+        }
+        // The pose only moves and turns from the camera, so where it puts the lens is the lens from the eye in the world
+        Vector3f fromEye = pose.transformPosition(new Vector3f(lens));
+        if (!seen(new Vec3(fromEye.x, fromEye.y, fromEye.z))) {
+            return;
+        }
+        float radius = (beam.lensHalf() * GLOW_LENS + distance * GLOW_PER_BLOCK) * (0.6f + 0.4f * onAxis);
+        Vector3f centre = new Vector3f(toEye).mul(Math.min(GLOW_LIFT, distance * 0.5f)).add(lens);
+        Vector3f right = new Vector3f(toEye).cross(Math.abs(toEye.y) > 0.99f ? new Vector3f(1, 0, 0) : new Vector3f(0, 1, 0))
+                .normalize();
+        Vector3f up = new Vector3f(right).cross(toEye).normalize();
+        float red = mix((rgb >> 16 & 0xFF) / 255f);
+        float green = mix((rgb >> 8 & 0xFF) / 255f);
+        float blue = mix((rgb & 0xFF) / 255f);
+        VertexConsumer out = buffers.getBuffer(GLOW);
+        float[] rings = {0, GLOW_CORE, 1};
+        float[] ringAlpha = {alpha, alpha * 0.45f, 0};
+        for (int ring = 0; ring < 2; ring++) {
+            for (int i = 0; i < GLOW_SEGMENTS; i++) {
+                Vector3f[] quad = new Vector3f[4];
+                float[] a = {ringAlpha[ring], ringAlpha[ring], ringAlpha[ring + 1], ringAlpha[ring + 1]};
+                int[] step = {i, i + 1, i + 1, i};
+                float[] at = {rings[ring], rings[ring], rings[ring + 1], rings[ring + 1]};
+                for (int k = 0; k < 4; k++) {
+                    double angle = 2 * Math.PI * step[k] / GLOW_SEGMENTS;
+                    quad[k] = new Vector3f(right).mul((float) Math.cos(angle) * radius * at[k])
+                            .add(new Vector3f(up).mul((float) Math.sin(angle) * radius * at[k])).add(centre);
+                }
+                for (int k = 0; k < 4; k++) {
+                    out.addVertex(pose, quad[k].x, quad[k].y, quad[k].z).setColor(red, green, blue, a[k]);
+                }
+            }
+        }
+    }
+
+    /** False when a block that hides what is behind it stands between the eye and the lens, {@code fromEye} away. */
+    private static boolean seen(Vec3 fromEye) {
+        ClientLevel level = Minecraft.getInstance().level;
+        if (level == null) {
+            return false;
+        }
+        Vec3 eye = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        BlockPos lamp = BlockPos.containing(eye.add(fromEye));
+        double length = fromEye.length();
+        BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+        for (double t = SIGHT_STEP; t < length; t += SIGHT_STEP) {
+            Vec3 point = eye.add(fromEye.scale(t / length));
+            at.set(point.x, point.y, point.z);
+            if (at.equals(lamp)) {
+                return true;
+            }
+            if (level.getBlockState(at).canOcclude()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** The light's own falloff, and a little haze, so the far end never outshines the lens. */
