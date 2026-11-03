@@ -49,6 +49,17 @@ public final class SableHost {
         return vehicle.logicalPose().transformPosition(centre).subtract(vehicle.lastPose().transformPosition(centre));
     }
 
+    /**
+     * Where a point is in the world. Sable's ray-casts hit vehicles too, but report such a hit in the vehicle's plot
+     * coordinates; this brings it back. A point not on a vehicle, or any point without Sable, is returned as it is.
+     */
+    public static Vec3 outOfVehicle(Level level, Vec3 point) {
+        if (SableCompanion.INSTANCE.getContaining(level, point) == null) {
+            return point;
+        }
+        return SableCompanion.INSTANCE.projectOutOfSubLevel(level, point);
+    }
+
     private static BeamPose transform(Pose3dc pose, Vec3 origin, Vec3 direction) {
         return new BeamPose(pose.transformPosition(origin), pose.transformNormal(direction).normalize(), true);
     }

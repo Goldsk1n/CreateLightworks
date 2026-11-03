@@ -40,6 +40,7 @@ First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 
   works with the vanilla renderer and Sodium; off under Iris shader packs, and switchable with the client
   config `colouredLight`. Block light itself stays white (Minecraft has no coloured block light).
 - Looking into a beam, its lens glows softly round it (client config `lensGlow`).
+- A beam stops on a Sable vehicle in its way instead of shining through it (its lit square is not painted on the vehicle yet).
 - Engineer's Goggles show a light's state and brightness.
 - Moving lights light the world with LambDynamicLights or Sodium Dynamic Lights, also under shader packs. Without either,
   fixed lights still give light (server light blocks), every beam is drawn, and moving lights paint a brighter spot with a glow round it.
