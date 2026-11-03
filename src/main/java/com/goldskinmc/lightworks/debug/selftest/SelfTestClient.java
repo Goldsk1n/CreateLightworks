@@ -96,6 +96,8 @@ public final class SelfTestClient {
     private static boolean beamsOff;
     private static int savedFramerateLimit;
     private static boolean savedVsync;
+    private static boolean bright;
+    private static double savedGamma;
 
     private SelfTestClient() {
     }
@@ -152,6 +154,15 @@ public final class SelfTestClient {
                 mc.options.enableVsync().set(savedVsync);
             }
             wasActive = active;
+        }
+        if (SelfTestBridge.bright != bright) {
+            bright = SelfTestBridge.bright;
+            if (bright) {
+                savedGamma = mc.options.gamma().get();
+                mc.options.gamma().set(1.0);
+            } else {
+                mc.options.gamma().set(savedGamma);
+            }
         }
         if (active) {
             mc.options.hideGui = !SelfTestBridge.showGui;

@@ -30,6 +30,8 @@ final class SelfTestBridge {
     @Nullable
     static volatile String ponderPlan;
     static volatile boolean ponderDone;
+    /** The game's Brightness at "Bright" while set, for mod-page shots; restored when cleared. */
+    static volatile boolean bright;
     /** Darkens every dynamic spot, to compare the server light path alone. */
     static volatile boolean dynamicLightsOff;
     /** Switches every client beam off (no dynamic light, no cosmetic beam): the baseline for load tests. */
@@ -71,6 +73,7 @@ final class SelfTestBridge {
         active = false;
         focus = null;
         dynamicLightsOff = false;
+        bright = false;
         showGui = false;
         thirdPerson = false;
         ponderPlan = null;

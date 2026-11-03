@@ -94,6 +94,12 @@ neoForge {
             systemProperty 'lightworks.selftest', providers.gradleProperty('selftest').getOrElse('false')
             // -Pselftest_quit=true closes the game once the self-test is done (unattended runs)
             systemProperty 'lightworks.selftest.quit', providers.gradleProperty('selftest_quit').getOrElse('false')
+            // -Pwindow=1920x1080 opens the game at that size (screenshots are taken at the window's size)
+            def window = providers.gradleProperty('window').getOrNull()
+            if (window != null) {
+                def (width, height) = window.tokenize('x')
+                programArguments.addAll '--width', width, '--height', height
+            }
             // Join the test world straight from launch once it exists in this profile's saves
             if (quickPlayServer != null) {
                 programArguments.addAll '--quickPlayMultiplayer', quickPlayServer

@@ -48,10 +48,12 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
@@ -59,6 +61,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.level.block.SnowLayerBlock;
 import net.minecraft.world.level.block.StairBlock;
@@ -74,6 +77,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.ModList;
 
@@ -128,6 +133,13 @@ final class Scenarios {
         ALL.put("gallery", Scenarios::gallery);
         ALL.put("closeup", Scenarios::closeup);
         ALL.put("train", Scenarios::train);
+        ALL.put("vehicle-beam", Scenarios::vehicleBeam);
+        ALL.put("showcase-aim", Scenarios::showcaseAim);
+        ALL.put("showcase-signals", Scenarios::showcaseSignals);
+        ALL.put("showcase-colour", Scenarios::showcaseColour);
+        ALL.put("showcase-car", Scenarios::showcaseCar);
+        ALL.put("showcase-airship", Scenarios::showcaseAirship);
+        ALL.put("showcase-banner", Scenarios::showcaseBanner);
     }
 
     private Scenarios() {
@@ -1202,6 +1214,7 @@ final class Scenarios {
         Script script = new Script("gallery")
                 .run(stage -> {
                     stage.night();
+                    lawn(stage);
                     stage.level.setDayTime(6000);
                     stage.hover(0, 10, -4);
                     deck[0] = stage.at(0, 5, 4);
@@ -1795,6 +1808,569 @@ final class Scenarios {
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
                 });
+    }
+
+    /**
+     * A Searchlight on the ground shining up at a plank platform 8 blocks above, before and after the platform becomes a
+     * Sable vehicle. Both times the beam should stop on it, about 7.5 blocks out, and the shots should show the visible
+     * beam ending there. The log also gives where Sable's own ray-cast says it hit: on the vehicle that is far off, in
+     * the vehicle's plot coordinates, which the beam must not take as its length. Needs Sable.
+     */
+    static Script vehicleBeam() {
+        if (!ModList.get().isLoaded("sable")) {
+            return new Script("vehicle-beam").run(stage -> stage.log("vehicle-beam: skipped, Sable is not installed"));
+        }
+        BlockPos[] light = new BlockPos[1];
+        return new Script("vehicle-beam")
+                .run(stage -> {
+                    stage.night();
+                    light[0] = stage.at(0, 0, 4);
+                    stage.set(light[0], searchlight(Direction.UP));
+                    stage.lightAt(light[0]).aimAlong(new Vec3(0, 1, 0.2));
+                    for (int x = -2; x <= 2; x++) {
+                        for (int z = 3; z <= 8; z++) {
+                            stage.set(stage.at(x, 8, z), Blocks.OAK_PLANKS.defaultBlockState());
+                        }
+                    }
+                    stage.hover(7, 2, -3);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 5, 5));
+                })
+                .waitTicks(40)
+                .run(stage -> logVehicleBeam(stage, light[0], "placed blocks"))
+                .shot("vehicle-beam-0-placed")
+                .run(stage -> {
+                    BlockPos from = stage.at(-2, 8, 3);
+                    BlockPos to = stage.at(2, 8, 8);
+                    stage.run("sable paused true");
+                    stage.run("sable assemble area " + from.getX() + " " + from.getY() + " " + from.getZ() + " "
+                            + to.getX() + " " + to.getY() + " " + to.getZ());
+                })
+                .waitTicks(40)
+                .run(stage -> logVehicleBeam(stage, light[0], "Sable vehicle"))
+                .shot("vehicle-beam-1-vehicle")
+                .run(stage -> {
+                    stage.run("sable remove @l");
+                    stage.run("sable paused false");
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    private static void logVehicleBeam(Stage stage, BlockPos pos, String phase) {
+        DirectionalLightBlockEntity light = stage.lightAt(pos);
+        Vec3 from = light.beamOrigin();
+        Vec3 dir = light.beamDirection();
+        BlockHitResult raw = stage.level.clip(new ClipContext(from, from.add(dir.scale(48)), ClipContext.Block.VISUAL,
+                ClipContext.Fluid.NONE, CollisionContext.empty()));
+        BeamTrace.Hit hit = BeamTrace.trace(stage.level, from, dir, 48);
+        stage.log("vehicle-beam: %s: Sable's ray-cast hit %s %.1f blocks away; the beam stops %.1f blocks out on %s "
+                + "(expected about 7.5)", phase, raw.getType(), raw.getLocation().distanceTo(from), hit.distance(), hit.block());
+    }
+
+    /**
+     * Mod-page still: a Searchlight on the ground lighting a square on a stone wall ten blocks away, and a Floodlight on
+     * a pillar beside it lighting the grass in front, at night, from a few blocks to one side.
+     */
+    static Script showcaseAim() {
+        return new Script("showcase-aim")
+                .run(stage -> {
+                    stage.night();
+                    lawn(stage);
+                    SelfTestBridge.bright = true;
+                    for (int x = -6; x <= 4; x++) {
+                        for (int y = 0; y <= 6; y++) {
+                            stage.set(stage.at(x, y, 10), Blocks.STONE_BRICKS.defaultBlockState());
+                        }
+                    }
+                    BlockPos search = stage.at(-2, 0, 0);
+                    stage.set(search, searchlight(Direction.UP));
+                    Vec3 lens = Vec3.atCenterOf(search);
+                    stage.lightAt(search).aimAlong(new Vec3(-1, 3, 10).add(Vec3.atLowerCornerOf(stage.origin)).subtract(lens));
+                    for (int y = 0; y <= 2; y++) {
+                        stage.set(stage.at(3, y, 0), Blocks.STONE_BRICKS.defaultBlockState());
+                    }
+                    stage.set(stage.at(3, 2, 1), LightworksBlocks.FLOODLIGHT.getDefaultState()
+                            .setValue(DirectionalLightBlock.FACING, Direction.SOUTH));
+                    stage.lightAt(stage.at(3, 2, 1)).aimAlong(new Vec3(-0.2, -0.6, 1));
+                    stage.hover(8, 3, -4);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 1, 5));
+                })
+                .waitTicks(60)
+                .shot("showcase-aim")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    SelfTestBridge.bright = false;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * Mod-page still: a Rotating Beacon on a block, standing still with its two beams out along north and south, two lit
+     * Warning Lights beyond it and a row of Edge Lights in white, blue, green and red in front, at night, seen from the
+     * west so the beams cross the picture.
+     */
+    static Script showcaseSignals() {
+        DyeColor[] colours = {DyeColor.WHITE, DyeColor.BLUE, DyeColor.GREEN, DyeColor.RED, DyeColor.GREEN, DyeColor.BLUE,
+                DyeColor.WHITE};
+        return new Script("showcase-signals")
+                .run(stage -> {
+                    stage.night();
+                    lawn(stage);
+                    SelfTestBridge.bright = true;
+                    stage.set(stage.at(0, 0, 6), Blocks.STONE_BRICKS.defaultBlockState());
+                    stage.set(stage.at(0, 1, 6), LightworksBlocks.ROTATING_BEACON.getDefaultState()
+                            .setValue(RotatingBeaconBlock.FACING, Direction.UP));
+                    for (int z : new int[] {3, 9}) {
+                        stage.set(stage.at(2, 0, z), Blocks.STONE_BRICKS.defaultBlockState());
+                        stage.set(stage.at(2, 1, z), LightworksBlocks.WARNING_LIGHT.getDefaultState()
+                                .setValue(SignalLampBlock.FACING, Direction.UP));
+                    }
+                    for (int i = 0; i < colours.length; i++) {
+                        stage.set(stage.at(-3, 0, 3 + i), LightworksBlocks.EDGE_LIGHT.getDefaultState()
+                                .setValue(EdgeLightBlock.COLOUR, colours[i]));
+                    }
+                    stage.hover(-9, 3, 6);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 1, 6));
+                })
+                .waitTicks(60)
+                .shot("showcase-signals")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    SelfTestBridge.bright = false;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * Mod-page still: red, green and blue Searchlights on the grass shining on a white concrete wall, their squares
+     * overlapping: red and green make yellow, all three white. Seen from behind the lights.
+     */
+    static Script showcaseColour() {
+        DyeColor[] colours = {DyeColor.RED, DyeColor.LIME, DyeColor.BLUE};
+        // Where each beam lands on the wall, relative to the stage
+        Vec3[] targets = {new Vec3(-0.6, 3, 10), new Vec3(1.6, 3, 10), new Vec3(0.5, 4.8, 10)};
+        return new Script("showcase-colour")
+                .run(stage -> {
+                    stage.night();
+                    lawn(stage);
+                    SelfTestBridge.bright = true;
+                    for (int x = -6; x <= 6; x++) {
+                        for (int y = 0; y <= 7; y++) {
+                            stage.set(stage.at(x, y, 10), Blocks.WHITE_CONCRETE.defaultBlockState());
+                        }
+                    }
+                    for (int i = 0; i < colours.length; i++) {
+                        BlockPos pos = stage.at(-3 + 3 * i, 0, 0);
+                        stage.set(pos, searchlight(Direction.UP));
+                        DirectionalLightBlockEntity light = stage.lightAt(pos);
+                        light.aimAlong(targets[i].add(Vec3.atLowerCornerOf(stage.origin)).subtract(Vec3.atCenterOf(pos)));
+                        light.lightState().setColour(colours[i]);
+                        light.notifyUpdate();
+                    }
+                    stage.hover(0, 2, -6);
+                    SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 3, 10)).add(0.5, 0, 0);
+                })
+                .waitTicks(60)
+                .shot("showcase-colour")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    SelfTestBridge.bright = false;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * Mod-page still: a small red car of concrete and glass on four black wheels, made a Sable vehicle and driving slowly
+     * east on the grass: Headlights lighting the way ahead, Tail Lights behind. Seen from ahead and to one side. Needs
+     * Sable.
+     */
+    static Script showcaseCar() {
+        return vehicleShot("showcase-car", stage -> {
+            BlockPos c = stage.at(0, 0, 6);
+            for (int x : new int[] {-2, 2}) {
+                for (int z : new int[] {-1, 1}) {
+                    stage.set(c.offset(x, 0, z), Blocks.BLACK_CONCRETE.defaultBlockState());
+                }
+            }
+            for (int x = -3; x <= 3; x++) {
+                for (int z = -1; z <= 1; z++) {
+                    stage.set(c.offset(x, 1, z), Blocks.RED_CONCRETE.defaultBlockState());
+                    if (x >= -2 && x <= 1) {
+                        stage.set(c.offset(x, 2, z), Blocks.LIGHT_BLUE_STAINED_GLASS.defaultBlockState());
+                        stage.set(c.offset(x, 3, z), Blocks.RED_CONCRETE.defaultBlockState());
+                    }
+                }
+            }
+            for (int z : new int[] {-1, 1}) {
+                stage.set(c.offset(4, 1, z), headlight(Direction.EAST));
+                stage.set(c.offset(-4, 1, z), LightworksBlocks.TAIL_LIGHT.getDefaultState()
+                        .setValue(SignalLampBlock.FACING, Direction.WEST));
+            }
+            stage.hover(10, 2.5, -2);
+            SelfTestBridge.focus = Vec3.atCenterOf(stage.at(1, 1, 6));
+            return new BlockPos[] {c.offset(-4, 0, -1), c.offset(4, 3, 1)};
+        });
+    }
+
+    /**
+     * Mod-page still: a small airship, a white wool envelope over a plank gondola hung on fences, made a Sable vehicle
+     * and flying slowly east: Headlights in front, Tail Lights behind, a Searchlight under the gondola lighting the
+     * grass ahead, red and green Edge Lights on its sides and a Warning Light on top. Seen from the side. Needs Sable.
+     */
+    static Script showcaseAirship() {
+        return vehicleShot("showcase-airship", stage -> {
+            BlockPos[] box = airship(stage);
+            stage.hover(-3, 3, -12);
+            SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 7, 6));
+            return box;
+        });
+    }
+
+    /**
+     * Mod-page banner: a hot-air balloon coming down over a paved runway at night, a real one: Create Aeronautics'
+     * envelope round a powered Hot Air Burner, made a Sable vehicle (Aeronautics blocks are looked up by name, so nothing
+     * here refers to its code; without it or Sable the scene is skipped). The shot is taken while it is still placed
+     * blocks, since a beam stops on a Sable vehicle but paints no colour on it; then it is made a
+     * vehicle with physics running, and a second shot shows it rising on its own. Red, green and blue Searchlights beside the runway mix
+     * on the balloon's side; the balloon's Searchlight lights the runway ahead and its Headlights look down it; white Edge Lights line the runway, green across the near end and red across the far end;
+     * a lighthouse on a headland in the lake to the east turns a Rotating Beacon. Hills and trees rise behind the runway on
+     * the left and sand lines the shore. Seen from the south-west, the airship right of the middle, the lighthouse near the
+     * right edge and the runway running off into the dark on the left, under the title.
+     */
+    static Script showcaseBanner() {
+        BlockPos[] motor = new BlockPos[1];
+        BlockPos[][] balloon = new BlockPos[1][];
+        if (!ModList.get().isLoaded("sable") || !ModList.get().isLoaded("aeronautics")) {
+            return new Script("showcase-banner")
+                    .run(stage -> stage.log("showcase-banner: skipped, it needs Sable and Create Aeronautics"));
+        }
+        return new Script("showcase-banner")
+                .run(stage -> {
+                    stage.night();
+                    lawn(stage);
+                    SelfTestBridge.bright = true;
+                    // The lake east of the runway, two blocks deep, reaching past the horizon so its edges never show, and
+                    // a sandy shore along it
+                    for (BlockPos pos : BlockPos.betweenClosed(stage.at(14, -2, -110), stage.at(110, -1, 40))) {
+                        stage.set(pos, Blocks.WATER.defaultBlockState());
+                    }
+                    for (BlockPos pos : BlockPos.betweenClosed(stage.at(11, -1, -110), stage.at(13, -1, 40))) {
+                        stage.set(pos, Blocks.SAND.defaultBlockState());
+                    }
+                    hill(stage, stage.at(-25, 0, -45), 22, 7);
+                    hill(stage, stage.at(-6, 0, -78), 18, 5);
+                    for (int[] at : new int[][] {{-8, -10}, {-15, -22}, {-3, -28}, {-20, -6}, {-11, -40}}) {
+                        tree(stage, stage.at(at[0], 0, at[1]));
+                    }
+                    // Runway: paving with dashes down the middle, Edge Lights along it
+                    for (int x = 3; x <= 9; x++) {
+                        for (int z = -34; z <= 22; z++) {
+                            boolean dash = x == 6 && Math.floorMod(z, 6) < 3;
+                            stage.set(stage.at(x, -1, z), (dash ? Blocks.WHITE_CONCRETE : Blocks.GRAY_CONCRETE).defaultBlockState());
+                        }
+                    }
+                    for (int z = -32; z <= 20; z += 4) {
+                        for (int x : new int[] {2, 10}) {
+                            stage.set(stage.at(x, 0, z), LightworksBlocks.EDGE_LIGHT.getDefaultState()
+                                    .setValue(EdgeLightBlock.COLOUR, DyeColor.WHITE));
+                        }
+                    }
+                    for (int x = 3; x <= 9; x += 2) {
+                        stage.set(stage.at(x, 0, 22), LightworksBlocks.EDGE_LIGHT.getDefaultState()
+                                .setValue(EdgeLightBlock.COLOUR, DyeColor.GREEN));
+                        stage.set(stage.at(x, 0, -34), LightworksBlocks.EDGE_LIGHT.getDefaultState()
+                                .setValue(EdgeLightBlock.COLOUR, DyeColor.RED));
+                    }
+                    BlockPos[] box = hotAirBalloon(stage, stage.at(6, 4, 6));
+                    // Red, green and blue Searchlights west of the runway, their squares overlapping on the balloon's side
+                    DyeColor[] colours = {DyeColor.RED, DyeColor.LIME, DyeColor.BLUE};
+                    Vec3[] targets = {new Vec3(1.2, 11.0, 5.0), new Vec3(1.2, 11.0, 7.2), new Vec3(1.4, 12.6, 6.1)};
+                    for (int i = 0; i < colours.length; i++) {
+                        BlockPos pos = stage.at(-7, 0, 3 + 3 * i);
+                        stage.set(pos, searchlight(Direction.UP));
+                        DirectionalLightBlockEntity light = stage.lightAt(pos);
+                        light.aimAlong(targets[i].add(Vec3.atLowerCornerOf(stage.origin)).subtract(Vec3.atCenterOf(pos)));
+                        light.lightState().setColour(colours[i]);
+                        light.notifyUpdate();
+                    }
+                    motor[0] = lighthouse(stage, stage.at(36, 0, 6));
+                    setMotorSpeed(stage, motor[0], 4);
+                    balloon[0] = box;
+                    stage.hover(-15, 7, 24);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(-5, 8, 2));
+                })
+                .waitTicks(100)
+                .shot("showcase-banner")
+                .run(stage -> {
+                    BlockPos[] box = balloon[0];
+                    stage.run("sable assemble area " + box[0].getX() + " " + box[0].getY() + " " + box[0].getZ() + " "
+                            + box[1].getX() + " " + box[1].getY() + " " + box[1].getZ());
+                })
+                .waitTicks(40)
+                .shot("showcase-banner-rising")
+                .run(stage -> {
+                    stage.run("sable remove @l");
+                    SelfTestBridge.focus = null;
+                    SelfTestBridge.bright = false;
+                    setMotorSpeed(stage, motor[0], 0);
+                    stage.discardContraptions(motor[0], 8);
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * A simple hot-air balloon that really flies, its basket floor centred on {@code g}: a round shell of Create
+     * Aeronautics' white envelope, open at the bottom over a Hot Air Burner in a plank basket, the burner powered by a
+     * redstone block beside it and turned up to full; fences from the basket's corners to the envelope. Headlights at the
+     * front of the basket, Tail Lights at the back, red and green Edge Lights on its left and right rim, a Searchlight
+     * under it lighting the ground ahead and a Warning Light on top. Returns the corners of what to assemble.
+     */
+    private static BlockPos[] hotAirBalloon(Stage stage, BlockPos g) {
+        BlockState envelope = aeronautics("white_envelope");
+        BlockPos centre = g.above(8);
+        for (int x = -6; x <= 6; x++) {
+            for (int y = -6; y <= 6; y++) {
+                for (int z = -6; z <= 6; z++) {
+                    double d = Math.sqrt(x * x + y * y + z * z);
+                    boolean opening = y < -3 && Math.abs(x) <= 1 && Math.abs(z) <= 1;
+                    if (d <= 5.6 && d > 4.5 && !opening) {
+                        stage.set(centre.offset(x, y, z), envelope);
+                    }
+                }
+            }
+        }
+        for (int x = -1; x <= 1; x++) {
+            for (int z = -1; z <= 1; z++) {
+                stage.set(g.offset(x, 0, z), Blocks.SPRUCE_PLANKS.defaultBlockState());
+                boolean rim = x != 0 || z != 0;
+                if (rim && !(x == 0 && z == 1)) {
+                    stage.set(g.offset(x, 1, z), Blocks.SPRUCE_PLANKS.defaultBlockState());
+                }
+            }
+        }
+        for (int x : new int[] {-1, 1}) {
+            for (int z : new int[] {-1, 1}) {
+                for (int y = 2; y <= 4; y++) {
+                    stage.set(g.offset(x, y, z), Blocks.SPRUCE_FENCE.defaultBlockState());
+                }
+            }
+        }
+        BlockPos burner = g.above();
+        stage.set(burner, aeronautics("adjustable_burner"));
+        stage.set(g.offset(0, 1, 1), Blocks.REDSTONE_BLOCK.defaultBlockState());
+        if (stage.level.getBlockEntity(burner) instanceof SmartBlockEntity be) {
+            ScrollValueBehaviour output = be.getBehaviour(ScrollValueBehaviour.TYPE);
+            if (output != null) {
+                output.setValue(Integer.MAX_VALUE);
+            }
+        }
+        for (int x : new int[] {-1, 1}) {
+            stage.set(g.offset(x, 1, -2), headlight(Direction.NORTH));
+            stage.lightAt(g.offset(x, 1, -2)).aimAlong(new Vec3(0, -0.3, -1));
+            stage.set(g.offset(x, 1, 2), LightworksBlocks.TAIL_LIGHT.getDefaultState()
+                    .setValue(SignalLampBlock.FACING, Direction.SOUTH));
+        }
+        for (int z : new int[] {-1, 0}) {
+            stage.set(g.offset(-2, 1, z), LightworksBlocks.EDGE_LIGHT.getDefaultState()
+                    .setValue(EdgeLightBlock.FACING, Direction.WEST).setValue(EdgeLightBlock.COLOUR, DyeColor.RED));
+            stage.set(g.offset(2, 1, z), LightworksBlocks.EDGE_LIGHT.getDefaultState()
+                    .setValue(EdgeLightBlock.FACING, Direction.EAST).setValue(EdgeLightBlock.COLOUR, DyeColor.GREEN));
+        }
+        stage.set(g.offset(0, -1, -1), searchlight(Direction.DOWN));
+        stage.lightAt(g.offset(0, -1, -1)).aimAlong(new Vec3(0, -1, -0.7));
+        stage.set(centre.above(6), LightworksBlocks.WARNING_LIGHT.getDefaultState()
+                .setValue(SignalLampBlock.FACING, Direction.UP));
+        return new BlockPos[] {g.offset(-6, -1, -6), centre.offset(6, 6, 6)};
+    }
+
+    /** A Create Aeronautics block by name, so no code here refers to it; only used when it is installed. */
+    private static BlockState aeronautics(String name) {
+        return BuiltInRegistries.BLOCK.get(ResourceLocation.fromNamespaceAndPath("aeronautics", name)).defaultBlockState();
+    }
+
+    /**
+     * A lighthouse on a little headland in the lake, its foot at {@code base}: a round tower tapering upwards in red and
+     * white bands, a gallery with a rail, and an open lantern under a red roof where a Creative Motor turns a Rotating
+     * Beacon. Returns the motor.
+     */
+    private static BlockPos lighthouse(Stage stage, BlockPos base) {
+        for (int dx = -7; dx <= 7; dx++) {
+            for (int dz = -7; dz <= 7; dz++) {
+                double d = Math.sqrt(dx * dx + dz * dz);
+                if (d > 7) {
+                    continue;
+                }
+                int top = d < 5 ? (d < 3.5 ? 1 : 0) : -1;
+                for (int y = -2; y <= top; y++) {
+                    BlockState state = y < top ? Blocks.STONE.defaultBlockState()
+                            : d < 3.5 ? Blocks.GRASS_BLOCK.defaultBlockState() : Blocks.SAND.defaultBlockState();
+                    stage.set(base.offset(dx, y, dz), state);
+                }
+            }
+        }
+        BlockPos foot = base.above(2);
+        int height = 13;
+        for (int y = 0; y < height; y++) {
+            double radius = 2.6 - y * 0.08;
+            BlockState band = (y / 3) % 2 == 0 ? Blocks.WHITE_CONCRETE.defaultBlockState()
+                    : Blocks.RED_CONCRETE.defaultBlockState();
+            for (int dx = -3; dx <= 3; dx++) {
+                for (int dz = -3; dz <= 3; dz++) {
+                    if (dx * dx + dz * dz <= radius * radius) {
+                        stage.set(foot.offset(dx, y, dz), band);
+                    }
+                }
+            }
+        }
+        BlockPos gallery = foot.above(height);
+        for (int dx = -3; dx <= 3; dx++) {
+            for (int dz = -3; dz <= 3; dz++) {
+                double d2 = dx * dx + dz * dz;
+                if (d2 <= 10) {
+                    stage.set(gallery.offset(dx, 0, dz), Blocks.SMOOTH_STONE.defaultBlockState());
+                }
+                if (d2 > 5 && d2 <= 10) {
+                    stage.set(gallery.offset(dx, 1, dz), Blocks.IRON_BARS.defaultBlockState());
+                }
+            }
+        }
+        for (int dx : new int[] {-1, 1}) {
+            for (int dz : new int[] {-1, 1}) {
+                for (int y = 1; y <= 2; y++) {
+                    stage.set(gallery.offset(dx, y, dz), Blocks.IRON_BARS.defaultBlockState());
+                }
+            }
+        }
+        BlockPos motor = gallery.above();
+        stage.set(motor, AllBlocks.CREATIVE_MOTOR.getDefaultState().setValue(CreativeMotorBlock.FACING, Direction.UP));
+        stage.set(motor.above(), LightworksBlocks.ROTATING_BEACON.getDefaultState()
+                .setValue(RotatingBeaconBlock.FACING, Direction.UP));
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                stage.set(gallery.offset(dx, 3, dz), Blocks.RED_CONCRETE.defaultBlockState());
+            }
+        }
+        stage.set(gallery.above(4), Blocks.LIGHTNING_ROD.defaultBlockState());
+        return motor;
+    }
+
+    /** A round grassy hill on the flat ground, {@code height} blocks high in the middle and {@code radius} across. */
+    private static void hill(Stage stage, BlockPos centre, int radius, int height) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                double f = 1 - (dx * dx + dz * dz) / (double) (radius * radius);
+                int top = (int) Math.round(height * Math.max(f, 0));
+                // Grass all through, so every step shows a grassy edge rather than bare dirt
+                for (int y = 0; y < top; y++) {
+                    stage.set(centre.offset(dx, y, dz), Blocks.GRASS_BLOCK.defaultBlockState());
+                }
+            }
+        }
+    }
+
+    /** An oak, five logs and a round crown of leaves, standing on {@code base}. */
+    private static void tree(Stage stage, BlockPos base) {
+        BlockState leaves = Blocks.OAK_LEAVES.defaultBlockState().setValue(BlockStateProperties.PERSISTENT, true);
+        for (int y = 3; y <= 6; y++) {
+            int r = y >= 5 ? 1 : 2;
+            for (int x = -r; x <= r; x++) {
+                for (int z = -r; z <= r; z++) {
+                    if (Math.abs(x) + Math.abs(z) < 2 * r || r == 1 && y == 5) {
+                        stage.set(base.offset(x, y, z), leaves);
+                    }
+                }
+            }
+        }
+        for (int y = 0; y < 5; y++) {
+            stage.set(base.above(y), Blocks.OAK_LOG.defaultBlockState());
+        }
+    }
+
+    /** Builds the showcase airship round origin + (0, 5, 6) and returns the corners of what to assemble. */
+    private static BlockPos[] airship(Stage stage) {
+        BlockPos c = stage.at(0, 5, 6);
+        for (int x = -2; x <= 2; x++) {
+            for (int z = -1; z <= 1; z++) {
+                stage.set(c.offset(x, 0, z), Blocks.SPRUCE_PLANKS.defaultBlockState());
+            }
+        }
+        for (int x : new int[] {-2, 2}) {
+            for (int y = 1; y <= 2; y++) {
+                stage.set(c.offset(x, y, 0), Blocks.SPRUCE_FENCE.defaultBlockState());
+            }
+        }
+        for (int x = -7; x <= 7; x++) {
+            for (int y = -3; y <= 3; y++) {
+                for (int z = -3; z <= 3; z++) {
+                    double e = (x / 6.5) * (x / 6.5) + (y / 2.7) * (y / 2.7) + (z / 2.7) * (z / 2.7);
+                    if (e <= 1) {
+                        stage.set(c.offset(x, 5 + y, z), Blocks.WHITE_WOOL.defaultBlockState());
+                    }
+                }
+            }
+        }
+        for (int z : new int[] {-1, 1}) {
+            stage.set(c.offset(3, 0, z), headlight(Direction.EAST));
+            stage.set(c.offset(-3, 0, z), LightworksBlocks.TAIL_LIGHT.getDefaultState()
+                    .setValue(SignalLampBlock.FACING, Direction.WEST));
+            for (int x : new int[] {-1, 1}) {
+                stage.set(c.offset(x, 1, z), LightworksBlocks.EDGE_LIGHT.getDefaultState()
+                        .setValue(EdgeLightBlock.COLOUR, z < 0 ? DyeColor.RED : DyeColor.GREEN));
+            }
+        }
+        stage.set(c.offset(1, -1, 0), searchlight(Direction.DOWN));
+        stage.lightAt(c.offset(1, -1, 0)).aimAlong(new Vec3(0.6, -1, 0));
+        stage.set(c.offset(0, 8, 0), LightworksBlocks.WARNING_LIGHT.getDefaultState()
+                .setValue(SignalLampBlock.FACING, Direction.UP));
+        return new BlockPos[] {c.offset(-7, -1, -3), c.offset(7, 8, 3)};
+    }
+
+    /**
+     * Builds with {@code build} (which returns the corners of what to assemble), makes it a Sable vehicle with physics
+     * paused, moves it slowly east and takes shot {@code name} on the way, since Headlights light only on a vehicle going
+     * their way.
+     */
+    private static Script vehicleShot(String name, Function<Stage, BlockPos[]> build) {
+        Script script = new Script(name);
+        if (!ModList.get().isLoaded("sable")) {
+            return script.run(stage -> stage.log("%s: skipped, Sable is not installed", name));
+        }
+        return script.run(stage -> {
+                    stage.night();
+                    lawn(stage);
+                    SelfTestBridge.bright = true;
+                    BlockPos[] box = build.apply(stage);
+                    stage.run("sable paused true");
+                    stage.run("sable assemble area " + box[0].getX() + " " + box[0].getY() + " " + box[0].getZ() + " "
+                            + box[1].getX() + " " + box[1].getY() + " " + box[1].getZ());
+                })
+                .waitTicks(40)
+                .repeat(80, (stage, i) -> {
+                    stage.run("sable physics translation @l add 0.05 0 0 global");
+                    if (i == 40) {
+                        SelfTestBridge.requestShot(name);
+                    }
+                })
+                .run(stage -> {
+                    stage.run("sable remove @l");
+                    stage.run("sable paused false");
+                    SelfTestBridge.focus = null;
+                    SelfTestBridge.bright = false;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * Grass over the ground round the test site, hiding the dirt older runs left where their blocks stood, and no items
+     * lying on it.
+     */
+    private static void lawn(Stage stage) {
+        stage.level.getEntitiesOfClass(ItemEntity.class, new AABB(stage.origin).inflate(24)).forEach(Entity::discard);
+        for (BlockPos pos : BlockPos.betweenClosed(stage.at(-16, -1, -12), stage.at(16, -1, 16))) {
+            if (stage.level.getBlockState(pos).is(Blocks.DIRT)) {
+                stage.set(pos, Blocks.GRASS_BLOCK.defaultBlockState());
+            }
+        }
     }
 
     /**
