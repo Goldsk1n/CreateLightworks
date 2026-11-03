@@ -5,11 +5,13 @@ import com.goldskinmc.lightworks.beam.BeamFrame;
 import com.goldskinmc.lightworks.beam.BeamRays;
 import com.goldskinmc.lightworks.beam.BeamSpot;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
+import com.goldskinmc.lightworks.host.SableHost;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -201,6 +203,17 @@ public final class BeamTrace {
         }
         Vec3 end = result.getLocation();
         // clip() can hand back a mutable position that it reuses; keep our own copy
-        return new Hit(end, result.getBlockPos().immutable(), end.distanceTo(origin));
+        BlockPos block = result.getBlockPos().immutable();
+        if (level instanceof Level world) {
+            Vec3 inWorld = SableHost.outOfVehicle(world, end);
+            if (inWorld != end) {
+                // The ray hit a Sable vehicle, reported in the vehicle's own coordinates: the beam stops where that is
+                // in the world, and the block it lands on is the world block just inside the vehicle's surface (air
+                // in the world, so light goes in front of it and nothing there is painted)
+                end = inWorld;
+                block = BlockPos.containing(end.add(dir.scale(0.01)));
+            }
+        }
+        return new Hit(end, block, end.distanceTo(origin));
     }
 }
