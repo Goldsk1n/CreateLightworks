@@ -16,7 +16,16 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 sourceSets.main.resources {
     srcDir('src/generated/resources')
     exclude('**/*.bbmodel')
-    exclude('src/generated/**/.cache')
+    // Patterns are relative to each resource folder; datagen's cache sits at the top of src/generated/resources
+    exclude('.cache/**')
+}
+
+// Dev runs load classes and resources from the build folders, so the self-test, the game tests and their structure
+// templates stay out of the release jar and work as before in runClient and runGameTestServer
+tasks.named('jar', Jar) {
+    exclude('com/goldskinmc/lightworks/debug/selftest/**')
+    exclude('com/goldskinmc/lightworks/gametest/**')
+    exclude('data/lightworks/structure/**')
 }
 
 repositories {
