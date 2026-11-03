@@ -96,6 +96,7 @@ final class Scenarios {
         ALL.put("flood-block", Scenarios::floodBlock);
         ALL.put("block-change", Scenarios::blockChange);
         ALL.put("day-colour", Scenarios::dayColour);
+        ALL.put("glare", Scenarios::glare);
         ALL.put("held", Scenarios::held);
         ALL.put("shapes", Scenarios::shapes);
         ALL.put("wall-sides", Scenarios::wallSides);
@@ -746,6 +747,48 @@ final class Scenarios {
             SelfTestBridge.focus = null;
             stage.restoreBlocks();
         });
+    }
+
+    /**
+     * Looking into a Searchlight aimed at the eye: a soft glow round its lens, which must not hide what is behind it;
+     * none from beside the beam, none with a wall between, a wider one from a Floodlight, and still one by day.
+     */
+    static Script glare() {
+        BlockPos[] lamp = new BlockPos[1];
+        return new Script("glare").run(stage -> {
+            stage.night();
+            lamp[0] = stage.at(0, 0, 0);
+            stage.set(lamp[0], searchlight(Direction.UP));
+            stage.lightAt(lamp[0]).aimAlong(new Vec3(0, 0.2, 1));
+            stage.hover(0, 1, 10);
+            SelfTestBridge.focus = Vec3.atCenterOf(lamp[0]);
+        }).waitTicks(30).shot("glare-in-beam").run(stage -> stage.hover(6, 1, 10)).waitTicks(10).shot("glare-aside")
+                .run(stage -> {
+                    stage.hover(0, 1, 10);
+                    for (int x = -1; x <= 1; x++) {
+                        for (int y = 0; y <= 2; y++) {
+                            stage.set(stage.at(x, y, 4), Blocks.GLASS.defaultBlockState());
+                        }
+                    }
+                }).waitTicks(10).shot("glare-through-glass").run(stage -> {
+                    for (int x = -1; x <= 1; x++) {
+                        for (int y = 0; y <= 2; y++) {
+                            stage.set(stage.at(x, y, 4), Blocks.STONE.defaultBlockState());
+                        }
+                    }
+                }).waitTicks(10).shot("glare-wall").run(stage -> {
+                    for (int x = -1; x <= 1; x++) {
+                        for (int y = 0; y <= 2; y++) {
+                            stage.set(stage.at(x, y, 4), Blocks.AIR.defaultBlockState());
+                        }
+                    }
+                    stage.set(lamp[0], LightworksBlocks.FLOODLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.UP));
+                    stage.lightAt(lamp[0]).aimAlong(new Vec3(0, 0.2, 1));
+                }).waitTicks(20).shot("glare-floodlight").run(stage -> stage.level.setDayTime(6000)).waitTicks(10)
+                .shot("glare-day").run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
     }
 
     /** 50 fixed Floodlights aimed at the ground: what their rays and light blocks cost the server. */

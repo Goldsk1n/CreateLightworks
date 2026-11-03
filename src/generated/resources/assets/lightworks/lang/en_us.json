@@ -87,6 +87,7 @@
   "lightworks.configuration.colouredLight": "Coloured light",
   "lightworks.configuration.debugOverlay": "Debug overlay (F3)",
   "lightworks.configuration.invertRedstone": "Invert redstone",
+  "lightworks.configuration.lensGlow": "Lens glow",
   "lightworks.configuration.maxBeamRange": "Longest beam",
   "lightworks.configuration.serverLightBlocks": "Server light blocks",
   "lightworks.goggles.brightness": "%s of 15",
