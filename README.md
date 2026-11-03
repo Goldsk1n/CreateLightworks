@@ -57,6 +57,10 @@ Requires JDK 21.
 ```
 
 
+## Bugs and suggestions
+
+On [GitHub Issues](https://github.com/Goldsk1n/CreateLightworks/issues).
+
 ## Licence
 
 Code: [MIT](LICENSE). The art is our own; a few models show Create's textures and
