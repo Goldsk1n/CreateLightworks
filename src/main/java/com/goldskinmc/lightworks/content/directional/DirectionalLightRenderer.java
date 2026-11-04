@@ -1,6 +1,7 @@
 package com.goldskinmc.lightworks.content.directional;
 
 import com.goldskinmc.lightworks.content.LightType;
+import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.light.BeamTrace;
 import com.goldskinmc.lightworks.light.BeamVisual;
 import com.goldskinmc.lightworks.render.MountFrame;
@@ -41,10 +42,12 @@ public class DirectionalLightRenderer implements BlockEntityRenderer<Directional
         if (inContraption) {
             return;
         }
+        long start = Timer.start();
         Vec3 direction = light.beamDirection(partialTick);
         Vector3f axis = new Vector3f((float) direction.x, (float) direction.y, (float) direction.z);
         Vector3f lens = new Vector3f(0.5f).add(new Vector3f(axis).mul((float) light.lightType().lensDistance()));
         BeamVisual.render(poseStack, buffers, lens, axis, light.beam(), light.lightState().rgb(light.lightType()));
+        Timer.LIGHT_RENDER.stop(start);
     }
 
     /** The base of a light on a Pan-Tilt Head, bolted to the turntable; on anything else it is the block model. */

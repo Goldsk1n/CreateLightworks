@@ -52,6 +52,13 @@ final class SelfTestBridge {
     /** While set, the client saves a frame every tick under this name (a clip). */
     @Nullable
     static volatile String recording;
+    /**
+     * While set, the client flies the player at this speed (blocks a tick) every tick: smooth movement, drawn between
+     * ticks, which a teleport each tick is not. Each frame then also checks that the camera our layers are drawn from is
+     * where the terrain was drawn from.
+     */
+    @Nullable
+    static volatile Vec3 velocity;
 
     /** While set, the client measures every moving light's spot against the ground at {@code probeGroundY}. */
     @Nullable
@@ -80,6 +87,7 @@ final class SelfTestBridge {
         beamsOff = false;
         frameStats = null;
         recording = null;
+        velocity = null;
         probe = null;
         probeAxis = null;
     }

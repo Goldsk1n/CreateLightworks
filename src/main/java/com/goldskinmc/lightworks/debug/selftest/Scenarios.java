@@ -134,6 +134,9 @@ final class Scenarios {
         ALL.put("closeup", Scenarios::closeup);
         ALL.put("train", Scenarios::train);
         ALL.put("vehicle-beam", Scenarios::vehicleBeam);
+        ALL.put("walk-past", Scenarios::walkPast);
+        ALL.put("beam-cross", Scenarios::beamCross);
+        ALL.put("replica", Scenarios::replica);
         ALL.put("showcase-aim", Scenarios::showcaseAim);
         ALL.put("showcase-signals", Scenarios::showcaseSignals);
         ALL.put("showcase-colour", Scenarios::showcaseColour);
@@ -1805,6 +1808,200 @@ final class Scenarios {
         return script.run(stage -> {
                     stage.run("sable remove @l");
                     stage.run("sable paused false");
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * A Floodlight and a Searchlight at the foot of a stepped grassy slope, both lighting it, filmed while the camera walks
+     * past along the bottom, as a player would. The lit squares on the slope must stay in every frame of the clip: they
+     * once went out frame by frame while the camera moved, losing the depth test to the slope they lie on. Each tick also
+     * logs how many times the lights' renderers ran per frame (2 when nothing skips them; Entity Culling, with
+     * {@code -Pdev_conflicts=entityculling}, skips block entities it thinks are hidden, and the visible beam goes with
+     * them) and how many faces are painted (steady for fixed lights). Then the camera flies past fast and close, a block a
+     * tick three blocks from the slope (filmed: the squares must stay there too), and looks down on the lit steps from
+     * above, where some of their sides face away, and at a lit step's edge from close by and a little above: no bright
+     * lines may run along the steps' edges.
+     */
+    static Script walkPast() {
+        long[] last = new long[2];
+        return new Script("walk-past")
+                .run(stage -> {
+                    stage.night();
+                    for (int x = -14; x <= 14; x++) {
+                        for (int z = 3; z <= 22; z++) {
+                            // Every third column a step further on, so the steps have sides as natural ground does
+                            int top = Math.min(14, z - 2 - (Math.floorMod(x, 3) == 0 ? 1 : 0));
+                            for (int y = 0; y < top; y++) {
+                                stage.set(stage.at(x, y, z), y == top - 1 ? Blocks.GRASS_BLOCK.defaultBlockState()
+                                        : Blocks.DIRT.defaultBlockState());
+                            }
+                        }
+                    }
+                    BlockPos flood = stage.at(-3, 0, 1);
+                    stage.set(flood, LightworksBlocks.FLOODLIGHT.getDefaultState()
+                            .setValue(DirectionalLightBlock.FACING, Direction.UP));
+                    stage.lightAt(flood).aimAlong(new Vec3(0, 0.5, 1));
+                    BlockPos search = stage.at(3, 0, 1);
+                    stage.set(search, searchlight(Direction.UP));
+                    stage.lightAt(search).aimAlong(new Vec3(0.4, 0.8, 1));
+                    stage.hover(-12, 1, -5);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 4, 8));
+                })
+                .waitTicks(60)
+                .shot("walk-past-0-start")
+                .run(stage -> {
+                    last[0] = Timer.LIGHT_RENDER.calls();
+                    last[1] = Timer.TINT.calls();
+                    SelfTestBridge.recording = "walk-past";
+                })
+                .repeat(160, (stage, i) -> {
+                    stage.hover(-12 + i * 0.15, 1, -5 + i * 0.02);
+                    long renders = Timer.LIGHT_RENDER.calls() - last[0];
+                    long frames = Timer.TINT.calls() - last[1];
+                    last[0] = Timer.LIGHT_RENDER.calls();
+                    last[1] = Timer.TINT.calls();
+                    stage.log("walk-past: tick %d camera x %.2f: %d light renders in %d frames, %d painted faces", i,
+                            -12 + i * 0.15, renders, frames, ProjectedTint.activeFaces());
+                })
+                .run(stage -> SelfTestBridge.recording = null)
+                .shot("walk-past-1-end")
+                .run(stage -> {
+                    stage.hover(-14, 2, 0);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(0, 3, 6));
+                })
+                .waitTicks(20)
+                .run(stage -> SelfTestBridge.recording = "walk-past-fast")
+                .repeat(28, (stage, i) -> stage.hover(-14 + i, 2, 0))
+                // The same flown smoothly, as a player flies: moved between ticks, not teleported once a tick
+                .run(stage -> {
+                    SelfTestBridge.recording = null;
+                    stage.hover(-14, 2, -1);
+                })
+                .waitTicks(20)
+                .run(stage -> {
+                    SelfTestBridge.recording = "walk-past-smooth";
+                    SelfTestBridge.velocity = new Vec3(0.6, 0, 0.02);
+                })
+                .waitTicks(45)
+                .run(stage -> SelfTestBridge.velocity = new Vec3(-0.6, 0.05, 0))
+                .waitTicks(45)
+                .run(stage -> {
+                    SelfTestBridge.velocity = null;
+                    SelfTestBridge.recording = null;
+                    stage.hover(-5, 16, -4);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(-1, 4, 8));
+                })
+                .waitTicks(40)
+                .shot("walk-past-2-above")
+                .run(stage -> {
+                    stage.hover(-7, 10, 2);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(-2, 4, 7));
+                })
+                .waitTicks(40)
+                .shot("walk-past-3-above-close")
+                .run(stage -> {
+                    stage.hover(-3.5, 4.2, 3.6);
+                    SelfTestBridge.focus = new Vec3(stage.origin.getX() - 3, stage.origin.getY() + 4, stage.origin.getZ() + 6);
+                })
+                .waitTicks(40)
+                .shot("walk-past-4-edge-close")
+                .run(stage -> {
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * Someone else's ground round a light, copied block by block from a world: a JSON list of {@code [dx, dy, dz,
+     * "block[state]"]} relative to the light, the file named by the system property {@code lightworks.replica}. A
+     * Searchlight shining level and east is placed where the light was, 14 above the ground here so the copy's lowest
+     * blocks stand on it, and the camera flies smoothly along the beam and back over the lit ground, filmed, then looks
+     * down on it from close by. For reproducing what a player saw in their own world.
+     */
+    static Script replica() {
+        String file = System.getProperty("lightworks.replica");
+        if (file == null) {
+            return new Script("replica").run(stage -> stage.log("replica: skipped, -Dlightworks.replica is not set"));
+        }
+        BlockPos[] light = new BlockPos[1];
+        return new Script("replica")
+                .run(stage -> {
+                    stage.night();
+                    light[0] = stage.at(0, 14, 0);
+                    try (java.io.Reader reader = java.nio.file.Files.newBufferedReader(java.nio.file.Path.of(file))) {
+                        com.google.gson.JsonArray blocks = com.google.gson.JsonParser.parseReader(reader).getAsJsonArray();
+                        int placed = 0;
+                        for (com.google.gson.JsonElement element : blocks) {
+                            com.google.gson.JsonArray block = element.getAsJsonArray();
+                            BlockState state = net.minecraft.commands.arguments.blocks.BlockStateParser.parseForBlock(
+                                    BuiltInRegistries.BLOCK.asLookup(), block.get(3).getAsString(), false).blockState();
+                            stage.set(light[0].offset(block.get(0).getAsInt(), block.get(1).getAsInt(), block.get(2).getAsInt()),
+                                    state);
+                            placed++;
+                        }
+                        stage.log("replica: placed %d blocks", placed);
+                    } catch (Exception e) {
+                        stage.log("replica: could not read %s: %s", file, e);
+                    }
+                    stage.set(light[0], searchlight(Direction.UP));
+                    stage.lightAt(light[0]).aimAlong(new Vec3(1, 0, 0));
+                    stage.hover(2, 15.4, -3);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(12, 14, 1));
+                })
+                .waitTicks(100)
+                .shot("replica-0-start")
+                .run(stage -> {
+                    SelfTestBridge.recording = "replica-fly";
+                    SelfTestBridge.velocity = new Vec3(0.35, 0, 0.03);
+                })
+                .waitTicks(60)
+                .run(stage -> SelfTestBridge.velocity = new Vec3(-0.35, 0.02, 0.05))
+                .waitTicks(60)
+                .run(stage -> {
+                    SelfTestBridge.velocity = null;
+                    SelfTestBridge.recording = null;
+                    stage.hover(11, 18, 1);
+                    SelfTestBridge.focus = Vec3.atCenterOf(stage.at(14, 13, 2));
+                })
+                .waitTicks(40)
+                .run(stage -> SelfTestBridge.recording = "replica-hover")
+                .waitTicks(80)
+                .run(stage -> {
+                    SelfTestBridge.recording = null;
+                    SelfTestBridge.focus = null;
+                    stage.restoreBlocks();
+                });
+    }
+
+    /**
+     * A level Searchlight shining east along a stone wall, with the camera crossing its beam halfway along, slowly from
+     * south of it to north, looking at the wall. Filmed: the haze of the beam's sides must fade in and out as the camera
+     * nears them, with no frame-to-frame jump in brightness where the camera passes through a side (logged).
+     */
+    static Script beamCross() {
+        return new Script("beam-cross")
+                .run(stage -> {
+                    stage.night();
+                    for (int x = -2; x <= 24; x++) {
+                        for (int y = 0; y <= 7; y++) {
+                            stage.set(stage.at(x, y, 6), Blocks.STONE.defaultBlockState());
+                        }
+                    }
+                    BlockPos light = stage.at(0, 2, 0);
+                    stage.set(light, searchlight(Direction.UP));
+                    stage.lightAt(light).aimAlong(new Vec3(1, 0, 0));
+                    stage.hover(10, 1.4, -4);
+                    SelfTestBridge.focus = new Vec3(stage.origin.getX() + 10.5, stage.origin.getY() + 2.5,
+                            stage.origin.getZ() + 6);
+                })
+                .waitTicks(60)
+                .run(stage -> SelfTestBridge.recording = "beam-cross")
+                // From four blocks south of the beam to four north, a tenth of a block a tick
+                .repeat(80, (stage, i) -> stage.hover(10, 1.4, -4 + i * 0.1))
+                .run(stage -> {
+                    SelfTestBridge.recording = null;
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
                 });

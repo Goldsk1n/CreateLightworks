@@ -65,6 +65,7 @@ public final class SelfTestClient {
     /** Client ticks in the world before the scripts may start; the render thread runs no ticks while shaders compile. */
     private static final int READY_AFTER_TICKS = 100;
     private static final boolean QUIT_WHEN_DONE = Boolean.getBoolean("lightworks.selftest.quit");
+    private static final boolean EVERY_FRAME = Boolean.getBoolean("lightworks.selftest.everyFrame");
     /** Ticks between the end of the test and quitting, so the last screenshots finish saving. */
     private static final int QUIT_DELAY_TICKS = 60;
     private static int ticksSinceFinished;
@@ -117,6 +118,11 @@ public final class SelfTestClient {
             return;
         }
         wasInWorld = true;
+        Vec3 velocity = SelfTestBridge.velocity;
+        if (velocity != null) {
+            mc.player.getAbilities().flying = true;
+            mc.player.setDeltaMovement(velocity);
+        }
         if (!mc.isLocalServer() && ++ticksInWorld % MULTIPLAYER_LOG_INTERVAL == 0) {
             long moving = ClientBeams.snapshot().stream().filter(b -> b.tickBeam().moving()).count();
             long drawn = ClientBeams.snapshot().stream().filter(b -> b.beam().length() > 0).count();
@@ -191,11 +197,22 @@ public final class SelfTestClient {
         }
         showPonder(mc);
         takeRequestedShot(mc);
-        recordFrame(mc);
+        if (!EVERY_FRAME) {
+            recordFrame(mc);
+        }
         probeMovingSpots(mc.player);
         if (QUIT_WHEN_DONE && SelfTestBridge.finished && ++ticksSinceFinished == QUIT_DELAY_TICKS) {
             Lightworks.LOGGER.info("[selftest] quitting");
             mc.stop();
+        }
+    }
+
+    /** With {@code -Dlightworks.selftest.everyFrame=true}, clips keep every frame drawn, not one a tick. */
+    @SubscribeEvent
+    public static void onRenderFrameDone(RenderFrameEvent.Post event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (EVERY_FRAME && SelfTest.ENABLED && mc.level != null) {
+            recordFrame(mc);
         }
     }
 
@@ -219,9 +236,15 @@ public final class SelfTestClient {
         player.xRotO = pitch;
     }
 
-    /** Per frame: how far the lit spot is from where the beam lands in this frame's render pose. */
+    /**
+     * Per frame: how far the lit spot is from where the beam lands in this frame's render pose; and while the player is
+     * flown smoothly, whether the camera moved between drawing the terrain and drawing our layers.
+     */
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
+        if (SelfTestBridge.velocity != null) {
+            checkCamera(event);
+        }
         SpotProbe current = probe;
         Minecraft mc = Minecraft.getInstance();
         if (current == null || event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES || mc.level == null) {
@@ -239,6 +262,29 @@ public final class SelfTestClient {
             if (drawn != null) {
                 current.frame(Math.sqrt(sq(drawn.spotX() - spot.spotX()) + sq(drawn.spotY() - spot.spotY())
                         + sq(drawn.spotZ() - spot.spotZ())));
+            }
+        }
+    }
+
+    private static Vec3 terrainCamera;
+    private static int cameraFrames;
+    private static int cameraMoved;
+    private static double cameraMostMoved;
+
+    private static void checkCamera(RenderLevelStageEvent event) {
+        Vec3 camera = event.getCamera().getPosition();
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SOLID_BLOCKS) {
+            terrainCamera = camera;
+        } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES && terrainCamera != null) {
+            double moved = camera.distanceTo(terrainCamera);
+            cameraFrames++;
+            if (moved > 1e-4) {
+                cameraMoved++;
+                cameraMostMoved = Math.max(cameraMostMoved, moved);
+            }
+            if (cameraFrames % 120 == 0) {
+                Lightworks.LOGGER.info("[selftest] camera between terrain and layers: moved in {} of {} frames, at most {} blocks",
+                        cameraMoved, cameraFrames, String.format("%.4f", cameraMostMoved));
             }
         }
     }
@@ -365,7 +411,8 @@ public final class SelfTestClient {
         String name = SelfTestBridge.recording;
         if (name == null) {
             if (recordingName != null) {
-                Lightworks.LOGGER.info("[selftest] clip {}: {} frames at 20 per second", recordingName, recordedFrames);
+                Lightworks.LOGGER.info("[selftest] clip {}: {} frames{}", recordingName, recordedFrames,
+                        EVERY_FRAME ? ", every one drawn" : " at 20 per second");
                 recordingName = null;
             }
             return;
