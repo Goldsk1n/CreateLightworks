@@ -88,10 +88,13 @@ public final class ClientBeam {
     @Nullable
     private BeamSpot lastSpot;
     private double length;
-    /** How far each corner ray reached, by {@link BeamFrame#corner} index (the centre is {@link #length}). */
-    private final float[] cornerLengths = new float[CORNERS];
-    /** Corner length over centre length at the last corner trace. */
+    /** Corner length over centre length at the last corner trace, by {@link BeamFrame#corner} index. */
     private final float[] cornerRatios = new float[CORNERS];
+    /** How far each ray round the visible beam's rim reached ({@link BeamFrame#rimU}), and that over the centre's length. */
+    private final float[] rimLengths = new float[BeamFrame.RIM];
+    private final float[] rimRatios = new float[BeamFrame.RIM];
+    /** Whether each rim ray stopped on a block, rather than running out of range. */
+    private final boolean[] rimHits = new boolean[BeamFrame.RIM];
     private int ticksToCorners;
     /** Nearest place a corner or edge ray landed at the last corner trace, for when the centre ray misses. */
     @Nullable
@@ -325,8 +328,8 @@ public final class ClientBeam {
         boolean far = at.moving() && farFromCamera(at);
         // A centre ray that lands nowhere gives corners no length to keep, and the light goes where they land
         if (at.moving() && !far && centre.hitBlock() && --ticksToCorners > 0) {
-            for (int i = 0; i < CORNERS; i++) {
-                cornerLengths[i] = (float) Math.min(range, cornerRatios[i] * centre.distance());
+            for (int k = 0; k < BeamFrame.RIM; k++) {
+                rimLengths[k] = (float) Math.min(range, rimRatios[k] * centre.distance());
             }
             return ends;
         }
@@ -336,16 +339,20 @@ public final class ClientBeam {
         double[] v = BeamFrame.up(a.x, a.y, a.z, u);
         double spread = Math.tan(BeamTrace.visibleHalfAngle(shape));
         landing = null;
+        float[] cornerLengths = new float[CORNERS];
+        boolean[] cornerHits = new boolean[CORNERS];
         for (int i = 0; i < CORNERS; i++) {
             if (i == CENTRE || far) {
-                cornerLengths[i] = (float) centre.distance();
                 cornerRatios[i] = 1;
+                cornerLengths[i] = (float) centre.distance();
+                cornerHits[i] = centre.hitBlock();
                 continue;
             }
             Vec3[] ray = BeamTrace.cornerRay(i, at.origin(), a, u, v, spread, lensHalf);
             BeamTrace.Hit hit = BeamTrace.trace(level, ray[0], ray[1], range);
-            cornerLengths[i] = (float) hit.distance();
             cornerRatios[i] = (float) (hit.distance() / Math.max(0.01, centre.distance()));
+            cornerLengths[i] = (float) hit.distance();
+            cornerHits[i] = hit.hitBlock();
             if (hit.hitBlock()) {
                 ends.add(hit.end());
                 if (BeamTrace.landsUsefully(hit) && (landing == null || hit.distance() < landing.hit().distance())) {
@@ -360,7 +367,38 @@ public final class ClientBeam {
                 landing = inner;
             }
         }
+        traceRim(level, at, centre, range, u, v, spread, cornerLengths, cornerHits);
         return ends;
+    }
+
+    /**
+     * The visible beam's outline. A fixed light traces every rim ray: it does so only when it changes or every few
+     * ticks. A moving light takes them between its corner and edge rays instead: traced each time its corners are, 50
+     * turning level beams ran their client work from 5 to 12 ms a tick (in testing).
+     */
+    private void traceRim(Level level, BeamPose at, BeamTrace.Hit centre, double range, double[] u, double[] v,
+            double spread, float[] cornerLengths, boolean[] cornerHits) {
+        for (int k = 0; k < BeamFrame.RIM; k++) {
+            double ru = BeamFrame.rimU(k);
+            double rv = BeamFrame.rimV(k);
+            if (at.moving()) {
+                // Along the side the ray sits on, between the corner or edge rays either side of it
+                boolean alongU = Math.abs(rv) == 1;
+                double t = alongU ? ru : rv;
+                int from = t <= 0 ? -1 : 0;
+                double share = t - from;
+                int a = alongU ? BeamFrame.corner(from, (int) rv) : BeamFrame.corner((int) ru, from);
+                int b = alongU ? BeamFrame.corner(from + 1, (int) rv) : BeamFrame.corner((int) ru, from + 1);
+                rimLengths[k] = (float) (cornerLengths[a] + (cornerLengths[b] - cornerLengths[a]) * share);
+                rimHits[k] = share < 0.5 ? cornerHits[a] : cornerHits[b];
+            } else {
+                Vec3[] ray = BeamTrace.ray(ru, rv, at.origin(), at.direction(), u, v, spread, lensHalf);
+                BeamTrace.Hit rim = BeamTrace.trace(level, ray[0], ray[1], range);
+                rimLengths[k] = (float) rim.distance();
+                rimHits[k] = rim.hitBlock();
+            }
+            rimRatios[k] = (float) (rimLengths[k] / Math.max(0.01, centre.distance()));
+        }
     }
 
     private static boolean worthPublishing(@Nullable BeamSpot current, @Nullable BeamSpot next) {
@@ -405,9 +443,14 @@ public final class ClientBeam {
         return length;
     }
 
-    /** How far corner ray {@code index} ({@link BeamFrame#corner}) reached at the last update. */
-    public float cornerLength(int index) {
-        return length <= 0 ? 0 : cornerLengths[index];
+    /** How far rim ray {@code k} ({@link BeamFrame#rimU}) reached at the last update, for the visible beam's sides. */
+    public float rimLength(int k) {
+        return length <= 0 ? 0 : rimLengths[k];
+    }
+
+    /** True when rim ray {@code k} stopped on a block at the last update, so the visible beam may run into it. */
+    public boolean rimHit(int k) {
+        return rimHits[k];
     }
 
     /** Brightness at the last update, 0 to 15; 0 when off. */

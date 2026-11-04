@@ -41,6 +41,13 @@ public final class BeamVisual {
     private static final Vector3f NORMAL = new Vector3f();
     private static final Vector3f EDGE = new Vector3f();
     private static final Vector3f VIEW = new Vector3f();
+    /**
+     * How far (blocks) a side runs past where its ray stopped on a block. The part inside the block is hidden by the
+     * depth test, so the block's own face cuts the beam: a crisp edge along every step and corner, where a side that
+     * ended at its ray's stop drew a line across the blocks at whatever angle the rays gave it. Short of a block, so a
+     * beam stopped by one shows no more than a sliver behind it.
+     */
+    private static final float INTO_BLOCK = 0.8f;
     /** Neighbouring rays whose lengths differ by more than this (blocks) are drawn as a torn side. */
     private static final float TORN_LENGTH = 1.5f;
     /** Distance in front of the lens where the beam is at full strength, to compare its falloff against. */
@@ -111,9 +118,8 @@ public final class BeamVisual {
     }
 
     /**
-     * The beam as a square truncated pyramid from the lens, its four sides made of the traced corner and
-     * edge-middle rays ({@link ClientBeam#cornerLength}), so a beam partly blocked by a wall stops on it
-     * there. Its start is closed with the lens-sized square. It fades with the beam's own falloff, so it
+     * The beam as a square truncated pyramid from the lens, its four sides made of the rays traced round its rim
+     * ({@link ClientBeam#rimLength}), so a beam partly blocked by a wall or rough ground stops on it there. Its start is closed with the lens-sized square. It fades with the beam's own falloff, so it
      * stays visible right up to where it lands.
      *
      * @param lens where the beam leaves the light, in block coordinates
@@ -156,34 +162,30 @@ public final class BeamVisual {
             alpha *= (float) Math.min(1, Math.sqrt(NARROW_SPREAD / spread));
         }
 
-        // Lens and far points of every corner ray, and how bright the beam still is at each far point
-        int corners = BeamFrame.GRID * BeamFrame.GRID;
-        Vector3f[] near = new Vector3f[corners];
-        Vector3f[] far = new Vector3f[corners];
-        Vector3f[] directions = new Vector3f[corners];
-        float[] lengths = new float[corners];
-        float[] farAlpha = new float[corners];
-        for (int i = 0; i < corners; i++) {
-            Vector3f offset = new Vector3f(u).mul(BeamFrame.cornerU(i)).add(new Vector3f(v).mul(BeamFrame.cornerV(i)));
-            near[i] = new Vector3f(offset).mul(beam.lensHalf()).add(lens);
-            directions[i] = new Vector3f(offset).mul(spread).add(axis).normalize();
-            lengths[i] = beam.cornerLength(i);
-            far[i] = new Vector3f(directions[i]).mul(lengths[i]).add(near[i]);
-            farAlpha[i] = alphaAt(alpha, shape, lengths[i]);
+        // Lens and far points of every ray round the rim, and how bright the beam still is at each far point
+        int rays = BeamFrame.RIM;
+        Vector3f[] near = new Vector3f[rays];
+        Vector3f[] far = new Vector3f[rays];
+        Vector3f[] directions = new Vector3f[rays];
+        float[] lengths = new float[rays];
+        float[] farAlpha = new float[rays];
+        for (int k = 0; k < rays; k++) {
+            Vector3f offset = new Vector3f(u).mul((float) BeamFrame.rimU(k)).add(new Vector3f(v).mul((float) BeamFrame.rimV(k)));
+            near[k] = new Vector3f(offset).mul(beam.lensHalf()).add(lens);
+            directions[k] = new Vector3f(offset).mul(spread).add(axis).normalize();
+            lengths[k] = beam.rimLength(k) + (beam.rimHit(k) ? INTO_BLOCK : 0);
+            far[k] = new Vector3f(directions[k]).mul(lengths[k]).add(near[k]);
+            farAlpha[k] = alphaAt(alpha, shape, lengths[k]);
         }
 
         Matrix4f pose = poseStack.last().pose();
         // Ponder draws block entities before the scene's blocks: there the beam goes in the late phase
         VertexConsumer out = buffers instanceof SuperRenderTypeBuffer phased ? phased.getLateBuffer(BEAM)
                 : buffers.getBuffer(BEAM);
-        // The four sides, two segments each, walking the square's rim
-        int[] rim = {
-                BeamFrame.corner(-1, -1), BeamFrame.corner(0, -1), BeamFrame.corner(1, -1), BeamFrame.corner(1, 0),
-                BeamFrame.corner(1, 1), BeamFrame.corner(0, 1), BeamFrame.corner(-1, 1), BeamFrame.corner(-1, 0)
-        };
-        for (int k = 0; k < rim.length; k++) {
-            int a = rim[k];
-            int b = rim[(k + 1) % rim.length];
+        // The four sides, walking the square's rim from ray to ray
+        for (int k = 0; k < rays; k++) {
+            int a = k;
+            int b = (k + 1) % rays;
             float shorter = Math.min(lengths[a], lengths[b]);
             if (Math.max(lengths[a], lengths[b]) - shorter < TORN_LENGTH) {
                 twoSided(out, pose, near[a], near[b], far[b], far[a], alpha, farAlpha[b], farAlpha[a], red, green, blue);
@@ -204,10 +206,10 @@ public final class BeamVisual {
                     levelAlpha);
         }
         // The lens end, closed so the beam has no dark hole where it starts
-        Vector3f c0 = near[BeamFrame.corner(-1, -1)];
-        Vector3f c1 = near[BeamFrame.corner(1, -1)];
-        Vector3f c2 = near[BeamFrame.corner(1, 1)];
-        Vector3f c3 = near[BeamFrame.corner(-1, 1)];
+        Vector3f c0 = near[0];
+        Vector3f c1 = near[BeamFrame.RIM_PER_SIDE];
+        Vector3f c2 = near[2 * BeamFrame.RIM_PER_SIDE];
+        Vector3f c3 = near[3 * BeamFrame.RIM_PER_SIDE];
         float capAlpha = alpha * CAP_ALPHA;
         twoSided(out, pose, c0, c1, c2, c3, capAlpha, capAlpha, capAlpha, red, green, blue);
     }

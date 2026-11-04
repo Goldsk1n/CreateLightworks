@@ -46,6 +46,29 @@ class BeamFrameTest {
     }
 
     @Test
+    void rimWalksTheSquaresEdgeInSteps() {
+        double step = 2.0 / BeamFrame.RIM_PER_SIDE;
+        for (int k = 0; k < BeamFrame.RIM; k++) {
+            double u = BeamFrame.rimU(k);
+            double v = BeamFrame.rimV(k);
+            // On the edge of the square
+            assertEquals(1, Math.max(Math.abs(u), Math.abs(v)), EPS);
+            // One step from the next ray, the last next to the first
+            int next = (k + 1) % BeamFrame.RIM;
+            assertEquals(step, Math.abs(BeamFrame.rimU(next) - u) + Math.abs(BeamFrame.rimV(next) - v), EPS);
+        }
+        // The four corners, where the lens end is closed
+        assertEquals(-1, BeamFrame.rimU(0), EPS);
+        assertEquals(-1, BeamFrame.rimV(0), EPS);
+        assertEquals(1, BeamFrame.rimU(BeamFrame.RIM_PER_SIDE), EPS);
+        assertEquals(-1, BeamFrame.rimV(BeamFrame.RIM_PER_SIDE), EPS);
+        assertEquals(1, BeamFrame.rimU(2 * BeamFrame.RIM_PER_SIDE), EPS);
+        assertEquals(1, BeamFrame.rimV(2 * BeamFrame.RIM_PER_SIDE), EPS);
+        assertEquals(-1, BeamFrame.rimU(3 * BeamFrame.RIM_PER_SIDE), EPS);
+        assertEquals(1, BeamFrame.rimV(3 * BeamFrame.RIM_PER_SIDE), EPS);
+    }
+
+    @Test
     void lightFillsTheVisibleSquareAndFadesAtItsEdge() {
         ConeFalloff shape = new ConeFalloff(10, 5, 10, 20, 15);
         double[] u = BeamFrame.side(0, 0, 1);
