@@ -92,8 +92,8 @@ public final class ProjectedTint {
      * away light the beam did not bring, so at much more than this a beam darkens the ground it lights.
      */
     private static final float STRENGTH = 0.5f;
-    /** Less than the visible beam's: at 80% a dye seems to do nothing in the sun (in daylight tests). */
-    private static final float DAY_FADE = 0.6f;
+    /** As the visible beam's: at 80% a dye seemed to do nothing in the sun, at 60% it was faint (in daylight tests). */
+    private static final float DAY_FADE = 0.5f;
     /** The glow round a beam's spot is softer than the spot itself. */
     private static final float GLOW_WEIGHT = 0.6f;
     private static final long EXPIRY_TICKS = 5;
