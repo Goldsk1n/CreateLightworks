@@ -64,6 +64,12 @@ public class RotatingBeaconRenderer implements BlockEntityRenderer<RotatingBeaco
         poseStack.popPose();
     }
 
+    /** Its beams reach far outside the block: drawn while they are on screen, as the Searchlight's are. */
+    @Override
+    public boolean shouldRenderOffScreen(RotatingBeaconBlockEntity beacon) {
+        return true;
+    }
+
     @Override
     public AABB getRenderBoundingBox(RotatingBeaconBlockEntity beacon) {
         Vec3 centre = Vec3.atCenterOf(beacon.getBlockPos());

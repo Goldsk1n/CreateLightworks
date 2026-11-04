@@ -99,6 +99,16 @@ public class DirectionalLightRenderer implements BlockEntityRenderer<Directional
         poseStack.popPose();
     }
 
+    /**
+     * Drawn while the beam is on screen, not only while the lamp's own section is: Sodium draws a block entity only with
+     * its section, and Entity Culling only while the block itself can be seen, unless asked like this, as the vanilla
+     * beacon does. Looking along a beam with the lamp out of sight, the beam went with it.
+     */
+    @Override
+    public boolean shouldRenderOffScreen(DirectionalLightBlockEntity light) {
+        return true;
+    }
+
     /** The beam reaches far outside the block; keep drawing it while any of it is on screen. */
     @Override
     public AABB getRenderBoundingBox(DirectionalLightBlockEntity light) {
