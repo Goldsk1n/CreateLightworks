@@ -1978,7 +1978,9 @@ final class Scenarios {
     /**
      * A level Searchlight shining east along a stone wall, with the camera crossing its beam halfway along, slowly from
      * south of it to north, looking at the wall. Filmed: the haze of the beam's sides must fade in and out as the camera
-     * nears them, with no frame-to-frame jump in brightness where the camera passes through a side (logged).
+     * nears them, with no frame-to-frame jump in brightness where the camera passes through a side (logged). Then a shot
+     * along the beam with the lamp out of sight behind the camera: the beam must still show (Sodium draws a block entity
+     * only while its section is on screen, unless its renderer asks to be drawn off-screen).
      */
     static Script beamCross() {
         return new Script("beam-cross")
@@ -2002,6 +2004,12 @@ final class Scenarios {
                 .repeat(80, (stage, i) -> stage.hover(10, 1.4, -4 + i * 0.1))
                 .run(stage -> {
                     SelfTestBridge.recording = null;
+                    stage.hover(26, 1.4, -3);
+                    SelfTestBridge.focus = new Vec3(stage.origin.getX() + 44, stage.origin.getY() + 2.5, stage.origin.getZ() + 3);
+                })
+                .waitTicks(40)
+                .shot("beam-cross-lamp-behind")
+                .run(stage -> {
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
                 });
