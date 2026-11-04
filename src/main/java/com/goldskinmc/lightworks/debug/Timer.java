@@ -16,7 +16,9 @@ public enum Timer {
     /** LambDynamicLights asking our spots for light, during chunk meshing. */
     LDL_LIGHT_AT_POS,
     /** Mixing and drawing the coloured light, once a frame. */
-    TINT;
+    TINT,
+    /** Searchlight, Floodlight and Headlight renderers in the world, once a frame each unless something skips them. */
+    LIGHT_RENDER;
 
     private final LongAdder nanos = new LongAdder();
     private final LongAdder calls = new LongAdder();

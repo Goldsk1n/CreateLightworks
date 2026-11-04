@@ -83,7 +83,9 @@ def devSdl = providers.gradleProperty('dev_sdl').map { it.toBoolean() }.getOrEls
 // -Pdev_tools=true adds JEI and The One Probe to `latest`/`lite` runs, for playing by hand: dev only, never shipped
 def devTools = providers.gradleProperty('dev_tools').map { it.toBoolean() }.getOrElse(false)
 // -Pdev_conflicts=contraption-lights,create-train-lights,create-dynamic-lights adds other lighting mods
-// (with what they require) to `latest` runs for the S9 conflict test. create-dynamic-lights needs -Pdev_perf
+// (with what they require) to `latest` runs for the S9 conflict test; entityculling adds Entity Culling, which skips
+// drawing block entities it thinks are hidden (the `walk-past` self-test logs whether it skips ours); immediatelyfast
+// and sodium-extra (with -Pdev_perf) add two more that big Create packs ship, which change how things are drawn. create-dynamic-lights needs -Pdev_perf
 // and -Pdev_ldl=false: LambDynamicLights refuses to load next to Sodium Dynamic Lights, which it requires.
 def devConflicts = providers.gradleProperty('dev_conflicts').map { it.split(',')*.trim() as Set }.getOrElse([] as Set)
 
@@ -209,7 +211,10 @@ dependencies {
     }
 
     if (devPerf && !floorRun) {
-        localRuntime("maven.modrinth:iris:${iris_version}") { transitive = false }
+        // -Pdev_iris=false leaves Iris out: Sodium alone
+        if (providers.gradleProperty('dev_iris').map { it.toBoolean() }.getOrElse(true)) {
+            localRuntime("maven.modrinth:iris:${iris_version}") { transitive = false }
+        }
         localRuntime("maven.modrinth:spark:${spark_version}") { transitive = false }
     }
 
@@ -234,6 +239,9 @@ dependencies {
                                           "maven.modrinth:sodium-dynamic-lights:${sodium_dynamic_lights_version}",
                                           "maven.modrinth:sodium-options-api:${sodium_options_api_version}",
                                           "maven.modrinth:reeses-sodium-options:${reeses_sodium_options_version}"],
+                'entityculling'        : ["maven.modrinth:entityculling:${entityculling_version}"],
+                'immediatelyfast'      : ["maven.modrinth:immediatelyfast:${immediatelyfast_version}"],
+                'sodium-extra'         : ["maven.modrinth:sodium-extra:${sodium_extra_version}"],
         ]
         if ('create-dynamic-lights' in devConflicts && (devLdl || !devPerf)) {
             throw new GradleException('create-dynamic-lights needs -Pdev_perf=true (Sodium) and -Pdev_ldl=false '
