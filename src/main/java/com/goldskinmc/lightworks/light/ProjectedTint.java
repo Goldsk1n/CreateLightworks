@@ -8,8 +8,11 @@ import com.goldskinmc.lightworks.beam.LightMix;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import it.unimi.dsi.fastutil.longs.Long2BooleanOpenHashMap;
@@ -22,7 +25,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
@@ -90,8 +92,6 @@ public final class ProjectedTint {
      * away light the beam did not bring, so at much more than this a beam darkens the ground it lights.
      */
     private static final float STRENGTH = 0.5f;
-    /** Lifted off the face so it never fights the block for depth. */
-    private static final float LIFT = 0.002f;
     /** Less than the visible beam's: at 80% a dye seems to do nothing in the sun (the self-test's day-colour). */
     private static final float DAY_FADE = 0.6f;
     /** The glow round a beam's spot is softer than the spot itself. */
@@ -117,6 +117,14 @@ public final class ProjectedTint {
      */
     private static final int MAX_STAND_INS = 8;
 
+    /*
+     * The layers lie on the faces themselves and win the depth test by the polygon offset Minecraft gives its block
+     * cracks, which grows with how steeply a face's depth changes across the screen. Lifting them off the face along its
+     * normal did next to nothing for a face seen at a slant: along a hillside a spot went out for whole frames while the
+     * camera moved (the self-test's walk-past), and the lifted faces of a block's edge overlapped, brightened twice in a
+     * thin line. Drawing them nearer the camera instead put a strip of a face that goes behind a nearer block over that
+     * block's edge, a bright line too; at a share small enough to hide that, the spot went out again.
+     */
     private static final RenderType TINT = RenderType.create("lightworks_tint", DefaultVertexFormat.POSITION_COLOR,
             VertexFormat.Mode.QUADS, 4096, false, false, RenderType.CompositeState.builder()
                     .setShaderState(RenderStateShard.POSITION_COLOR_SHADER)
@@ -129,6 +137,7 @@ public final class ProjectedTint {
                     }))
                     .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                     .setCullState(RenderStateShard.NO_CULL)
+                    .setLayeringState(RenderStateShard.POLYGON_OFFSET_LAYERING)
                     .createCompositeState(false));
 
     /** Adds to what is drawn in proportion to it, like light falling on a surface. */
@@ -144,6 +153,7 @@ public final class ProjectedTint {
                     }))
                     .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                     .setCullState(RenderStateShard.NO_CULL)
+                    .setLayeringState(RenderStateShard.POLYGON_OFFSET_LAYERING)
                     .createCompositeState(false));
 
     /** Adds to what is drawn, whatever it is. */
@@ -159,6 +169,7 @@ public final class ProjectedTint {
                     }))
                     .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                     .setCullState(RenderStateShard.NO_CULL)
+                    .setLayeringState(RenderStateShard.POLYGON_OFFSET_LAYERING)
                     .createCompositeState(false));
 
     /**
@@ -184,7 +195,14 @@ public final class ProjectedTint {
     }
 
     /** Per face: (GRID + 1)^2 corners of x, y, z and light 0 to 1. */
+    /**
+     * Each face's corners, from {@link #originX}: a float holds a world position to a four-thousandth of a block at
+     * 2048, and the faces lie exactly on the blocks, so they are kept small and the camera taken off in double.
+     */
     private float[] corners = new float[0];
+    private double originX;
+    private double originY;
+    private double originZ;
     /** Per face: which block it is on, and which part of the block and side, as one number. */
     private long[] facePositions = new long[0];
     private byte[] faceSides = new byte[0];
@@ -374,14 +392,14 @@ public final class ProjectedTint {
         return box.getCenter().with(axis, face).add(pos.getX(), pos.getY(), pos.getZ());
     }
 
-    /** Corner (a, b) of the {@link #GRID} squares on a face, lifted off the block. */
+    /** Corner (a, b) of the {@link #GRID} squares on a face. */
     private static double[] facePoint(BlockPos pos, AABB box, Direction side, int a, int b) {
         Direction.Axis axis = side.getAxis();
         Direction.Axis u = axis == Direction.Axis.X ? Direction.Axis.Y : Direction.Axis.X;
         Direction.Axis v = axis == Direction.Axis.Z ? Direction.Axis.Y : Direction.Axis.Z;
         double[] p = new double[3];
         p[axis.ordinal()] = pos.get(axis) + (side.getAxisDirection() == Direction.AxisDirection.POSITIVE
-                ? box.max(axis) + LIFT : box.min(axis) - LIFT);
+                ? box.max(axis) : box.min(axis));
         p[u.ordinal()] = pos.get(u) + box.min(u) + (box.max(u) - box.min(u)) * a / GRID;
         p[v.ordinal()] = pos.get(v) + box.min(v) + (box.max(v) - box.min(v)) * b / GRID;
         return p;
@@ -497,6 +515,10 @@ public final class ProjectedTint {
      */
     private boolean project(Level level, LongOpenHashSet blocks, List<Region> regions, List<Source> sources, int maxFaces) {
         faces = 0;
+        BlockPos anchor = BlockPos.containing(sources.get(0).position());
+        originX = anchor.getX();
+        originY = anchor.getY();
+        originZ = anchor.getZ();
         LongOpenHashSet seen = new LongOpenHashSet();
         BlockPos.MutableBlockPos neighbour = new BlockPos.MutableBlockPos();
         List<Falloff> lighting = new ArrayList<>(sources.size());
@@ -614,9 +636,9 @@ public final class ProjectedTint {
             for (int b = 0; b <= GRID; b++) {
                 double[] p = facePoint(pos, box, side, a, b);
                 float light = falloff.at(p[0], p[1], p[2]);
-                corners[i++] = (float) p[0];
-                corners[i++] = (float) p[1];
-                corners[i++] = (float) p[2];
+                corners[i++] = (float) (p[0] - originX);
+                corners[i++] = (float) (p[1] - originY);
+                corners[i++] = (float) (p[2] - originZ);
                 corners[i++] = light;
                 lit = Math.max(lit, light);
                 least = Math.min(least, light);
@@ -653,12 +675,10 @@ public final class ProjectedTint {
         long start = Timer.start();
         Vec3 camera = event.getCamera().getPosition();
         PoseStack poseStack = event.getPoseStack();
-        MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
-        VertexConsumer out = buffers.getBuffer(TINT);
         float day = BeamVisual.daylight();
         poseStack.pushPose();
         try {
-            poseStack.translate(-camera.x, -camera.y, -camera.z);
+            // Everything is placed from the camera: the mix in the places it keeps, each spot by its own origin
             Matrix4f pose = poseStack.last().pose();
             long now = Minecraft.getInstance().level == null ? 0 : Minecraft.getInstance().level.getGameTime();
             ACTIVE.removeIf(tint -> now > tint.expires);
@@ -669,41 +689,58 @@ public final class ProjectedTint {
             for (ProjectedTint tint : ACTIVE) {
                 float amount = STRENGTH * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
                 if (amount > 0.01f && !tint.brightens) {
-                    mixed = tint.addToMix(amount, mixed);
+                    mixed = tint.addToMix(amount, mixed, camera);
                 }
             }
-            drawMix(out, pose, mixed);
-            buffers.endBatch(TINT);
-            VertexConsumer spots = buffers.getBuffer(SPOT);
-            for (ProjectedTint tint : ACTIVE) {
-                float amount = SPOT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
-                if (amount > 0.01f && tint.brightens) {
-                    tint.drawSpot(spots, pose, amount, true);
-                    // Not by day: there is no darkness for it to light
-                    float standIn = SPOT_STRENGTH * tint.dyeLevel * tint.strength * (1 - day * tint.skyExposure);
-                    if (tint.standsIn && standIn > 0.01f) {
-                        tint.drawSpot(spots, pose, standIn, true);
+            int mixedFaces = mixed;
+            drawNow(TINT, out -> drawMix(out, pose, mixedFaces));
+            drawNow(SPOT, spots -> {
+                for (ProjectedTint tint : ACTIVE) {
+                    float amount = SPOT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
+                    if (amount > 0.01f && tint.brightens) {
+                        tint.drawSpot(spots, pose, amount, true, camera);
+                        // Not by day: there is no darkness for it to light
+                        float standIn = SPOT_STRENGTH * tint.dyeLevel * tint.strength * (1 - day * tint.skyExposure);
+                        if (tint.standsIn && standIn > 0.01f) {
+                            tint.drawSpot(spots, pose, standIn, true, camera);
+                        }
                     }
                 }
-            }
-            buffers.endBatch(SPOT);
-            VertexConsumer direct = buffers.getBuffer(DIRECT);
-            for (ProjectedTint tint : ACTIVE) {
-                float amount = DIRECT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
-                if (amount > 0.002f && tint.brightens) {
-                    tint.drawSpot(direct, pose, amount, false);
+            });
+            drawNow(DIRECT, direct -> {
+                for (ProjectedTint tint : ACTIVE) {
+                    float amount = DIRECT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
+                    if (amount > 0.002f && tint.brightens) {
+                        tint.drawSpot(direct, pose, amount, false, camera);
+                    }
                 }
-            }
-            buffers.endBatch(DIRECT);
+            });
         } finally {
             poseStack.popPose();
         }
         Timer.TINT.stop(start);
     }
 
-    /** Adds this light to the faces it reaches; gives how many faces are in the mix now. */
-    private int addToMix(float amount, int mixed) {
+    /**
+     * Draws a layer at once, with this frame's view. The world's shared buffers may hold a layer back: Iris, even with no
+     * shader pack, drew ours a frame late, with the next frame's turn of the camera, so the faces left the blocks they
+     * lie on and lost the depth test while the camera moved (the self-test's walk-past, filmed every frame).
+     */
+    private static void drawNow(RenderType type, java.util.function.Consumer<VertexConsumer> fill) {
+        BufferBuilder builder = Tesselator.getInstance().begin(type.mode(), type.format());
+        fill.accept(builder);
+        MeshData mesh = builder.build();
+        if (mesh != null) {
+            type.draw(mesh);
+        }
+    }
+
+    /** Adds this light to the faces it reaches that face the camera; gives how many faces are in the mix now. */
+    private int addToMix(float amount, int mixed, Vec3 camera) {
         for (int f = 0; f < faces; f++) {
+            if (!facesCamera(f, camera)) {
+                continue;
+            }
             Long2IntOpenHashMap sideFaces = MIXED_FACES[faceSides[f]];
             int place = sideFaces.get(facePositions[f]);
             int from = f * FLOATS_PER_FACE;
@@ -717,8 +754,12 @@ public final class ProjectedTint {
                 }
                 int to = place * FLOATS_PER_FACE;
                 Arrays.fill(mixedLight, to, to + FLOATS_PER_FACE, 0);
+                // From the camera, worked out in double: faces of several lights share this array
                 for (int c = 0; c < CORNERS_PER_FACE; c++) {
-                    System.arraycopy(corners, from + c * 4, mixedPlaces, to + c * 4, 3);
+                    int at = from + c * 4;
+                    mixedPlaces[to + c * 4] = (float) (corners[at] + (originX - camera.x));
+                    mixedPlaces[to + c * 4 + 1] = (float) (corners[at + 1] + (originY - camera.y));
+                    mixedPlaces[to + c * 4 + 2] = (float) (corners[at + 2] + (originZ - camera.z));
                 }
             }
             int to = place * FLOATS_PER_FACE;
@@ -734,9 +775,14 @@ public final class ProjectedTint {
     }
 
     /** @param evenWalls makes up for the shading of walls ({@link #NORTH_SOUTH_SPOT}), for what brightens in proportion */
-    private void drawSpot(VertexConsumer out, Matrix4f pose, float amount, boolean evenWalls) {
+    private void drawSpot(VertexConsumer out, Matrix4f fromCamera, float amount, boolean evenWalls, Vec3 camera) {
+        Matrix4f pose = new Matrix4f(fromCamera).translate((float) (originX - camera.x), (float) (originY - camera.y),
+                (float) (originZ - camera.z));
         int row = GRID + 1;
         for (int f = 0; f < faces; f++) {
+            if (!facesCamera(f, camera)) {
+                continue;
+            }
             int base = f * FLOATS_PER_FACE;
             float light = evenWalls ? amount * wallShare(faceSides[f] % Direction.values().length) : amount;
             if (faceEven[f]) {
@@ -755,6 +801,22 @@ public final class ProjectedTint {
                 }
             }
         }
+    }
+
+    /** True when the camera is in front of face {@code f}, on the side it looks out of: no one sees the other side. */
+    private boolean facesCamera(int f, Vec3 camera) {
+        Direction side = Direction.values()[faceSides[f] % Direction.values().length];
+        Direction.Axis axis = side.getAxis();
+        double out = camera.get(axis) - origin(axis) - corners[f * FLOATS_PER_FACE + axis.ordinal()];
+        return side.getAxisDirection() == Direction.AxisDirection.POSITIVE ? out > 0 : out < 0;
+    }
+
+    private double origin(Direction.Axis axis) {
+        return switch (axis) {
+            case X -> originX;
+            case Y -> originY;
+            case Z -> originZ;
+        };
     }
 
     private static float wallShare(int side) {

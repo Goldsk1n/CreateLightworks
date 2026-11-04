@@ -50,6 +50,19 @@ public final class BeamVisual {
     /** ...and from this far on at full strength. */
     private static final float NEAR_FADE_END = 4f;
     private static final float NEAR_FLOOR = 0.1f;
+    /**
+     * A side within {@link #NEAR_FADE_END} of the camera is drawn in squares about this big (blocks), each corner faded
+     * by its own distance: faded only at its far-off corners, a long side the camera flew through stayed at full haze
+     * right up to it and came or went across the whole view in one frame (the self-test's beam-cross).
+     */
+    private static final float NEAR_CELL = 0.75f;
+    private static final int MAX_NEAR_CELLS = 64;
+    /** Points per side of the grid that finds how near the camera a side comes. */
+    private static final int NEAR_SAMPLES = 8;
+    private static final Vector3f CELL_A = new Vector3f();
+    private static final Vector3f CELL_B = new Vector3f();
+    private static final Vector3f CELL_C = new Vector3f();
+    private static final Vector3f CELL_D = new Vector3f();
     /** A face seen exactly edge-on keeps this share of its haze. */
     private static final float EDGE_FLOOR = 0.4f;
     /** The closed lens end is fainter than the sides, which overlap along the view. */
@@ -343,10 +356,61 @@ public final class BeamVisual {
         if (normal.lengthSquared() > 1e-12f) {
             normal.normalize();
         }
-        vertex(out, pose, nearA, normal, nearAlphaA, red, green, blue);
-        vertex(out, pose, nearB, normal, nearAlphaB, red, green, blue);
-        vertex(out, pose, farB, normal, farAlphaB, red, green, blue);
-        vertex(out, pose, farA, normal, farAlphaA, red, green, blue);
+        int along = 1;
+        int across = 1;
+        if (nearCamera(pose, normal, nearA, nearB, farB, farA)) {
+            along = Mth.clamp(Mth.ceil(Math.max(nearA.distance(farA), nearB.distance(farB)) / NEAR_CELL), 1, MAX_NEAR_CELLS);
+            across = Mth.clamp(Mth.ceil(Math.max(nearA.distance(nearB), farA.distance(farB)) / NEAR_CELL), 1, MAX_NEAR_CELLS);
+        }
+        for (int i = 0; i < along; i++) {
+            float s0 = (float) i / along;
+            float s1 = (float) (i + 1) / along;
+            for (int j = 0; j < across; j++) {
+                float t0 = (float) j / across;
+                float t1 = (float) (j + 1) / across;
+                vertex(out, pose, point(CELL_A, nearA, nearB, farB, farA, s0, t0), normal,
+                        blend(nearAlphaA, nearAlphaB, farAlphaB, farAlphaA, s0, t0), red, green, blue);
+                vertex(out, pose, point(CELL_B, nearA, nearB, farB, farA, s0, t1), normal,
+                        blend(nearAlphaA, nearAlphaB, farAlphaB, farAlphaA, s0, t1), red, green, blue);
+                vertex(out, pose, point(CELL_C, nearA, nearB, farB, farA, s1, t1), normal,
+                        blend(nearAlphaA, nearAlphaB, farAlphaB, farAlphaA, s1, t1), red, green, blue);
+                vertex(out, pose, point(CELL_D, nearA, nearB, farB, farA, s1, t0), normal,
+                        blend(nearAlphaA, nearAlphaB, farAlphaB, farAlphaA, s1, t0), red, green, blue);
+            }
+        }
+    }
+
+    /** True when some of the side comes within {@link #NEAR_FADE_END} of the camera, where its haze fades. */
+    private static boolean nearCamera(Matrix4f pose, Vector3f viewNormal, Vector3f nearA, Vector3f nearB, Vector3f farB,
+            Vector3f farA) {
+        // The camera sits at the origin of the space the pose leads to; a side whose plane is that far off is too
+        if (Math.abs(pose.transformPosition(VIEW.set(nearA)).dot(viewNormal)) >= NEAR_FADE_END) {
+            return false;
+        }
+        for (int i = 0; i <= NEAR_SAMPLES; i++) {
+            for (int j = 0; j <= NEAR_SAMPLES; j++) {
+                point(VIEW, nearA, nearB, farB, farA, (float) i / NEAR_SAMPLES, (float) j / NEAR_SAMPLES);
+                if (pose.transformPosition(VIEW).length() < NEAR_FADE_END + NEAR_CELL) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** The point {@code s} of the way from the lens end to the far end and {@code t} of the way from A to B. */
+    private static Vector3f point(Vector3f into, Vector3f nearA, Vector3f nearB, Vector3f farB, Vector3f farA, float s,
+            float t) {
+        float nx = nearA.x + (nearB.x - nearA.x) * t;
+        float ny = nearA.y + (nearB.y - nearA.y) * t;
+        float nz = nearA.z + (nearB.z - nearA.z) * t;
+        return into.set(nx + (farA.x + (farB.x - farA.x) * t - nx) * s, ny + (farA.y + (farB.y - farA.y) * t - ny) * s,
+                nz + (farA.z + (farB.z - farA.z) * t - nz) * s);
+    }
+
+    private static float blend(float nearA, float nearB, float farB, float farA, float s, float t) {
+        float near = nearA + (nearB - nearA) * t;
+        return near + (farA + (farB - farA) * t - near) * s;
     }
 
     private static void vertex(VertexConsumer out, Matrix4f pose, Vector3f at, Vector3f normal, float alpha,
