@@ -760,6 +760,9 @@ final class Scenarios {
             stage.hover(0, 13, -8);
             SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 0, 5)).add(0.5, 0, 0.5);
         }).waitTicks(40).shot("day-colour").run(stage -> {
+            stage.hover(0, 2, -10);
+            SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.at(0, 2, 5)).add(0.5, 0, 0.5);
+        }).waitTicks(20).shot("day-colour-side").run(stage -> {
             SelfTestBridge.focus = null;
             stage.restoreBlocks();
         });

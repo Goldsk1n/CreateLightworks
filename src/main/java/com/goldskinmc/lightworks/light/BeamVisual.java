@@ -29,8 +29,11 @@ import org.joml.Vector3f;
 public final class BeamVisual {
     /** Opacity at the lens; it fades with the beam's falloff. Additive, so this is brightness. */
     private static final float ALPHA = 0.18f;
-    /** How much of the beam daylight washes out under open sky at noon, like a real searchlight's. */
-    static final float DAY_FADE = 0.7f;
+    /**
+     * How much of the beam daylight washes out under open sky at noon, like a real searchlight's. At 70% a beam's colour
+     * and aim were hard to read by day (the self-test's day-colour, from the side).
+     */
+    static final float DAY_FADE = 0.5f;
     /** How far a dyed beam is lifted toward white, so dark dyes still read as light. */
     private static final float WHITE_MIX = 0.3f;
     /** Spread (tangent of the half-angle) of a 10-degree beam: beams up to this wide keep their full haze. */
@@ -239,8 +242,9 @@ public final class BeamVisual {
                 su[0], su[1], su[2], sv[0], sv[1], sv[2], beam.lensHalf()) / 15;
         toEye.div(distance);
         float onAxis = (float) Math.pow(Math.max(0, toEye.dot(axis)), 16);
-        // Not faded by day, unlike the beam: a lamp pointed at you shows in the sun, as a car's headlights do
-        float alpha = GLOW_ALPHA * (float) inBeam * beam.brightness() / 15f * (0.35f + 0.65f * onAxis);
+        // Faded by day under open sky as the beam is, never more: a lamp pointed at you still shows in the sun
+        float alpha = GLOW_ALPHA * (float) inBeam * beam.brightness() / 15f * (0.35f + 0.65f * onAxis)
+                * (1 - DAY_FADE * daylight() * beam.skyExposure());
         if (alpha < 0.01f) {
             return;
         }
