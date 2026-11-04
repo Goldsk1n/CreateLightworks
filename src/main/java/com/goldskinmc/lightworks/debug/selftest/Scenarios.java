@@ -136,6 +136,7 @@ final class Scenarios {
         ALL.put("vehicle-beam", Scenarios::vehicleBeam);
         ALL.put("walk-past", Scenarios::walkPast);
         ALL.put("beam-cross", Scenarios::beamCross);
+        ALL.put("inside-beam", Scenarios::insideBeam);
         ALL.put("replica", Scenarios::replica);
         ALL.put("showcase-aim", Scenarios::showcaseAim);
         ALL.put("showcase-signals", Scenarios::showcaseSignals);
@@ -1973,6 +1974,45 @@ final class Scenarios {
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();
                 });
+    }
+
+    /**
+     * How a beam looks from inside it: a level Searchlight, then a Floodlight, shining east at a white wall 20 blocks
+     * off, with the camera in the beam halfway along, looking along it, back at the lamp, to the side and down.
+     */
+    static Script insideBeam() {
+        Script script = new Script("inside-beam").run(stage -> {
+            stage.night();
+            for (int z = -6; z <= 6; z++) {
+                for (int y = 0; y <= 8; y++) {
+                    stage.set(stage.at(20, y, z), Blocks.WHITE_CONCRETE.defaultBlockState());
+                }
+            }
+        });
+        String[] names = {"searchlight", "floodlight"};
+        for (String name : names) {
+            BlockPos lamp = BlockPos.ZERO.offset(0, 2, 0);
+            script.run(stage -> {
+                stage.set(stage.at(0, 2, 0), "searchlight".equals(name) ? searchlight(Direction.UP)
+                        : LightworksBlocks.FLOODLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.UP));
+                stage.lightAt(stage.at(0, 2, 0)).aimAlong(new Vec3(1, 0, 0));
+                // The eye on the beam's axis, ten blocks out
+                stage.hover(10, 2.5 - 1.62 + 0.5, 0);
+            });
+            Vec3[] looks = {new Vec3(20, 2.5, 0.5), new Vec3(0, 2.5, 0.5), new Vec3(10.5, 2.5, 10), new Vec3(11, -1, 0.6)};
+            String[] views = {"along", "at-lamp", "side", "down"};
+            for (int i = 0; i < looks.length; i++) {
+                Vec3 look = looks[i];
+                script.run(stage -> SelfTestBridge.focus = Vec3.atLowerCornerOf(stage.origin).add(look))
+                        .waitTicks(i == 0 ? 60 : 20)
+                        .shot("inside-" + name + "-" + views[i]);
+            }
+            script.run(stage -> stage.set(stage.at(lamp.getX(), lamp.getY(), lamp.getZ()), Blocks.AIR.defaultBlockState()));
+        }
+        return script.run(stage -> {
+            SelfTestBridge.focus = null;
+            stage.restoreBlocks();
+        });
     }
 
     /**

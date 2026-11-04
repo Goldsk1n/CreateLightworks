@@ -86,6 +86,7 @@
   "lightworks.configuration.beamVisualWithShaders": "Visible beam with shaders",
   "lightworks.configuration.colouredLight": "Coloured light",
   "lightworks.configuration.debugOverlay": "Debug overlay (F3)",
+  "lightworks.configuration.insideHaze": "Haze inside a beam",
   "lightworks.configuration.invertRedstone": "Invert redstone",
   "lightworks.configuration.lensGlow": "Lens glow",
   "lightworks.configuration.maxBeamRange": "Longest beam",

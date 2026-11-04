@@ -100,6 +100,7 @@ public final class ClientBeam {
     @Nullable
     private BeamTrace.Landing landing;
     private int brightness;
+    private int tintRgb = -1;
     private float skyExposure;
     private boolean preview;
 
@@ -154,6 +155,7 @@ public final class ClientBeam {
                 : landing;
         BeamSpot next = lit == null ? null : BeamTrace.spotFor(lit.hit(), lit.direction(), lit.light() * brightness / 15.0);
         this.brightness = brightness;
+        this.tintRgb = tintRgb;
         preview = !ClientBeams.isRealWorld(level);
         // Open sky at the lens: daylight washes the visible beam out there (Ponder scenes never)
         skyExposure = ClientBeams.isRealWorld(level)
@@ -451,6 +453,11 @@ public final class ClientBeam {
     /** True when rim ray {@code k} stopped on a block at the last update, so the visible beam may run into it. */
     public boolean rimHit(int k) {
         return rimHits[k];
+    }
+
+    /** A dyed light's colour at the last update, 0xRRGGBB; -1 for an undyed light. */
+    public int tintRgb() {
+        return tintRgb;
     }
 
     /** Brightness at the last update, 0 to 15; 0 when off. */

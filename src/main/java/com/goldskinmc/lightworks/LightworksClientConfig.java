@@ -20,6 +20,7 @@ public final class LightworksClientConfig {
     private static final ModConfigSpec.EnumValue<BeamVisual> BEAM_VISUAL_WITH_SHADERS;
     private static final ModConfigSpec.BooleanValue COLOURED_LIGHT;
     private static final ModConfigSpec.BooleanValue LENS_GLOW;
+    private static final ModConfigSpec.BooleanValue INSIDE_HAZE;
     private static final ModConfigSpec.BooleanValue DEBUG_OVERLAY;
 
     static {
@@ -41,6 +42,10 @@ public final class LightworksClientConfig {
                 .comment("A soft glow round a lamp's lens while you look into its beam. Never strong enough to hide anything.")
                 .translation("lightworks.configuration.lensGlow")
                 .define("lensGlow", true);
+        INSIDE_HAZE = builder
+                .comment("A faint haze over the view while you stand inside a beam, stronger looking towards its lamp.")
+                .translation("lightworks.configuration.insideHaze")
+                .define("insideHaze", true);
         DEBUG_OVERLAY = builder
                 .comment("With the F3 screen open, draw every beam from lens to hit and show details of the light",
                         "under the crosshair.")
@@ -67,6 +72,10 @@ public final class LightworksClientConfig {
 
     public static boolean lensGlow() {
         return !SPEC.isLoaded() || LENS_GLOW.get();
+    }
+
+    public static boolean insideHaze() {
+        return !SPEC.isLoaded() || INSIDE_HAZE.get();
     }
 
     public static boolean debugOverlay() {
