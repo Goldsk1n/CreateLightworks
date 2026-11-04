@@ -76,6 +76,7 @@ public final class LightworksLang {
         add("lightworks.configuration.beamVisualWithShaders", "Visible beam with shaders");
         add("lightworks.configuration.colouredLight", "Coloured light");
         add("lightworks.configuration.lensGlow", "Lens glow");
+        add("lightworks.configuration.insideHaze", "Haze inside a beam");
         add("lightworks.configuration.debugOverlay", "Debug overlay (F3)");
         // Scene text lives in the scenes; Ponder hands it over once every scene is built
         REGISTRATE.addDataGenerator(ProviderType.LANG, provider -> LightworksPonder.provideLang(provider::add));

@@ -30,11 +30,11 @@ public final class BeamVisual {
     /** Opacity at the lens; it fades with the beam's falloff. Additive, so this is brightness. */
     private static final float ALPHA = 0.18f;
     /** How much of the beam daylight washes out under open sky at noon, like a real searchlight's. */
-    private static final float DAY_FADE = 0.7f;
+    static final float DAY_FADE = 0.7f;
     /** How far a dyed beam is lifted toward white, so dark dyes still read as light. */
     private static final float WHITE_MIX = 0.3f;
     /** Spread (tangent of the half-angle) of a 10-degree beam: beams up to this wide keep their full haze. */
-    private static final double NARROW_SPREAD = Math.tan(Math.toRadians(10));
+    static final double NARROW_SPREAD = Math.tan(Math.toRadians(10));
     /** How much of the beam's brightness is lost over its full range, on top of its falloff. */
     private static final float HAZE = 0.6f;
     private static final float GLASS_LIFT = 0.01f;
@@ -339,7 +339,7 @@ public final class BeamVisual {
         poseStack.popPose();
     }
 
-    private static float mix(float channel) {
+    static float mix(float channel) {
         return channel + (1 - channel) * WHITE_MIX;
     }
 
