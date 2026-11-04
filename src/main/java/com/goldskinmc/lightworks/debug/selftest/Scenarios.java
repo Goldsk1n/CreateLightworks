@@ -1980,7 +1980,8 @@ final class Scenarios {
      * south of it to north, looking at the wall. Filmed: the haze of the beam's sides must fade in and out as the camera
      * nears them, with no frame-to-frame jump in brightness where the camera passes through a side (logged). Then a shot
      * along the beam with the lamp out of sight behind the camera: the beam must still show (Sodium draws a block entity
-     * only while its section is on screen, unless its renderer asks to be drawn off-screen).
+     * only while its section is on screen, unless its renderer asks to be drawn off-screen). Last a stone in the beam,
+     * seen from the side: the beam must end on its face, with no more than a sliver of haze behind it.
      */
     static Script beamCross() {
         return new Script("beam-cross")
@@ -2009,6 +2010,13 @@ final class Scenarios {
                 })
                 .waitTicks(40)
                 .shot("beam-cross-lamp-behind")
+                .run(stage -> {
+                    stage.set(stage.at(8, 2, 0), Blocks.STONE.defaultBlockState());
+                    stage.hover(8, 1.4, -6);
+                    SelfTestBridge.focus = new Vec3(stage.origin.getX() + 8.5, stage.origin.getY() + 2.5, stage.origin.getZ() + 0.5);
+                })
+                .waitTicks(40)
+                .shot("beam-cross-blocked")
                 .run(stage -> {
                     SelfTestBridge.focus = null;
                     stage.restoreBlocks();

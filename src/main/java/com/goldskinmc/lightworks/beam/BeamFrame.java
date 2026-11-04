@@ -48,4 +48,37 @@ public final class BeamFrame {
     public static int corner(int u, int v) {
         return (v + 1) * GRID + u + 1;
     }
+
+    /**
+     * Rays per side of the square that outline the visible beam, finer than the corner rays: drawn between only the
+     * corners and edge middles, a beam over rough ground got skewed sides and gaps where neighbours stopped far apart.
+     */
+    public static final int RIM_PER_SIDE = 6;
+    /** Rays round the whole rim. */
+    public static final int RIM = 4 * RIM_PER_SIDE;
+
+    /**
+     * Offset along U, -1 to 1, of rim ray {@code k} (0 to {@link #RIM} - 1): the rim walked from the (-1, -1) corner
+     * along U, then up V, back along U and down V, so ray k and ray k + 1 are neighbours and ray 0 follows the last.
+     */
+    public static double rimU(int k) {
+        double t = 2.0 * (k % RIM_PER_SIDE) / RIM_PER_SIDE;
+        return switch (k / RIM_PER_SIDE) {
+            case 0 -> -1 + t;
+            case 1 -> 1;
+            case 2 -> 1 - t;
+            default -> -1;
+        };
+    }
+
+    /** Offset along V of rim ray {@code k}, as {@link #rimU}. */
+    public static double rimV(int k) {
+        double t = 2.0 * (k % RIM_PER_SIDE) / RIM_PER_SIDE;
+        return switch (k / RIM_PER_SIDE) {
+            case 0 -> -1;
+            case 1 -> -1 + t;
+            case 2 -> 1;
+            default -> 1 - t;
+        };
+    }
 }

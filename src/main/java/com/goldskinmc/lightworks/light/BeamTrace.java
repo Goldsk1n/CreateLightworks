@@ -78,8 +78,12 @@ public final class BeamTrace {
      */
     public static Vec3[] cornerRay(int index, Vec3 origin, Vec3 axis, double[] u, double[] v, double spread,
             double lensHalf) {
-        int cu = BeamFrame.cornerU(index);
-        int cv = BeamFrame.cornerV(index);
+        return ray(BeamFrame.cornerU(index), BeamFrame.cornerV(index), origin, axis, u, v, spread, lensHalf);
+    }
+
+    /** As {@link #cornerRay}, for the ray at offsets (cu, cv), each -1 to 1, across the square ({@link BeamFrame#rimU}). */
+    public static Vec3[] ray(double cu, double cv, Vec3 origin, Vec3 axis, double[] u, double[] v, double spread,
+            double lensHalf) {
         Vec3 offset = new Vec3(cu * u[0] + cv * v[0], cu * u[1] + cv * v[1], cu * u[2] + cv * v[2]);
         return new Vec3[] {origin.add(offset.scale(lensHalf)), axis.add(offset.scale(spread)).normalize()};
     }
