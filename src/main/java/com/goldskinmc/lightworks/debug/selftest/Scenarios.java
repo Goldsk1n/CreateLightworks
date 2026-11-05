@@ -1400,8 +1400,10 @@ final class Scenarios {
                             .setValue(ControlsBlock.FACING, Direction.EAST));
                     stage.set(body.offset(-1, 1, 0), AllBlocks.TRAIN_CONTROLS.getDefaultState()
                             .setValue(ControlsBlock.FACING, Direction.WEST));
+                    // A bogey sticks only to its sides along the track: the body on top is glued to it, the glue
+                    // reaching down to take the bogey in
                     stage.level.addFreshEntity(new SuperGlueEntity(stage.level,
-                            AABB.encapsulatingFullBlocks(body.offset(-2, 0, -1), body.offset(2, 1, 0))));
+                            AABB.encapsulatingFullBlocks(body.offset(-2, -1, -1), body.offset(2, 1, 0))));
                 })
                 .waitTicks(5)
                 .run(stage -> {
@@ -1412,6 +1414,7 @@ final class Scenarios {
                     station.refreshAssemblyInfo();
                     stage.log("train: before assembly: network station %s, assembling %s, bogeys %s",
                             station.getStation() != null, station.isAssembling(), field(station, "bogeyCount"));
+                    logAssemblyChecks(stage, station);
                     station.assemble(stage.player.getUUID());
                     stage.log("train: assembly error %s, trains now %d, assembling %s", assemblyError(station),
                             Create.RAILWAYS.trains.size(), station.isAssembling());
@@ -1485,12 +1488,62 @@ final class Scenarios {
     }
 
     /** Why a station did not assemble: its last error, read like the station screen does. */
+    /**
+     * Create's station assembly gives up silently in a few places: no bogeys found, the station's track point not valid,
+     * no track end in the assembly direction, no rail graph there. Logs each, so a scene that makes no train says why.
+     */
+    private static void logAssemblyChecks(Stage stage, StationBlockEntity station) {
+        int[] bogeys = (int[]) field(station, "bogeyLocations") instanceof int[] found ? found : null;
+        var point = station.edgePoint;
+        boolean valid = point != null && point.hasValidTrack();
+        String ends = "?";
+        String graph = "?";
+        if (valid) {
+            BlockPos track = point.getGlobalPosition();
+            BlockState state = point.getTrackBlockState();
+            var block = point.getTrack();
+            Vec3 centre = Vec3.atBottomCenterOf(track).add(0, block.getElevationAtCenter(stage.level, track, state), 0);
+            Direction way = station.getAssemblyDirection();
+            StringBuilder found = new StringBuilder();
+            com.simibubi.create.content.trains.graph.TrackNodeLocation match = null;
+            for (var end : block.getConnected(stage.level, track, state, true, null)) {
+                Vec3 to = end.getLocation().subtract(centre).normalize();
+                found.append(String.format(" (%.2f %.2f %.2f)", to.x, to.y, to.z));
+                if (way != null && Vec3.atLowerCornerOf(way.getNormal()).distanceToSqr(to) < 1e-6) {
+                    match = end;
+                }
+            }
+            ends = found + (match == null ? ", none towards " + way : ", one towards " + way);
+            graph = match == null ? "-" : String.valueOf(Create.RAILWAYS.getGraph(stage.level, match) != null);
+        }
+        stage.log("train: checks: bogey offsets %s, track point valid %s, track ends%s, rail graph %s",
+                bogeys == null ? "none" : java.util.Arrays.toString(bogeys), valid, ends, graph);
+        if (valid && station.getAssemblyDirection() != null) {
+            // What Create's carriage search finds from the first bogey, done here on a copy
+            Direction way = station.getAssemblyDirection();
+            BlockPos bogey = point.getGlobalPosition().above().relative(way, 1);
+            var carriage = new com.simibubi.create.content.trains.entity.CarriageContraption(way);
+            String result;
+            try {
+                result = "assembles " + carriage.assemble(stage.level, bogey);
+            } catch (Exception e) {
+                result = "throws " + e;
+            }
+            stage.log("train: carriage search from %s (%s, above it %s): %s, %s blocks, %s bogeys", bogey,
+                    stage.level.getBlockState(bogey), stage.level.getBlockState(bogey.above()), result,
+                    carriage.getBlocks().size(), field(carriage, "bogeys"));
+        }
+    }
+
     private static String assemblyError(StationBlockEntity station) {
         try {
             java.lang.reflect.Field field = StationBlockEntity.class.getDeclaredField("lastException");
             field.setAccessible(true);
             Object error = field.get(station);
-            return error instanceof Exception exception ? exception.getMessage() : String.valueOf(error);
+            // Create keeps the reason in the exception's component, not its message
+            return error instanceof com.simibubi.create.content.contraptions.AssemblyException assembly
+                    ? assembly.component.getString() + " (carriage " + field(station, "failedCarriageIndex") + ")"
+                    : String.valueOf(error);
         } catch (ReflectiveOperationException e) {
             return "unknown (" + e + ")";
         }
