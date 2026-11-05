@@ -4,7 +4,7 @@ Functional lighting for [Create](https://modrinth.com/mod/create): searchlights,
 beacons, warning lights, edge markers and vehicle lights that keep landing where they point on Create contraptions,
 trains and [Create Aeronautics](https://modrinth.com/mod/create-aeronautics) vehicles.
 
-> Status: 1.0.0 release candidate. See [CHANGELOG.md](CHANGELOG.md).
+**Download:** [CurseForge](https://www.curseforge.com/minecraft/mc-mods/create-lightworks). Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## Blocks
 
