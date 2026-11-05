@@ -6,6 +6,7 @@ import com.goldskinmc.lightworks.beam.BeamFrame;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.goldskinmc.lightworks.beam.LightMix;
 import com.goldskinmc.lightworks.debug.Timer;
+import com.goldskinmc.lightworks.host.SableHost;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
@@ -50,6 +51,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 
 /**
@@ -200,6 +202,13 @@ public final class ProjectedTint {
      * 2048, and the faces lie exactly on the blocks, so they are kept small and the camera taken off in double.
      */
     private float[] corners = new float[0];
+    /** A block of the Sable vehicle these faces lie on, in its plot; null for faces in the world. */
+    @Nullable
+    private BlockPos vehicle;
+    /** This frame: from the faces' own coordinates to the camera's, and the camera in the faces' own coordinates. */
+    private final Matrix4f framePose = new Matrix4f();
+    private Vec3 frameCamera = Vec3.ZERO;
+    private boolean frameShown;
     private double originX;
     private double originY;
     private double originZ;
@@ -428,6 +437,39 @@ public final class ProjectedTint {
             double t = Math.max(0, 1 - d / radius);
             return (float) (weight * t * t);
         };
+    }
+
+    /**
+     * The faces found next lie on the Sable vehicle holding {@code plotBlock}, found in its own coordinates and drawn
+     * where the vehicle is each frame; null for the world.
+     */
+    public void onVehicle(@Nullable BlockPos plotBlock) {
+        vehicle = plotBlock == null ? null : plotBlock.immutable();
+    }
+
+    /** Daylight at a world point, for faces on a vehicle: its plot has a sky of its own. */
+    public void skyAt(Level level, Vec3 world) {
+        skyExposure = level.getBrightness(LightLayer.SKY, BlockPos.containing(world)) / 15f;
+    }
+
+    /** Where the faces are drawn this frame; false when their vehicle is gone. */
+    private boolean prepare(Vec3 camera, float partialTick) {
+        if (vehicle == null) {
+            framePose.translation((float) (originX - camera.x), (float) (originY - camera.y), (float) (originZ - camera.z));
+            frameCamera = camera;
+            return true;
+        }
+        org.joml.Matrix4d toWorld = SableHost.renderMatrix(vehicle, partialTick);
+        if (toWorld == null) {
+            return false;
+        }
+        // In double, so a vehicle far from the origin keeps its faces on its blocks
+        framePose.set(new org.joml.Matrix4d().translation(-camera.x, -camera.y, -camera.z).mul(toWorld)
+                .translate(originX, originY, originZ));
+        org.joml.Vector3d local = new org.joml.Matrix4d(toWorld).invert()
+                .transformPosition(new org.joml.Vector3d(camera.x, camera.y, camera.z));
+        frameCamera = new Vec3(local.x, local.y, local.z);
+        return true;
     }
 
     /** Changes how strong the tint is without finding the faces again (a blinking pattern). */
@@ -682,14 +724,18 @@ public final class ProjectedTint {
             Matrix4f pose = poseStack.last().pose();
             long now = Minecraft.getInstance().level == null ? 0 : Minecraft.getInstance().level.getGameTime();
             ACTIVE.removeIf(tint -> now > tint.expires);
+            float partialTick = event.getPartialTick().getGameTimeDeltaPartialTick(false);
+            for (ProjectedTint tint : ACTIVE) {
+                tint.frameShown = tint.prepare(camera, partialTick);
+            }
             int mixed = 0;
             for (Long2IntOpenHashMap sideFaces : MIXED_FACES) {
                 sideFaces.clear();
             }
             for (ProjectedTint tint : ACTIVE) {
                 float amount = STRENGTH * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
-                if (amount > 0.01f && !tint.brightens) {
-                    mixed = tint.addToMix(amount, mixed, camera);
+                if (amount > 0.01f && !tint.brightens && tint.frameShown) {
+                    mixed = tint.addToMix(amount, mixed);
                 }
             }
             int mixedFaces = mixed;
@@ -697,12 +743,12 @@ public final class ProjectedTint {
             drawNow(SPOT, spots -> {
                 for (ProjectedTint tint : ACTIVE) {
                     float amount = SPOT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
-                    if (amount > 0.01f && tint.brightens) {
-                        tint.drawSpot(spots, pose, amount, true, camera);
+                    if (amount > 0.01f && tint.brightens && tint.frameShown) {
+                        tint.drawSpot(spots, pose, amount, true);
                         // Not by day: there is no darkness for it to light
                         float standIn = SPOT_STRENGTH * tint.dyeLevel * tint.strength * (1 - day * tint.skyExposure);
                         if (tint.standsIn && standIn > 0.01f) {
-                            tint.drawSpot(spots, pose, standIn, true, camera);
+                            tint.drawSpot(spots, pose, standIn, true);
                         }
                     }
                 }
@@ -710,8 +756,8 @@ public final class ProjectedTint {
             drawNow(DIRECT, direct -> {
                 for (ProjectedTint tint : ACTIVE) {
                     float amount = DIRECT_STRENGTH * tint.dyeLevel * tint.strength * (1 - DAY_FADE * day * tint.skyExposure);
-                    if (amount > 0.002f && tint.brightens) {
-                        tint.drawSpot(direct, pose, amount, false, camera);
+                    if (amount > 0.002f && tint.brightens && tint.frameShown) {
+                        tint.drawSpot(direct, pose, amount, false);
                     }
                 }
             });
@@ -736,9 +782,10 @@ public final class ProjectedTint {
     }
 
     /** Adds this light to the faces it reaches that face the camera; gives how many faces are in the mix now. */
-    private int addToMix(float amount, int mixed, Vec3 camera) {
+    private int addToMix(float amount, int mixed) {
+        org.joml.Vector3f place3 = new org.joml.Vector3f();
         for (int f = 0; f < faces; f++) {
-            if (!facesCamera(f, camera)) {
+            if (!facesCamera(f)) {
                 continue;
             }
             Long2IntOpenHashMap sideFaces = MIXED_FACES[faceSides[f]];
@@ -757,9 +804,10 @@ public final class ProjectedTint {
                 // From the camera, worked out in double: faces of several lights share this array
                 for (int c = 0; c < CORNERS_PER_FACE; c++) {
                     int at = from + c * 4;
-                    mixedPlaces[to + c * 4] = (float) (corners[at] + (originX - camera.x));
-                    mixedPlaces[to + c * 4 + 1] = (float) (corners[at + 1] + (originY - camera.y));
-                    mixedPlaces[to + c * 4 + 2] = (float) (corners[at + 2] + (originZ - camera.z));
+                    framePose.transformPosition(corners[at], corners[at + 1], corners[at + 2], place3);
+                    mixedPlaces[to + c * 4] = place3.x;
+                    mixedPlaces[to + c * 4 + 1] = place3.y;
+                    mixedPlaces[to + c * 4 + 2] = place3.z;
                 }
             }
             int to = place * FLOATS_PER_FACE;
@@ -775,12 +823,11 @@ public final class ProjectedTint {
     }
 
     /** @param evenWalls makes up for the shading of walls ({@link #NORTH_SOUTH_SPOT}), for what brightens in proportion */
-    private void drawSpot(VertexConsumer out, Matrix4f fromCamera, float amount, boolean evenWalls, Vec3 camera) {
-        Matrix4f pose = new Matrix4f(fromCamera).translate((float) (originX - camera.x), (float) (originY - camera.y),
-                (float) (originZ - camera.z));
+    private void drawSpot(VertexConsumer out, Matrix4f fromCamera, float amount, boolean evenWalls) {
+        Matrix4f pose = new Matrix4f(fromCamera).mul(framePose);
         int row = GRID + 1;
         for (int f = 0; f < faces; f++) {
-            if (!facesCamera(f, camera)) {
+            if (!facesCamera(f)) {
                 continue;
             }
             int base = f * FLOATS_PER_FACE;
@@ -804,10 +851,10 @@ public final class ProjectedTint {
     }
 
     /** True when the camera is in front of face {@code f}, on the side it looks out of: no one sees the other side. */
-    private boolean facesCamera(int f, Vec3 camera) {
+    private boolean facesCamera(int f) {
         Direction side = Direction.values()[faceSides[f] % Direction.values().length];
         Direction.Axis axis = side.getAxis();
-        double out = camera.get(axis) - origin(axis) - corners[f * FLOATS_PER_FACE + axis.ordinal()];
+        double out = frameCamera.get(axis) - origin(axis) - corners[f * FLOATS_PER_FACE + axis.ordinal()];
         return side.getAxisDirection() == Direction.AxisDirection.POSITIVE ? out > 0 : out < 0;
     }
 

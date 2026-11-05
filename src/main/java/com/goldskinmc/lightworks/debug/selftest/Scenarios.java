@@ -2123,7 +2123,9 @@ final class Scenarios {
      * A Searchlight on the ground shining up at a plank platform 8 blocks above, before and after the platform becomes a
      * Sable vehicle. Both times the beam should stop on it, about 7.5 blocks out, and the shots should show the visible
      * beam ending there. The log also gives where Sable's own ray-cast says it hit: on the vehicle that is far off, in
-     * the vehicle's plot coordinates, which the beam must not take as its length. Needs Sable.
+     * the vehicle's plot coordinates, which the beam must not take as its length. On the vehicle the lit square must be
+     * painted on its underside as on the placed blocks (tinted faces logged); then the light turns red and the vehicle
+     * drifts sideways, filmed: the paint must stay on the planks the beam meets and follow the vehicle. Needs Sable.
      */
     static Script vehicleBeam() {
         if (!ModList.get().isLoaded("sable")) {
@@ -2157,6 +2159,16 @@ final class Scenarios {
                 .waitTicks(40)
                 .run(stage -> logVehicleBeam(stage, light[0], "Sable vehicle"))
                 .shot("vehicle-beam-1-vehicle")
+                .run(stage -> {
+                    stage.lightAt(light[0]).lightState().setColour(DyeColor.RED);
+                    stage.lightAt(light[0]).notifyUpdate();
+                })
+                .waitTicks(20)
+                .shot("vehicle-beam-2-red")
+                .run(stage -> SelfTestBridge.recording = "vehicle-beam-drift")
+                .repeat(60, (stage, i) -> stage.run("sable physics translation @l add 0.05 0 0 global"))
+                .run(stage -> SelfTestBridge.recording = null)
+                .shot("vehicle-beam-3-drifted")
                 .run(stage -> {
                     stage.run("sable remove @l");
                     stage.run("sable paused false");
