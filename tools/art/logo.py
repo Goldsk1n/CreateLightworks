@@ -36,6 +36,8 @@ LENS_BOOST = 1.1
 GLOW = 0.15
 GLOW_RADIUS = 0.2
 OUTLINE_WIDTH = 10     # pixels of the 1024 image: how far the white outline reaches round the lamp
+# Clear border left round the ring in the finished image, as in Create's own icon (2 pixels of its 256)
+MARGIN = 2 / 256
 
 
 def circle():
@@ -155,11 +157,18 @@ def over(under, top):
     return np.dstack((rgb, out))
 
 
+def fill(image):
+    """The picture zoomed about its centre so the ring reaches to MARGIN of the edge, lamp and all."""
+    half = SIZE * RING / (1 - 2 * MARGIN)
+    box = (SIZE / 2 - half, SIZE / 2 - half, SIZE / 2 + half, SIZE / 2 + half)
+    return image.resize((SIZE, SIZE), Image.LANCZOS, box=box)
+
+
 def main():
     picture = add_beam(circle(), lens_on_screen())
     shape = lamp()
     picture = add_glow(over(over(picture, outline(shape)), shape), lens_on_screen())
-    big = Image.fromarray((np.clip(picture, 0, 1) * 255).astype(np.uint8), 'RGBA')
+    big = fill(Image.fromarray((np.clip(picture, 0, 1) * 255).astype(np.uint8), 'RGBA'))
     SHEET.mkdir(parents=True, exist_ok=True)
     big.save(SHEET / 'logo-1024.png')
     big.resize((256, 256), Image.LANCZOS).save(OUT)
