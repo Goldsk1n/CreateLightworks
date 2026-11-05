@@ -8,7 +8,8 @@ version = mod_version
 group = mod_group_id
 
 base {
-    archivesName = mod_id
+    // The owner's naming for release files: createlightworks-neoforge-1.21.1-1.0.0.jar
+    archivesName = "create${mod_id}-neoforge-${minecraft_version}"
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
