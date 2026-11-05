@@ -36,7 +36,15 @@ public final class BeamTrace {
      * @param block    the block it hit, or null if it ran out of range
      * @param distance from {@code origin} to {@code end}, in blocks
      */
-    public record Hit(Vec3 end, @Nullable BlockPos block, double distance) {
+    /**
+     * @param onVehicle where the beam stopped in a Sable vehicle's own (plot) coordinates when it stopped on one, where
+     *                  its faces are found to paint; null otherwise
+     */
+    public record Hit(Vec3 end, @Nullable BlockPos block, double distance, @Nullable Vec3 onVehicle) {
+        public Hit(Vec3 end, @Nullable BlockPos block, double distance) {
+            this(end, block, distance, null);
+        }
+
         public boolean hitBlock() {
             return block != null;
         }
@@ -208,9 +216,11 @@ public final class BeamTrace {
         Vec3 end = result.getLocation();
         // clip() can hand back a mutable position that it reuses; keep our own copy
         BlockPos block = result.getBlockPos().immutable();
+        Vec3 onVehicle = null;
         if (level instanceof Level world) {
             Vec3 inWorld = SableHost.outOfVehicle(world, end);
             if (inWorld != end) {
+                onVehicle = end;
                 // The ray hit a Sable vehicle, reported in the vehicle's own coordinates: the beam stops where that is
                 // in the world, and the block it lands on is the world block just inside the vehicle's surface (air
                 // in the world, so light goes in front of it and nothing there is painted)
@@ -218,6 +228,6 @@ public final class BeamTrace {
                 block = BlockPos.containing(end.add(dir.scale(0.01)));
             }
         }
-        return new Hit(end, block, end.distanceTo(origin));
+        return new Hit(end, block, end.distanceTo(origin), onVehicle);
     }
 }

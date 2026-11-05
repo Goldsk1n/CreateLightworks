@@ -7,6 +7,7 @@ import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.goldskinmc.lightworks.compat.DynamicLights;
 import com.goldskinmc.lightworks.compat.DynamicSpot;
 import com.goldskinmc.lightworks.host.BeamPose;
+import com.goldskinmc.lightworks.host.SableHost;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
@@ -77,6 +78,15 @@ public final class ClientBeam {
     private ProjectedTint tint;
     @Nullable
     private ProjectedTint spotLayer;
+    /** The same two layers on the Sable vehicle the beam lands on, if any. */
+    @Nullable
+    private ProjectedTint vehicleTint;
+    @Nullable
+    private ProjectedTint vehicleSpot;
+    /** Where rays stopped on a Sable vehicle at the last trace, in its own coordinates, and one such world point. */
+    private final List<Vec3> vehicleEnds = new ArrayList<>();
+    @Nullable
+    private Vec3 vehicleSky;
     private int layersRgb = -1;
     private int layersBrightness;
     private boolean layersShown;
@@ -193,7 +203,7 @@ public final class ClientBeam {
     private void updateLayers(Level level, BeamPose at, @Nullable BeamTrace.Landing lit, List<Vec3> ends, int brightness,
             int tintRgb, boolean moved) {
         double camera = at.moving() ? Math.sqrt(cameraDistanceSqr(at)) : 0;
-        if (ends.isEmpty() || !ClientBeams.isRealWorld(level) || !LightworksClientConfig.colouredLight()
+        if (ends.isEmpty() && vehicleEnds.isEmpty() || !ClientBeams.isRealWorld(level) || !LightworksClientConfig.colouredLight()
                 || camera >= LAYER_DISTANCE) {
             clearLayers();
             return;
@@ -229,7 +239,7 @@ public final class ClientBeam {
         // The white light the beam leaves round its spot (light block or dynamic light)
         double glowRadius = lit == null ? 0 : lit.light() * brightness / 15.0 * GLOW_PER_LEVEL;
         Vec3 glowCentre = lit == null ? at.origin() : lit.hit().end().subtract(lit.direction().scale(0.5));
-        if (tintRgb < 0) {
+        if (tintRgb < 0 || ends.isEmpty()) {
             if (tint != null) {
                 tint.clear();
             }
@@ -244,10 +254,16 @@ public final class ClientBeam {
         if (spotLayer == null) {
             spotLayer = new ProjectedTint();
         }
-        spotLayer.spot(level, at.origin(), at.direction(), shape, lensHalf, ends, tintRgb < 0 ? WHITE_SPOT : tintRgb, strength,
-                at.moving(), at.moving() && !DynamicLights.present(), glowCentre, glowRadius);
+        if (ends.isEmpty()) {
+            spotLayer.clear();
+        } else {
+            spotLayer.spot(level, at.origin(), at.direction(), shape, lensHalf, ends, tintRgb < 0 ? WHITE_SPOT : tintRgb,
+                    strength, at.moving(), at.moving() && !DynamicLights.present(), glowCentre, glowRadius);
+        }
+        paintVehicle(level, at, tintRgb, strength, glowCentre, glowRadius);
         if (at.moving()) {
-            if (spotLayer.faces() > 0) {
+            int painted = spotLayer.faces() + (vehicleSpot == null ? 0 : vehicleSpot.faces());
+            if (painted > 0) {
                 layersAverageNanos += (System.nanoTime() - start - layersAverageNanos) * (sample ? 0.5 : 0.1);
             } else {
                 // Too big for the limit, as a beam over open ground usually stays for a while
@@ -262,6 +278,52 @@ public final class ClientBeam {
         layersShown = true;
         layersRgb = tintRgb;
         layersBrightness = brightness;
+    }
+
+    /**
+     * The colour and spot on the Sable vehicle the beam lands on. A vehicle's blocks live in its plot, far from where it is
+     * drawn, so its faces are found there, with the beam brought into its coordinates, and drawn where the vehicle is
+     * each frame. The rays that stopped on the world paint the world as before.
+     */
+    private void paintVehicle(Level level, BeamPose at, int tintRgb, float strength, Vec3 glowCentre, double glowRadius) {
+        BlockPos block = vehicleEnds.isEmpty() ? null : BlockPos.containing(vehicleEnds.get(0));
+        Vec3 origin = block == null ? null : SableHost.intoVehicle(level, block, at.origin());
+        Vec3 direction = block == null ? null : SableHost.intoVehicleDirection(level, block, at.direction());
+        if (origin == null || direction == null) {
+            clearVehicleLayers();
+            return;
+        }
+        Vec3 glow = SableHost.intoVehicle(level, block, glowCentre);
+        ProjectedTint.newBeam();
+        if (tintRgb < 0) {
+            if (vehicleTint != null) {
+                vehicleTint.clear();
+            }
+        } else {
+            if (vehicleTint == null) {
+                vehicleTint = new ProjectedTint();
+            }
+            vehicleTint.onVehicle(block);
+            vehicleTint.beam(level, origin, direction, shape, lensHalf, vehicleEnds, glow, glowRadius, tintRgb, strength,
+                    at.moving());
+            vehicleTint.skyAt(level, vehicleSky);
+        }
+        if (vehicleSpot == null) {
+            vehicleSpot = new ProjectedTint();
+        }
+        vehicleSpot.onVehicle(block);
+        vehicleSpot.spot(level, origin, direction, shape, lensHalf, vehicleEnds, tintRgb < 0 ? WHITE_SPOT : tintRgb, strength,
+                at.moving(), false, glow, glowRadius);
+        vehicleSpot.skyAt(level, vehicleSky);
+    }
+
+    private void clearVehicleLayers() {
+        if (vehicleTint != null) {
+            vehicleTint.clear();
+        }
+        if (vehicleSpot != null) {
+            vehicleSpot.clear();
+        }
     }
 
     /** True if a block here could change what the layers paint: inside the beam's square or the glow round its spot. */
@@ -305,6 +367,7 @@ public final class ClientBeam {
         if (spotLayer != null) {
             spotLayer.clear();
         }
+        clearVehicleLayers();
         layersShown = false;
     }
 
@@ -323,8 +386,10 @@ public final class ClientBeam {
      */
     private List<Vec3> traceCorners(Level level, BeamPose at, BeamTrace.Hit centre, double range) {
         List<Vec3> ends = new ArrayList<>(CORNERS);
+        vehicleEnds.clear();
+        vehicleSky = null;
         if (centre.hitBlock()) {
-            ends.add(centre.end());
+            addEnd(ends, centre);
         }
         Vec3 a = at.direction();
         boolean far = at.moving() && farFromCamera(at);
@@ -356,7 +421,7 @@ public final class ClientBeam {
             cornerLengths[i] = (float) hit.distance();
             cornerHits[i] = hit.hitBlock();
             if (hit.hitBlock()) {
-                ends.add(hit.end());
+                addEnd(ends, hit);
                 if (BeamTrace.landsUsefully(hit) && (landing == null || hit.distance() < landing.hit().distance())) {
                     landing = new BeamTrace.Landing(hit, ray[1], BeamTrace.edgeLight(shape, hit.distance()));
                 }
@@ -403,6 +468,18 @@ public final class ClientBeam {
         }
     }
 
+    /** A ray's end goes to the world's layers, or the vehicle's when it stopped on one. */
+    private void addEnd(List<Vec3> ends, BeamTrace.Hit hit) {
+        if (hit.onVehicle() == null) {
+            ends.add(hit.end());
+            return;
+        }
+        vehicleEnds.add(hit.onVehicle());
+        if (vehicleSky == null) {
+            vehicleSky = hit.end();
+        }
+    }
+
     private static boolean worthPublishing(@Nullable BeamSpot current, @Nullable BeamSpot next) {
         if (current == null || next == null) {
             return current != next;
@@ -430,6 +507,8 @@ public final class ClientBeam {
         clearLayers();
         tint = null;
         spotLayer = null;
+        vehicleTint = null;
+        vehicleSpot = null;
         lastSpot = null;
         length = 0;
         brightness = 0;
