@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1 (unreleased)
+
+- The Mods screen's website link now opens the mod's CurseForge page (it opened the GitHub repository); bugs and
+  suggestions still go to GitHub Issues.
+
 ## 1.0.0 (2026-11-05)
 
 First release, for Minecraft 1.21.1 with NeoForge 21.1.125+ and Create 6.0.0 to 6.0.x.

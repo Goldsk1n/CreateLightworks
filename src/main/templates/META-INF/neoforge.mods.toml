@@ -8,7 +8,7 @@ modId = "${mod_id}"
 version = "${mod_version}"
 displayName = "${mod_name}"
 logoFile = "logo.png"
-displayURL = "https://github.com/Goldsk1n/CreateLightworks"
+displayURL = "https://www.curseforge.com/minecraft/mc-mods/create-lightworks"
 authors = "GoldskinMC"
 description = '''
 Functional lights for Create that keep working on moving contraptions and vehicles.
