@@ -1,6 +1,7 @@
 package com.goldskinmc.lightworks.light;
 
 import com.goldskinmc.lightworks.Lightworks;
+import com.goldskinmc.lightworks.content.TickPhase;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -63,7 +64,13 @@ public final class ClientBeams {
     }
 
     @SubscribeEvent
+    public static void onClientTickStart(ClientTickEvent.Pre event) {
+        TickPhase.setClientTicking(true);
+    }
+
+    @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
+        TickPhase.setClientTicking(false);
         SOURCES.removeIf(source -> {
             if (source.isGone()) {
                 source.beam().release();

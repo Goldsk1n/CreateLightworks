@@ -24,6 +24,9 @@ public final class LdlSpots {
     private static final AtomicInteger ACTIVE = new AtomicInteger();
     /** Called from every chunk-meshing thread at once: a LongAdder does not contend like an AtomicLong. */
     private static final LongAdder CALLS = new LongAdder();
+    /** From a spot moving to chunk meshing first reading it: how late LambDynamicLights' light follows ours. */
+    private static final LongAdder MESH_DELAY_NANOS = new LongAdder();
+    private static final LongAdder MESH_DELAYS = new LongAdder();
     private static final Set<SpotBehavior> LIVE = ConcurrentHashMap.newKeySet();
     private static volatile double maxReturned;
     private static volatile boolean suppressed;
@@ -53,8 +56,10 @@ public final class LdlSpots {
         if (LightworksDynamicLights.behaviors() == null) {
             return "LambDynamicLights present but not initialised";
         }
-        return String.format("LambDynamicLights spots %d, lightAtPos calls %d, max %.1f",
-                ACTIVE.get(), CALLS.sum(), maxReturned);
+        long delays = MESH_DELAYS.sum();
+        return String.format("LambDynamicLights spots %d, lightAtPos calls %d, max %.1f, moved spot meshed after %.1f ms "
+                        + "on average", ACTIVE.get(), CALLS.sum(), maxReturned,
+                delays == 0 ? 0 : MESH_DELAY_NANOS.sum() / 1e6 / delays);
     }
 
     private static final class SpotBehavior implements DynamicLightBehavior, DynamicSpot {
@@ -64,12 +69,15 @@ public final class LdlSpots {
         private volatile BeamSpot spot;
         private volatile boolean changed = true;
         private volatile boolean removed;
+        /** When the spot last moved, until meshing reads it; 0 once read. */
+        private volatile long movedAt;
 
         @Override
         public void set(@Nullable BeamSpot next) {
             if (!Objects.equals(spot, next)) {
                 spot = next;
                 changed = true;
+                movedAt = System.nanoTime();
             }
         }
 
@@ -87,6 +95,12 @@ public final class LdlSpots {
             long start = Timer.start();
             CALLS.increment();
             BeamSpot current = spot;
+            long moved = movedAt;
+            if (moved != 0) {
+                movedAt = 0;
+                MESH_DELAY_NANOS.add(System.nanoTime() - moved);
+                MESH_DELAYS.increment();
+            }
             double light = current == null || suppressed
                     ? 0 : current.lightAt(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, falloffRatio);
             if (light > maxReturned) {

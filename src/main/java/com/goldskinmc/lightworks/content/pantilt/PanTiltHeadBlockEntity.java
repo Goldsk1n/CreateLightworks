@@ -3,6 +3,7 @@ package com.goldskinmc.lightworks.content.pantilt;
 import com.goldskinmc.lightworks.beam.Sweep;
 import com.goldskinmc.lightworks.content.LightGoggles;
 import com.goldskinmc.lightworks.content.SpinAngle;
+import com.goldskinmc.lightworks.content.TickPhase;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import java.util.List;
@@ -94,7 +95,7 @@ public class PanTiltHeadBlockEntity extends KineticBlockEntity {
 
     /** Also true for copies that never tick (contraption render worlds, Ponder): they hold still. */
     private boolean tickedThisTick() {
-        return level == null || tickedAt == Long.MIN_VALUE || tickedAt == level.getGameTime();
+        return TickPhase.ticked(level, tickedAt);
     }
 
     /** Pan angle (yaw in the mount frame) {@code partialTick} into the current tick. */

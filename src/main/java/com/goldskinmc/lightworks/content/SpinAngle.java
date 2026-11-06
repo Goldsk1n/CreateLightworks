@@ -29,7 +29,7 @@ public final class SpinAngle {
      * worlds, Ponder scenes) hold still.
      */
     public float at(float partialTick, float step, @Nullable Level level) {
-        if (level != null && tickedAt != Long.MIN_VALUE && tickedAt != level.getGameTime()) {
+        if (!TickPhase.ticked(level, tickedAt)) {
             return angle + step * partialTick;
         }
         return Mth.rotLerp(partialTick, previous, angle);
