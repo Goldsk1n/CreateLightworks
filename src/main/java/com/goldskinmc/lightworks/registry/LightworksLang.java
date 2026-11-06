@@ -77,6 +77,10 @@ public final class LightworksLang {
         add("lightworks.configuration.colouredLight", "Coloured light");
         add("lightworks.configuration.lensGlow", "Lens glow");
         add("lightworks.configuration.insideHaze", "Haze inside a beam");
+        add("lightworks.configuration.shaderHint", "Shader tip");
+        add("lightworks.hint.moving_lights_shaders", "Lightworks: under a shader pack, lights on vehicles, contraptions and "
+                + "turning heads light the world only with LambDynamicLights or Sodium Dynamic Lights installed. This tip "
+                + "shows once; turn it off in Lightworks' client config.");
         add("lightworks.configuration.debugOverlay", "Debug overlay (F3)");
         // Scene text lives in the scenes; Ponder hands it over once every scene is built
         REGISTRATE.addDataGenerator(ProviderType.LANG, provider -> LightworksPonder.provideLang(provider::add));

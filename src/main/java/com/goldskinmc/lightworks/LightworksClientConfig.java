@@ -21,6 +21,7 @@ public final class LightworksClientConfig {
     private static final ModConfigSpec.BooleanValue COLOURED_LIGHT;
     private static final ModConfigSpec.BooleanValue LENS_GLOW;
     private static final ModConfigSpec.BooleanValue INSIDE_HAZE;
+    private static final ModConfigSpec.BooleanValue SHADER_HINT;
     private static final ModConfigSpec.BooleanValue DEBUG_OVERLAY;
 
     static {
@@ -46,6 +47,11 @@ public final class LightworksClientConfig {
                 .comment("A faint haze over the view while you stand inside a beam, stronger looking towards its lamp.")
                 .translation("lightworks.configuration.insideHaze")
                 .define("insideHaze", true);
+        SHADER_HINT = builder
+                .comment("Once a session, a chat tip when a light on a vehicle, a contraption or a turning head shines under a",
+                        "shader pack with no dynamic lights mod installed: without one it lights nothing there.")
+                .translation("lightworks.configuration.shaderHint")
+                .define("shaderHint", true);
         DEBUG_OVERLAY = builder
                 .comment("With the F3 screen open, draw every beam from lens to hit and show details of the light",
                         "under the crosshair.")
@@ -76,6 +82,10 @@ public final class LightworksClientConfig {
 
     public static boolean insideHaze() {
         return !SPEC.isLoaded() || INSIDE_HAZE.get();
+    }
+
+    public static boolean shaderHint() {
+        return !SPEC.isLoaded() || SHADER_HINT.get();
     }
 
     public static boolean debugOverlay() {

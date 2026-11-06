@@ -78,6 +78,7 @@ public final class ClientBeams {
             }
             return false;
         });
+        ShaderHint.check(SOURCES);
     }
 
     @SubscribeEvent

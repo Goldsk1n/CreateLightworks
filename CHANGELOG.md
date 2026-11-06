@@ -6,6 +6,9 @@
   suggestions still go to GitHub Issues.
 - A turning Rotating Beacon or Pan-Tilt Head no longer draws its beam a tick ahead of the light it casts: the lit spot
   stays at the beam's end instead of trailing behind it.
+- With a shader pack on and no dynamic lights mod, a light on a vehicle, a contraption or a turning head lights nothing
+  but its beam. The first time one shines, a chat tip now says that LambDynamicLights or Sodium Dynamic Lights fixes it
+  (once a session; client config `shaderHint` turns it off).
 
 ## 1.0.0 (2026-11-05)
 
