@@ -260,7 +260,7 @@ dependencies {
         ]
         if ('sable-dynamic-lights' in devConflicts && (!devLdl || project.neo_version < '21.1.234')) {
             throw new GradleException('sable-dynamic-lights needs LambDynamicLights (leave out -Pdev_ldl=false) and '
-                    + 'NeoForge 21.1.234 or later (-Pneo_version=...)')
+                    + 'NeoForge 21.1.234 or later (neo_version)')
         }
         if ('create-sable-dynamic-lights' in devConflicts && (devLdl || !devPerf)) {
             throw new GradleException('create-sable-dynamic-lights needs -Pdev_perf=true (Sodium) and -Pdev_ldl=false '
