@@ -112,7 +112,7 @@ public final class ServerBeamLight {
             }
             return;
         }
-        level.setBlock(pos, LightworksBlocks.BEAM_LIGHT.getDefaultState().setValue(BeamLightBlock.LEVEL, lightLevel),
+        level.setBlock(pos, BeamLightBlock.replacing(state, LightworksBlocks.BEAM_LIGHT.getDefaultState(), lightLevel),
                 BeamLightBlock.QUIET_FLAGS);
         if (level.getBlockEntity(pos) instanceof BeamLightBlockEntity light) {
             light.setOwner(owner);
@@ -128,15 +128,16 @@ public final class ServerBeamLight {
     }
 
     private static void remove(Level level, BlockPos pos) {
-        if (level.isLoaded(pos) && level.getBlockState(pos).is(LightworksBlocks.BEAM_LIGHT.get())) {
-            level.setBlock(pos, Blocks.AIR.defaultBlockState(), BeamLightBlock.QUIET_FLAGS);
+        BlockState state = level.isLoaded(pos) ? level.getBlockState(pos) : null;
+        if (state != null && state.is(LightworksBlocks.BEAM_LIGHT.get())) {
+            level.setBlock(pos, BeamLightBlock.emptied(state), BeamLightBlock.QUIET_FLAGS);
         }
     }
 
-    /** Only empty air, or a beam light this owner placed, may hold a light. */
+    /** Only empty air or water, or a beam light this owner placed, may hold a light. */
     private static boolean canUse(Level level, BlockPos target, BlockPos owner) {
         BlockState state = level.getBlockState(target);
-        if (state.isAir()) {
+        if (BeamLightBlock.canHold(state)) {
             return true;
         }
         return state.is(LightworksBlocks.BEAM_LIGHT.get())

@@ -81,7 +81,7 @@ final class BeamArea {
                         u[0], u[1], u[2], v[0], v[1], v[2], lensHalf);
                 // Our own lights count as air, or the next search would avoid every place this one chose
                 BlockState inFront = level.getBlockState(neighbour.setWithOffset(pos, side));
-                if (light < MIN_LIGHT || !(inFront.isAir() || inFront.is(LightworksBlocks.BEAM_LIGHT.get()))) {
+                if (light < MIN_LIGHT || !(BeamLightBlock.canHold(inFront) || inFront.is(LightworksBlocks.BEAM_LIGHT.get()))) {
                     continue;
                 }
                 lit = true;

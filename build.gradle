@@ -204,7 +204,10 @@ dependencies {
         localRuntime "dev.ryanhcode.sable:sable-sable_rapier-${minecraft_version}:${sable_version}"
         localRuntime "foundry.veil:veil-neoforge-${minecraft_version}:${veil_version}"
 
-        if (devLdl) {
+        if (devLdl && 'sable-dynamic-lights' in devConflicts) {
+            // The bridge asks for mod id lambdynlights, which only the release jar has (it nests the API and runtime)
+            localRuntime("maven.modrinth:lambdynamiclights:${ldl_release_version}") { transitive = false }
+        } else if (devLdl) {
             localRuntime("dev.lambdaurora.lambdynamiclights:lambdynamiclights-runtime:${ldl_version}") {
                 attributes { attribute(mappingsAttribute, 'mojmap') }
             }
@@ -250,7 +253,19 @@ dependencies {
                 'entityculling'        : ["maven.modrinth:entityculling:${entityculling_version}"],
                 'immediatelyfast'      : ["maven.modrinth:immediatelyfast:${immediatelyfast_version}"],
                 'sodium-extra'         : ["maven.modrinth:sodium-extra:${sodium_extra_version}"],
+                // Bridges that make light-giving blocks on contraptions and Sable vehicles glow dynamically
+                'sable-dynamic-lights' : ["maven.modrinth:sable-dynamic-lights:${sable_dynamic_lights_version}"],
+                'create-sable-dynamic-lights': ["maven.modrinth:create-sable-dynamic-lights:${create_sable_dynamic_lights_version}",
+                                                "maven.modrinth:sodium-dynamic-lights:${sodium_dynamic_lights_version}"],
         ]
+        if ('sable-dynamic-lights' in devConflicts && (!devLdl || project.neo_version < '21.1.234')) {
+            throw new GradleException('sable-dynamic-lights needs LambDynamicLights (leave out -Pdev_ldl=false) and '
+                    + 'NeoForge 21.1.234 or later (-Pneo_version=...)')
+        }
+        if ('create-sable-dynamic-lights' in devConflicts && (devLdl || !devPerf)) {
+            throw new GradleException('create-sable-dynamic-lights needs -Pdev_perf=true (Sodium) and -Pdev_ldl=false '
+                    + '(it runs on Sodium Dynamic Lights, which LambDynamicLights refuses)')
+        }
         if ('create-dynamic-lights' in devConflicts && (devLdl || !devPerf)) {
             throw new GradleException('create-dynamic-lights needs -Pdev_perf=true (Sodium) and -Pdev_ldl=false '
                     + '(LambDynamicLights refuses to load next to Sodium Dynamic Lights)')

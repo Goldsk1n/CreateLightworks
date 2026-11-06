@@ -103,6 +103,53 @@ public final class BeamLightGameTests {
                 .thenSucceed();
     }
 
+    /**
+     * A beam shining through water onto a wall lights the water in front of it: the light block goes into the water source,
+     * waterlogged, and keeps it a source. A channel of stone, one block wide, keeps the water from spreading: the lamp
+     * closes one end, the wall the other.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 1000)
+    public static void beamThroughWaterLightsInFrontOfTheWall(GameTestHelper helper) {
+        BlockPos spot = waterChannel(helper);
+        helper.succeedWhen(() -> {
+            BlockState state = helper.getBlockState(spot);
+            helper.assertTrue(state.is(LightworksBlocks.BEAM_LIGHT.get()), "no beam light in the water yet");
+            helper.assertTrue(state.getValue(BeamLightBlock.WATERLOGGED), "the beam light is not waterlogged");
+            helper.assertTrue(state.getFluidState().isSource(), "the water there is no longer a source");
+            int measured = helper.getLevel().getBrightness(LightLayer.BLOCK, helper.absolutePos(spot));
+            helper.assertTrue(measured >= 12, "expected light 12 or more in the water, measured " + measured);
+        });
+    }
+
+    /** Breaking the Searchlight gives the water its light block stood in back, rather than leaving air. */
+    @GameTest(template = EMPTY, timeoutTicks = 1000)
+    public static void breakingTheSearchlightGivesTheWaterBack(GameTestHelper helper) {
+        BlockPos spot = waterChannel(helper);
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(isBeamLight(helper, spot), "no beam light in the water yet"))
+                .thenExecute(() -> helper.destroyBlock(new BlockPos(0, 2, 2)))
+                .thenExecuteAfter(1, () -> {
+                    BlockState state = helper.getBlockState(spot);
+                    helper.assertTrue(state.is(Blocks.WATER) && state.getFluidState().isSource(),
+                            "expected a water source where the light was, found " + state);
+                })
+                .thenSucceed();
+    }
+
+    /** A Searchlight at (0, 2, 2) shining east down a stone channel onto a wall at x = 4, a water source in front of it. */
+    private static BlockPos waterChannel(GameTestHelper helper) {
+        for (int x = 1; x <= 3; x++) {
+            helper.setBlock(new BlockPos(x, 1, 2), Blocks.STONE);
+            helper.setBlock(new BlockPos(x, 2, 1), Blocks.STONE);
+            helper.setBlock(new BlockPos(x, 2, 3), Blocks.STONE);
+        }
+        helper.setBlock(new BlockPos(4, 2, 2), Blocks.STONE);
+        BlockPos spot = new BlockPos(3, 2, 2);
+        helper.setBlock(spot, Blocks.WATER);
+        placeSearchlight(helper, new BlockPos(0, 2, 2), Direction.EAST);
+        return spot;
+    }
+
     /** Breaking the Searchlight removes its light. */
     @GameTest(template = EMPTY)
     public static void breakingTheSearchlightRemovesItsLight(GameTestHelper helper) {

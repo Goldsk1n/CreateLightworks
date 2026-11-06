@@ -10,6 +10,9 @@
   invisible light block in your own world only, where it lands, and moves it as it moves. It is ordinary block light, so
   shader packs light it too: before, such a light lit nothing but its beam under a shader pack. LambDynamicLights or
   Sodium Dynamic Lights still take over when installed. Client config `clientLightBlocks` turns it off.
+- Beams shining into water now light it: the invisible light blocks go into water sources too (waterlogged, like
+  vanilla's Light block) and give the water back when they go. Before, a lamp aimed into a pond, a flooded cave or the sea
+  lit nothing under the surface, standing or on a vehicle.
 - With that turned off, a shader pack on and no dynamic lights mod, the first moving light that shines brings a chat tip
   naming the two mods (once a session; client config `shaderHint` turns it off).
 

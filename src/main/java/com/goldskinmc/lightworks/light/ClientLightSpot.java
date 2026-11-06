@@ -63,8 +63,8 @@ public final class ClientLightSpot implements DynamicSpot {
             return;
         }
         clear(level);
-        level.setBlock(pos, LightworksBlocks.BEAM_LIGHT.getDefaultState().setValue(BeamLightBlock.LEVEL, light),
-                BeamLightBlock.QUIET_FLAGS);
+        level.setBlock(pos, BeamLightBlock.replacing(level.getBlockState(pos), LightworksBlocks.BEAM_LIGHT.getDefaultState(),
+                light), BeamLightBlock.QUIET_FLAGS);
         placed = pos;
         placedLevel = light;
         PLACED.add(pos);
@@ -87,18 +87,18 @@ public final class ClientLightSpot implements DynamicSpot {
         BlockState there = level.getBlockState(placed);
         // Only ours: the server may have put something there since, our own light block among them
         if (there.is(LightworksBlocks.BEAM_LIGHT.get()) && there.getValue(BeamLightBlock.LEVEL) == placedLevel) {
-            level.setBlock(placed, Blocks.AIR.defaultBlockState(), BeamLightBlock.QUIET_FLAGS);
+            level.setBlock(placed, BeamLightBlock.emptied(there), BeamLightBlock.QUIET_FLAGS);
         }
         PLACED.remove(placed);
         placed = null;
     }
 
-    /** The air block holding the spot's centre, or the nearest one back along the beam. */
+    /** The air or water block holding the spot's centre, or the nearest one back along the beam. */
     private static @Nullable BlockPos airBefore(ClientLevel level, BeamSpot spot) {
         for (int step = 0; step <= MAX_STEPS_BACK; step++) {
             BlockPos pos = BlockPos.containing(spot.spotX() - spot.dirX() * step, spot.spotY() - spot.dirY() * step,
                     spot.spotZ() - spot.dirZ() * step);
-            if (level.getBlockState(pos).isAir()) {
+            if (BeamLightBlock.canHold(level.getBlockState(pos))) {
                 return pos;
             }
         }
