@@ -6,9 +6,12 @@
   suggestions still go to GitHub Issues.
 - A turning Rotating Beacon or Pan-Tilt Head no longer draws its beam a tick ahead of the light it casts: the lit spot
   stays at the beam's end instead of trailing behind it.
-- With a shader pack on and no dynamic lights mod, a light on a vehicle, a contraption or a turning head lights nothing
-  but its beam. The first time one shines, a chat tip now says that LambDynamicLights or Sodium Dynamic Lights fixes it
-  (once a session; client config `shaderHint` turns it off).
+- Lights on vehicles, contraptions and turning heads now light the world without a dynamic lights mod: each places an
+  invisible light block in your own world only, where it lands, and moves it as it moves. It is ordinary block light, so
+  shader packs light it too: before, such a light lit nothing but its beam under a shader pack. LambDynamicLights or
+  Sodium Dynamic Lights still take over when installed. Client config `clientLightBlocks` turns it off.
+- With that turned off, a shader pack on and no dynamic lights mod, the first moving light that shines brings a chat tip
+  naming the two mods (once a session; client config `shaderHint` turns it off).
 
 ## 1.0.0 (2026-11-05)
 

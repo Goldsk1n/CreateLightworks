@@ -22,6 +22,7 @@ public final class LightworksClientConfig {
     private static final ModConfigSpec.BooleanValue LENS_GLOW;
     private static final ModConfigSpec.BooleanValue INSIDE_HAZE;
     private static final ModConfigSpec.BooleanValue SHADER_HINT;
+    private static final ModConfigSpec.BooleanValue CLIENT_LIGHT_BLOCKS;
     private static final ModConfigSpec.BooleanValue DEBUG_OVERLAY;
 
     static {
@@ -52,6 +53,11 @@ public final class LightworksClientConfig {
                         "shader pack with no dynamic lights mod installed: without one it lights nothing there.")
                 .translation("lightworks.configuration.shaderHint")
                 .define("shaderHint", true);
+        CLIENT_LIGHT_BLOCKS = builder
+                .comment("With no dynamic lights mod, lights on vehicles, contraptions and turning heads light the world with",
+                        "light blocks placed in your own world only, which shader packs light up too.")
+                .translation("lightworks.configuration.clientLightBlocks")
+                .define("clientLightBlocks", true);
         DEBUG_OVERLAY = builder
                 .comment("With the F3 screen open, draw every beam from lens to hit and show details of the light",
                         "under the crosshair.")
@@ -82,6 +88,10 @@ public final class LightworksClientConfig {
 
     public static boolean insideHaze() {
         return !SPEC.isLoaded() || INSIDE_HAZE.get();
+    }
+
+    public static boolean clientLightBlocks() {
+        return !SPEC.isLoaded() || CLIENT_LIGHT_BLOCKS.get();
     }
 
     public static boolean shaderHint() {

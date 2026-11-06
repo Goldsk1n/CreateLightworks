@@ -113,6 +113,8 @@ public final class ClientBeam {
     private int tintRgb = -1;
     private float skyExposure;
     private boolean preview;
+    /** Whether the last update was of a moving light. */
+    private boolean moving;
 
     public ClientBeam(ConeFalloff shape, float lensHalf) {
         this.shape = shape;
@@ -153,6 +155,7 @@ public final class ClientBeam {
             spot = ClientBeams.isRealWorld(level) ? DynamicLights.createSpot() : DynamicSpot.NONE;
         }
         BeamPose at = beam.moving() ? drawn : beam;
+        moving = at.moving();
         double range = BeamTrace.range(shape);
         BeamTrace.Hit hit = BeamTrace.trace(level, at.origin(), at.direction(),
                 ClientBeams.isRealWorld(level) ? range : Math.min(range, PREVIEW_RANGE));
@@ -188,7 +191,8 @@ public final class ClientBeam {
     private void setSpot(@Nullable BeamSpot to) {
         if (ClientSafety.works(ClientSafety.DYNAMIC_LIGHT)) {
             try {
-                spot.set(to);
+                // A client light block only for a moving light: a fixed one has the server's light blocks
+                spot.set(spot instanceof ClientLightSpot && !moving ? null : to);
             } catch (RuntimeException e) {
                 ClientSafety.failed(ClientSafety.DYNAMIC_LIGHT, e);
             }
