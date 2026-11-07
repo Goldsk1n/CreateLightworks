@@ -7,7 +7,6 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import com.simibubi.create.content.contraptions.render.ContraptionMatrices;
 import net.createmod.catnip.render.SuperRenderTypeBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -333,14 +332,27 @@ public final class BeamVisual {
         return level == null ? 0 : Mth.clamp((level.getSkyDarken(1) - 0.2f) / 0.8f, 0, 1);
     }
 
-    /** Same beam drawn inside a moving contraption, from {@code MovementBehaviour.renderInContraption}. */
-    public static void renderInContraption(ContraptionMatrices matrices, MultiBufferSource buffers,
-            Vector3f lens, Vector3f axis, ClientBeam beam, int rgb) {
-        PoseStack poseStack = matrices.getViewProjection();
+    /**
+     * The beam of a moving light, drawn in the world from its pose this frame rather than inside its contraption: Minecraft
+     * skips a contraption whose box is out of view, and its beams went with it when the lamps left the screen.
+     *
+     * @param poseStack placed at the camera
+     * @param lens      where the beam leaves the light, in the world
+     * @param axis      unit vector the beam points along, in the world
+     */
+    public static void renderInWorld(PoseStack poseStack, MultiBufferSource buffers, Vec3 camera, Vec3 lens, Vec3 axis,
+            ClientBeam beam, int rgb) {
         poseStack.pushPose();
-        poseStack.last().pose().mul(matrices.getModel().last().pose());
-        render(poseStack, buffers, lens, axis, beam, rgb);
+        // Taken off in double, so a beam far from the world's origin stays steady
+        poseStack.translate(lens.x - camera.x, lens.y - camera.y, lens.z - camera.z);
+        render(poseStack, buffers, new Vector3f(), new Vector3f((float) axis.x, (float) axis.y, (float) axis.z), beam, rgb);
         poseStack.popPose();
+    }
+
+    /** Draws what {@link #renderInWorld} queued at once, so none of it waits for the next frame. */
+    public static void flush(MultiBufferSource.BufferSource buffers) {
+        buffers.endBatch(BEAM);
+        buffers.endBatch(GLOW);
     }
 
     static float mix(float channel) {

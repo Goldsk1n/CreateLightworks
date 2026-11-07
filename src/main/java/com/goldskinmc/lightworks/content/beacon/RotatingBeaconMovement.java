@@ -3,7 +3,6 @@ package com.goldskinmc.lightworks.content.beacon;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.content.MovingBeam;
-import com.goldskinmc.lightworks.light.BeamVisual;
 import com.goldskinmc.lightworks.light.ClientBeams;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
@@ -81,8 +80,6 @@ public class RotatingBeaconMovement implements MovementBehaviour {
         RotatingBeaconRenderer.renderRotor(poseStack, buffer, first.facing(), first.yaw(), first.rgb(),
                 first.beam().brightness() / 15f, worldLight, false);
         poseStack.popPose();
-        for (MovingBeam beam : beams) {
-            BeamVisual.renderInContraption(matrices, buffer, beam.localLens(), beam.localAxis(), beam.beam(), beam.rgb());
-        }
+        // The beams themselves are drawn in the world (MovingBeamPass): this is skipped while the contraption is out of view
     }
 }

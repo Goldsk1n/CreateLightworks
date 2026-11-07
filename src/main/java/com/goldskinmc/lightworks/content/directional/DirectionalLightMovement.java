@@ -3,7 +3,6 @@ package com.goldskinmc.lightworks.content.directional;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.content.MovingBeam;
-import com.goldskinmc.lightworks.light.BeamVisual;
 import com.goldskinmc.lightworks.light.ClientBeams;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;
@@ -84,8 +83,7 @@ public class DirectionalLightMovement implements MovementBehaviour {
             DirectionalLightRenderer.renderLens(poseStack, buffer, light.type(), light.facing(), light.yaw(),
                     light.elevation(), light.rgb(), light.beam().brightness() / 15f, worldLight);
             poseStack.popPose();
-            BeamVisual.renderInContraption(matrices, buffer, light.localLens(), light.localAxis(), light.beam(),
-                    light.rgb());
+            // The beam itself is drawn in the world (MovingBeamPass): this is skipped while the contraption is out of view
         }
     }
 }

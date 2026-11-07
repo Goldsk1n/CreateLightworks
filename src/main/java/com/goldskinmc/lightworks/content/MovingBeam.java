@@ -9,6 +9,7 @@ import com.goldskinmc.lightworks.light.ClientBeam;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;
 import java.util.Objects;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
@@ -91,6 +92,11 @@ public final class MovingBeam implements BeamSource {
 
     public int rgb() {
         return state.rgb(type);
+    }
+
+    /** The client world the contraption is in. */
+    public Level level() {
+        return context.world;
     }
 
     public LightType type() {
