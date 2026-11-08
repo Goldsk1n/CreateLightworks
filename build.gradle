@@ -109,6 +109,11 @@ neoForge {
             systemProperty 'lightworks.selftest', providers.gradleProperty('selftest').getOrElse('false')
             // -Pselftest_quit=true closes the game once the self-test is done (unattended runs)
             systemProperty 'lightworks.selftest.quit', providers.gradleProperty('selftest_quit').getOrElse('false')
+            // -Pselftest_conditions=fabulous,rain,nether,... sets the world and settings it runs under (debug/selftest/Conditions),
+            // -Pselftest_tag=<name> names its screenshot folder, -Pselftest_site=x,z moves its test site
+            systemProperty 'lightworks.selftest.conditions', providers.gradleProperty('selftest_conditions').getOrElse('')
+            systemProperty 'lightworks.selftest.tag', providers.gradleProperty('selftest_tag').getOrElse('')
+            systemProperty 'lightworks.selftest.site', providers.gradleProperty('selftest_site').getOrElse('')
             // -Pwindow=1920x1080 opens the game at that size (screenshots are taken at the window's size)
             def window = providers.gradleProperty('window').getOrNull()
             if (window != null) {
@@ -128,6 +133,8 @@ neoForge {
             systemProperty 'lightworks.selftest', providers.gradleProperty('selftest').getOrElse('false')
             // With the self-test, -Pselftest_quit=true stops the server once it is done
             systemProperty 'lightworks.selftest.quit', providers.gradleProperty('selftest_quit').getOrElse('false')
+            systemProperty 'lightworks.selftest.conditions', providers.gradleProperty('selftest_conditions').getOrElse('')
+            systemProperty 'lightworks.selftest.site', providers.gradleProperty('selftest_site').getOrElse('')
         }
         // Headless load check: boots every mod, runs game tests, exits
         gameTestServer {
