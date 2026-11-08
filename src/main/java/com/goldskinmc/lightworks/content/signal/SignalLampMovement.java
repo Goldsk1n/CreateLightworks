@@ -1,5 +1,6 @@
 package com.goldskinmc.lightworks.content.signal;
 
+import com.goldskinmc.lightworks.LightworksClientConfig;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.light.ClientBeams;
@@ -84,7 +85,9 @@ public class SignalLampMovement implements MovementBehaviour {
     /** Client: colours the blocks round the lamp where the contraption has it this tick. */
     private void updateGlow(MovementContext context, Moving moving) {
         Vec3 at = context.position;
+        // Off under shader packs or by config, as beams' layers are: nothing would draw it
         if (at == null || type.placedLight() <= 0 || !ClientBeams.isRealWorld(context.world)
+                || !LightworksClientConfig.colouredLight()
                 || Minecraft.getInstance().gameRenderer.getMainCamera().getPosition().distanceToSqr(at)
                         > GLOW_DISTANCE * GLOW_DISTANCE) {
             moving.glow.clear();

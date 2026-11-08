@@ -3,6 +3,7 @@ package com.goldskinmc.lightworks.light;
 import com.goldskinmc.lightworks.LightworksClientConfig;
 import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.goldskinmc.lightworks.beam.BeamFrame;
+import com.goldskinmc.lightworks.render.MainTarget;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -85,7 +86,7 @@ public final class BeamVisual {
                     .setShaderState(RenderStateShard.RENDERTYPE_LIGHTNING_SHADER)
                     .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                     .setTransparencyState(RenderStateShard.LIGHTNING_TRANSPARENCY)
-                    .setOutputState(RenderStateShard.WEATHER_TARGET)
+                    .setOutputState(MainTarget.OUTPUT)
                     .setCullState(RenderStateShard.CULL)
                     .createCompositeState(false));
 
@@ -110,7 +111,7 @@ public final class BeamVisual {
                     .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                     .setTransparencyState(RenderStateShard.LIGHTNING_TRANSPARENCY)
                     .setDepthTestState(RenderStateShard.NO_DEPTH_TEST)
-                    .setOutputState(RenderStateShard.WEATHER_TARGET)
+                    .setOutputState(MainTarget.OUTPUT)
                     .setCullState(RenderStateShard.NO_CULL)
                     .createCompositeState(false));
     /** How finely the line from the eye to the lens is checked for blocks, in blocks. */

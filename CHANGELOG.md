@@ -12,6 +12,10 @@
   Sodium Dynamic Lights still take over when installed. Client config `clientLightBlocks` turns it off.
 - The beam of a light on a contraption or train no longer vanishes when the lamp itself is out of view, say when you
   look down at the ground it lights: it was drawn with the contraption, which the game skips once it is off screen.
+- With Fabulous graphics, beams no longer vanish against the ground and walls (they showed only against the sky), and
+  the lit square and dye colour no longer draw as black patches.
+- Under a shader pack, or with `colouredLight` off, Warning, Tail and Brake Lights no longer work out a coloured glow
+  that nothing draws; on moving contraptions that work was redone every block and piled up for the session.
 - Beams shining into water now light it: the invisible light blocks go into water sources too (waterlogged, like
   vanilla's Light block) and give the water back when they go. Before, a lamp aimed into a pond, a flooded cave or the sea
   lit nothing under the surface, standing or on a vehicle.

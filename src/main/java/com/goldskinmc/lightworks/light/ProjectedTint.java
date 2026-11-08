@@ -7,6 +7,7 @@ import com.goldskinmc.lightworks.beam.ConeFalloff;
 import com.goldskinmc.lightworks.beam.LightMix;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.host.SableHost;
+import com.goldskinmc.lightworks.render.MainTarget;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
@@ -140,6 +141,7 @@ public final class ProjectedTint {
                     .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                     .setCullState(RenderStateShard.NO_CULL)
                     .setLayeringState(RenderStateShard.POLYGON_OFFSET_LAYERING)
+                    .setOutputState(MainTarget.OUTPUT)
                     .createCompositeState(false));
 
     /** Adds to what is drawn in proportion to it, like light falling on a surface. */
@@ -156,6 +158,7 @@ public final class ProjectedTint {
                     .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                     .setCullState(RenderStateShard.NO_CULL)
                     .setLayeringState(RenderStateShard.POLYGON_OFFSET_LAYERING)
+                    .setOutputState(MainTarget.OUTPUT)
                     .createCompositeState(false));
 
     /** Adds to what is drawn, whatever it is. */
@@ -172,6 +175,7 @@ public final class ProjectedTint {
                     .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                     .setCullState(RenderStateShard.NO_CULL)
                     .setLayeringState(RenderStateShard.POLYGON_OFFSET_LAYERING)
+                    .setOutputState(MainTarget.OUTPUT)
                     .createCompositeState(false));
 
     /**
@@ -701,9 +705,15 @@ public final class ProjectedTint {
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES || ACTIVE.isEmpty()) {
+            return;
+        }
+        // Moving lamps' tints run out here, drawn or not: they piled up while nothing drew them
+        Level level = Minecraft.getInstance().level;
+        long now = level == null ? 0 : level.getGameTime();
+        ACTIVE.removeIf(tint -> now > tint.expires);
         // Shader packs replace the blending, which would turn the tint into glaring patches
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES || ACTIVE.isEmpty()
-                || !LightworksClientConfig.colouredLight() || !ClientSafety.works(ClientSafety.LAYERS)) {
+        if (!LightworksClientConfig.colouredLight() || !ClientSafety.works(ClientSafety.LAYERS)) {
             return;
         }
         try {

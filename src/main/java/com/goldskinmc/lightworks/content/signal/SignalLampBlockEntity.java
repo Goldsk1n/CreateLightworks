@@ -1,5 +1,6 @@
 package com.goldskinmc.lightworks.content.signal;
 
+import com.goldskinmc.lightworks.LightworksClientConfig;
 import com.goldskinmc.lightworks.LightworksConfig;
 import com.goldskinmc.lightworks.beam.DayCycle;
 import com.goldskinmc.lightworks.content.LightClipboard;
@@ -185,6 +186,14 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
      */
     private void updateGlow() {
         if (!ClientBeams.isRealWorld(level)) {
+            return;
+        }
+        if (!LightworksClientConfig.colouredLight()) {
+            // Off under shader packs or by config: nothing would draw it. Found again once it is back on
+            if (glow != null) {
+                glow.clear();
+            }
+            glowAt = null;
             return;
         }
         if (glow == null) {
