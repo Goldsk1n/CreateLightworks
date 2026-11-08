@@ -16,6 +16,8 @@
   the lit square and dye colour no longer draw as black patches.
 - Under a shader pack, or with `colouredLight` off, Warning, Tail and Brake Lights no longer work out a coloured glow
   that nothing draws; on moving contraptions that work was redone every block and piled up for the session.
+- In the End under Complementary Shaders, the visible beam is a smooth haze again: the pack broke it up into static there,
+  taking it for the Ender Dragon's death beams. (Against the End sky the pack still paints over beams, as before.)
 - Beams shining into water now light it: the invisible light blocks go into water sources too (waterlogged, like
   vanilla's Light block) and give the water back when they go. Before, a lamp aimed into a pond, a flooded cave or the sea
   lit nothing under the surface, standing or on a vehicle.
