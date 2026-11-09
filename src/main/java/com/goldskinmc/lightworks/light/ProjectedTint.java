@@ -75,6 +75,8 @@ public final class ProjectedTint {
     private static final int GRID = 4;
     private static final int CORNERS_PER_FACE = (GRID + 1) * (GRID + 1);
     private static final int FLOATS_PER_FACE = CORNERS_PER_FACE * 4;
+    /** Furthest a point of a face lies from its middle, in blocks: half a full block's face diagonal. */
+    private static final double FACE_RADIUS = 0.7072;
     /** Largest tinted patch, in blocks from its centre; wider cones are cut off here. */
     private static final double MAX_RADIUS = 6;
     private static final int MAX_FACES = 400;
@@ -221,6 +223,20 @@ public final class ProjectedTint {
     private byte[] faceSides = new byte[0];
     /** Per face: the same light at all its corners, so a spot draws it as one quad. */
     private boolean[] faceEven = new boolean[0];
+    /**
+     * A moving beam's shape, while its faces are lit again every frame from where the beam is drawn ({@link #relight}):
+     * they are found 20 times a second, and a spot lit only then stood still between ticks while the beam turned on, and
+     * jumped after it. Null for a fixed light.
+     */
+    @Nullable
+    private ConeFalloff liveShape;
+    private double liveLensHalf;
+    /** How much wider than the beam a moving beam's faces are looked for: the beam turns on before they are found again. */
+    private double liveMargin;
+    /** Per face of a moving beam: the share of the beam's light it takes at its slant, 0 where the beam does not see it. */
+    private float[] faceShare = new float[0];
+    /** Per corner of a moving beam's faces: the light from its other sources (the glow round the spot), kept from the tick. */
+    private float[] otherLight = new float[0];
     private int faces;
     private float red;
     private float green;
@@ -254,7 +270,7 @@ public final class ProjectedTint {
         int maxFaces = moving ? MAX_FACES_MOVING : MAX_FACES_FIXED;
         List<Region> regions = new ArrayList<>(1);
         List<Source> sources = new ArrayList<>(2);
-        Source beam = beamSource(origin, axis, shape, lensHalf, moving);
+        Source beam = beamSource(origin, axis, shape, lensHalf + searchMargin(), moving);
         sources.add(beam);
         if (glowRadius > 0.5) {
             double radius = Math.min(MAX_RADIUS, glowRadius);
@@ -264,6 +280,7 @@ public final class ProjectedTint {
         if (!project(level, litBlocks(level, ends, beam, maxFaces), regions, sources, maxFaces)) {
             faces = 0;
         }
+        relight(origin, axis, false);
         show(level, inFrontOf(ends.get(0), origin), rgb, brightness * limitFade(maxFaces));
     }
 
@@ -303,7 +320,7 @@ public final class ProjectedTint {
         brightens = true;
         standsIn = standIn && (standsIn && ACTIVE.contains(this) || standIns() < MAX_STAND_INS);
         int maxFaces = moving ? MAX_FACES_MOVING : MAX_FACES_FIXED;
-        Source beam = beamSource(origin, axis, shape, lensHalf, moving);
+        Source beam = beamSource(origin, axis, shape, lensHalf + searchMargin(), moving);
         List<Region> regions = new ArrayList<>(1);
         List<Source> sources = new ArrayList<>(2);
         sources.add(beam);
@@ -315,7 +332,74 @@ public final class ProjectedTint {
         if (!project(level, litBlocks(level, ends, beam, maxFaces), regions, sources, maxFaces)) {
             faces = 0;
         }
+        relight(origin, axis, false);
         show(level, inFrontOf(ends.get(0), origin), rgb, brightness * limitFade(maxFaces));
+    }
+
+    /**
+     * Makes the next {@link #beam} or {@link #spot} a moving beam's, lit again every frame ({@link #relight}): its faces
+     * are looked for {@code margin} blocks beyond the beam's edge, where it will reach before they are found again. Null
+     * for a fixed light.
+     */
+    void live(@Nullable ConeFalloff shape, double lensHalf, double margin) {
+        liveShape = shape;
+        liveLensHalf = lensHalf;
+        liveMargin = shape == null ? 0 : margin;
+    }
+
+    private double searchMargin() {
+        return liveShape == null ? 0 : liveMargin;
+    }
+
+    /**
+     * Lights a moving beam's faces again for the beam at this pose: the beam's light on each corner, at the face's slant,
+     * and the glow kept from the tick; {@code thisFrame}, only the faces the camera sees. Gives the number of faces lit, 0
+     * for a fixed light.
+     */
+    int relight(Vec3 origin, Vec3 axis, boolean thisFrame) {
+        ConeFalloff shape = liveShape;
+        if (shape == null || faces == 0) {
+            return 0;
+        }
+        double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
+        double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
+        double ox = origin.x - originX;
+        double oy = origin.y - originY;
+        double oz = origin.z - originZ;
+        int middle = (GRID / 2 * (GRID + 1) + GRID / 2) * 4;
+        int lit = 0;
+        for (int f = 0; f < faces; f++) {
+            // Nothing draws a face turned away from the camera this frame
+            if (thisFrame && !facesCamera(f)) {
+                continue;
+            }
+            lit++;
+            float share = faceShare[f];
+            int base = f * FLOATS_PER_FACE;
+            int other = f * CORNERS_PER_FACE;
+            // A face wholly outside the beam (most of those found beyond its edge) keeps only the other light
+            if (share > 0 && shape.outsideBeam(corners[base + middle] - ox, corners[base + middle + 1] - oy,
+                    corners[base + middle + 2] - oz, axis.x, axis.y, axis.z, u[0], u[1], u[2], v[0], v[1], v[2],
+                    liveLensHalf, FACE_RADIUS)) {
+                share = 0;
+            }
+            float brightest = 0;
+            float least = Float.MAX_VALUE;
+            for (int c = 0; c < CORNERS_PER_FACE; c++) {
+                int i = base + c * 4;
+                float light = otherLight[other + c];
+                if (share > 0) {
+                    float beam = (float) (shape.lightInBeam(corners[i] - ox, corners[i + 1] - oy, corners[i + 2] - oz,
+                            axis.x, axis.y, axis.z, u[0], u[1], u[2], v[0], v[1], v[2], liveLensHalf) / 15) * share;
+                    light = Math.max(light, beam);
+                }
+                corners[i + 3] = light;
+                brightest = Math.max(brightest, light);
+                least = Math.min(least, light);
+            }
+            faceEven[f] = least == brightest;
+        }
+        return lit;
     }
 
     /**
@@ -607,14 +691,30 @@ public final class ProjectedTint {
                 Vec3 normal = Vec3.atLowerCornerOf(side.getNormal());
                 Vec3 faceCentre = faceCentre(pos, box, side);
                 lighting.clear();
-                for (Source source : sources) {
+                boolean beamSees = false;
+                for (int s = 0; s < sources.size(); s++) {
+                    Source source = sources.get(s);
                     if (source.position().subtract(faceCentre).dot(normal) > 0
                             && sees(level, source, side, faceCentre, normal, pos)) {
                         lighting.add(source.falloff());
+                        beamSees |= s == 0;
                     }
                 }
+                // What a moving beam lights again each frame: the beam's share at this slant, and the rest as it is
+                float share = beamSees ? slantShare(sources, faceCentre, normal) : 0;
+                Falloff others = null;
+                if (liveShape != null && lighting.size() > (beamSees ? 1 : 0)) {
+                    List<Falloff> rest = List.copyOf(lighting.subList(beamSees ? 1 : 0, lighting.size()));
+                    others = (x, y, z) -> {
+                        float most = 0;
+                        for (Falloff falloff : rest) {
+                            most = Math.max(most, falloff.at(x, y, z));
+                        }
+                        return most;
+                    };
+                }
                 if (lighting.size() == 1) {
-                    addFace(pos, box, part, side, facing(sources, lighting.get(0), faceCentre, normal));
+                    addFace(pos, box, part, side, facing(sources, lighting.get(0), faceCentre, normal), share, others);
                 } else if (lighting.size() > 1) {
                     List<Falloff> both = List.copyOf(lighting);
                     for (int i = 0; i < both.size(); i++) {
@@ -627,7 +727,7 @@ public final class ProjectedTint {
                             most = Math.max(most, falloff.at(x, y, z));
                         }
                         return most;
-                    });
+                    }, share, others);
                 }
             }
         }
@@ -642,9 +742,18 @@ public final class ProjectedTint {
         if (beam.cellBits() == NOT_SHARED || beam.falloff() != falloff) {
             return falloff;
         }
-        double cos = Math.max(0, beam.position().subtract(faceCentre).normalize().dot(normal));
-        float share = (float) (SLANT_FLOOR + (1 - SLANT_FLOOR) * cos);
+        float share = slantShare(sources, faceCentre, normal);
         return (x, y, z) -> falloff.at(x, y, z) * share;
+    }
+
+    /** The share of a beam's light a face takes at its slant to the lens; all of it for a glow. */
+    private static float slantShare(List<Source> sources, Vec3 faceCentre, Vec3 normal) {
+        Source beam = sources.get(0);
+        if (beam.cellBits() == NOT_SHARED) {
+            return 1;
+        }
+        double cos = Math.max(0, beam.position().subtract(faceCentre).normalize().dot(normal));
+        return (float) (SLANT_FLOOR + (1 - SLANT_FLOOR) * cos);
     }
 
     private static boolean sees(Level level, Source source, Direction side, Vec3 faceCentre, Vec3 normal, BlockPos pos) {
@@ -670,10 +779,16 @@ public final class ProjectedTint {
         return hit.getType() == HitResult.Type.MISS || hit.getBlockPos().equals(pos);
     }
 
-    private void addFace(BlockPos pos, AABB box, int part, Direction side, Falloff falloff) {
+    private void addFace(BlockPos pos, AABB box, int part, Direction side, Falloff falloff, float share,
+            @Nullable Falloff others) {
         int base = faces * FLOATS_PER_FACE;
         if (corners.length < base + FLOATS_PER_FACE) {
             corners = Arrays.copyOf(corners, Math.max(FLOATS_PER_FACE * 8, corners.length * 2));
+        }
+        boolean live = liveShape != null;
+        int other = faces * CORNERS_PER_FACE;
+        if (live && otherLight.length < other + CORNERS_PER_FACE) {
+            otherLight = Arrays.copyOf(otherLight, Math.max(CORNERS_PER_FACE * 8, otherLight.length * 2));
         }
         float lit = 0;
         float least = Float.MAX_VALUE;
@@ -686,6 +801,9 @@ public final class ProjectedTint {
                 corners[i++] = (float) (p[1] - originY);
                 corners[i++] = (float) (p[2] - originZ);
                 corners[i++] = light;
+                if (live) {
+                    otherLight[other++] = others == null ? 0 : others.at(p[0], p[1], p[2]);
+                }
                 lit = Math.max(lit, light);
                 least = Math.min(least, light);
             }
@@ -696,9 +814,13 @@ public final class ProjectedTint {
                 faceSides = Arrays.copyOf(faceSides, facePositions.length);
                 faceEven = Arrays.copyOf(faceEven, facePositions.length);
             }
+            if (faceShare.length <= faces) {
+                faceShare = Arrays.copyOf(faceShare, Math.max(8, faces * 2));
+            }
             facePositions[faces] = pos.asLong();
             faceSides[faces] = (byte) (part * Direction.values().length + side.ordinal());
             faceEven[faces] = least == lit;
+            faceShare[faces] = share;
             faces++;
         }
     }
@@ -745,6 +867,7 @@ public final class ProjectedTint {
             for (ProjectedTint tint : ACTIVE) {
                 tint.frameShown = tint.prepare(camera, partialTick);
             }
+            ClientBeam.relightMoving(partialTick);
             int mixed = 0;
             for (Long2IntOpenHashMap sideFaces : MIXED_FACES) {
                 sideFaces.clear();

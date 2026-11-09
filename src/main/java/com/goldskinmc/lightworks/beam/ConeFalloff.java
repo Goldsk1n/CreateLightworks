@@ -20,6 +20,8 @@ public final class ConeFalloff {
     private final double fullRange;
     private final double range;
     private final double intensity;
+    /** Tangent of the visible half-angle, the core plus half the soft edge: how fast the square beam widens. */
+    private final double visibleSpread;
 
     /**
      * @param coreDegrees angle between the beam axis and the edge of the fully lit core
@@ -45,6 +47,7 @@ public final class ConeFalloff {
         this.fullRange = fullRange;
         this.range = range;
         this.intensity = intensity;
+        this.visibleSpread = Math.tan(Math.toRadians(coreDegrees + edgeDegrees / 2));
     }
 
     public double range() {
@@ -60,6 +63,21 @@ public final class ConeFalloff {
     }
 
     /** Light on the beam axis at {@code distance} blocks from the origin. */
+    /**
+     * True when no point within {@code radius} of offset (dx, dy, dz) gets light from the square beam of
+     * {@link #lightInBeam}: a quick test before working out many points round it.
+     */
+    public boolean outsideBeam(double dx, double dy, double dz, double ax, double ay, double az, double ux, double uy,
+            double uz, double vx, double vy, double vz, double lensHalf, double radius) {
+        double along = dx * ax + dy * ay + dz * az;
+        if (along + radius <= 0 || along - radius >= range) {
+            return true;
+        }
+        double across = Math.max(Math.abs(dx * ux + dy * uy + dz * uz), Math.abs(dx * vx + dy * vy + dz * vz));
+        // The square is widest at the far end of the reach, and the point may lie radius nearer the axis
+        return across - radius >= lensHalf + Math.max(0, along + radius) * visibleSpread;
+    }
+
     public double onAxis(double distance) {
         if (distance <= 0 || distance >= range) {
             return 0;
@@ -104,7 +122,7 @@ public final class ConeFalloff {
             return 0;
         }
         double across = Math.max(Math.abs(dx * ux + dy * uy + dz * uz), Math.abs(dx * vx + dy * vy + dz * vz));
-        double half = lensHalf + along * Math.tan(Math.toRadians(coreDegrees + edgeDegrees / 2));
+        double half = lensHalf + along * visibleSpread;
         double fade = Math.min(half, Math.max(half * BEAM_FADE_SHARE, BEAM_FADE_MIN));
         double t = (half - across) / fade;
         if (t <= 0) {

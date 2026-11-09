@@ -6,6 +6,9 @@
   suggestions still go to GitHub Issues.
 - A turning Rotating Beacon or Pan-Tilt Head no longer draws its beam a tick ahead of the light it casts: the lit spot
   stays at the beam's end instead of trailing behind it.
+- The lit square and dye colour of a moving light (on a turning head, a contraption or a vehicle) now follow its beam
+  every frame. They were placed 20 times a second while the beam moved on, so on a turning Pan-Tilt Head the spot
+  stepped and seemed to flicker. (The light a dynamic lights mod adds still moves a block at a time.)
 - Lights on vehicles, contraptions and turning heads now light the world without a dynamic lights mod: each places an
   invisible light block in your own world only, where it lands, and moves it as it moves. It is ordinary block light, so
   shader packs light it too: before, such a light lit nothing but its beam under a shader pack. LambDynamicLights or

@@ -57,6 +57,14 @@ public final class ClientBeam {
     private static final int MAX_LAYERS_INTERVAL = 10;
     private static final int LAYERS_SAMPLE_TICKS = 20;
     private static final int TOO_BIG_RETRY_TICKS = 10;
+    /** How far beyond a moving beam's edge its faces are looked for, in blocks, at least and at most. */
+    private static final double LIVE_MARGIN_MIN = 0.3;
+    private static final double LIVE_MARGIN_MAX = 1.5;
+    /**
+     * Faces of moving beams lit again per frame, all lights together: about 25 beam-shape sums each. Over it, the rest
+     * keep their light from the tick.
+     */
+    private static final int RELIGHT_FACES_PER_FRAME = 6000;
     /** A moving light's colour and spot fade from this far from the camera, in blocks, and are gone at the next. */
     private static final double LAYER_FADE_DISTANCE = 48;
     private static final double LAYER_DISTANCE = 64;
@@ -115,6 +123,9 @@ public final class ClientBeam {
     private boolean preview;
     /** Whether the last update was of a moving light. */
     private boolean moving;
+    /** Where a moving light's centre landed when its faces were last found, for how far to look beyond its edge. */
+    @Nullable
+    private Vec3 layersEnd;
 
     public ClientBeam(ConeFalloff shape, float lensHalf) {
         this.shape = shape;
@@ -243,6 +254,12 @@ public final class ClientBeam {
         // The white light the beam leaves round its spot (light block or dynamic light)
         double glowRadius = lit == null ? 0 : lit.light() * brightness / 15.0 * GLOW_PER_LEVEL;
         Vec3 glowCentre = lit == null ? at.origin() : lit.hit().end().subtract(lit.direction().scale(0.5));
+        // A moving light's faces are lit again every frame where its beam is drawn; looked for as far beyond its edge as
+        // its spot moved since they were last found, half again, for the frames until they are found again
+        Vec3 end = ends.isEmpty() ? null : ends.get(0);
+        double margin = at.moving() && end != null && layersEnd != null
+                ? Math.min(LIVE_MARGIN_MAX, LIVE_MARGIN_MIN + 1.5 * end.distanceTo(layersEnd)) : LIVE_MARGIN_MIN;
+        layersEnd = at.moving() ? end : null;
         if (tintRgb < 0 || ends.isEmpty()) {
             if (tint != null) {
                 tint.clear();
@@ -251,6 +268,7 @@ public final class ClientBeam {
             if (tint == null) {
                 tint = new ProjectedTint();
             }
+            tint.live(at.moving() ? shape : null, lensHalf, margin);
             // That light is tinted too
             tint.beam(level, at.origin(), at.direction(), shape, lensHalf, ends, glowCentre, glowRadius, tintRgb, strength,
                     at.moving());
@@ -261,6 +279,7 @@ public final class ClientBeam {
         if (ends.isEmpty()) {
             spotLayer.clear();
         } else {
+            spotLayer.live(at.moving() ? shape : null, lensHalf, margin);
             spotLayer.spot(level, at.origin(), at.direction(), shape, lensHalf, ends, tintRgb < 0 ? WHITE_SPOT : tintRgb,
                     strength, at.moving(), at.moving() && !DynamicLights.present(), glowCentre, glowRadius);
         }
@@ -347,6 +366,27 @@ public final class ClientBeam {
         double across = fromLens.subtract(at.direction().scale(along)).length();
         // The square's corners are further out than its sides
         return across < Math.tan(BeamTrace.visibleHalfAngle(shape)) * Math.max(0, along) * Math.sqrt(2) + lensHalf + CHANGE_MARGIN;
+    }
+
+    /**
+     * Lights every moving light's colour and spot again for where its beam is drawn this frame, in turn until
+     * the budget runs out: found 20 times a second, they stood still between ticks while the beam turned on.
+     */
+    static void relightMoving(float partialTick) {
+        int budget = RELIGHT_FACES_PER_FRAME;
+        for (BeamSource source : ClientBeams.snapshot()) {
+            ClientBeam beam = source.beam();
+            if (!beam.moving || beam.preview || !beam.layersShown || budget <= 0) {
+                continue;
+            }
+            BeamPose pose = source.renderBeam(partialTick);
+            if (beam.spotLayer != null) {
+                budget -= beam.spotLayer.relight(pose.origin(), pose.direction(), true);
+            }
+            if (beam.tint != null) {
+                budget -= beam.tint.relight(pose.origin(), pose.direction(), true);
+            }
+        }
     }
 
     /** True when this moving light may find its faces this tick. */

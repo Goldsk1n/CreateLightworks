@@ -78,4 +78,39 @@ class ConeFalloffTest {
         assertThrows(IllegalArgumentException.class, () -> new ConeFalloff(10, 5, 48, 48, 15));
         assertThrows(IllegalArgumentException.class, () -> new ConeFalloff(10, 5, 32, 48, 16));
     }
+    @Test
+    void outsideBeamNeverRulesOutALitPoint() {
+        java.util.Random random = new java.util.Random(7);
+        ConeFalloff[] shapes = {new ConeFalloff(4, 2, 32, 48, 15), new ConeFalloff(25, 10, 12, 20, 15)};
+        int ruledOut = 0;
+        for (int n = 0; n < 20000; n++) {
+            ConeFalloff shape = shapes[n % 2];
+            double[] a = unit(random);
+            double[] u = BeamFrame.side(a[0], a[1], a[2]);
+            double[] v = BeamFrame.up(a[0], a[1], a[2], u);
+            double x = random.nextDouble() * 40 - 20;
+            double y = random.nextDouble() * 40 - 20;
+            double z = random.nextDouble() * 40 - 20;
+            double radius = 0.7072;
+            if (!shape.outsideBeam(x, y, z, a[0], a[1], a[2], u[0], u[1], u[2], v[0], v[1], v[2], 0.3, radius)) {
+                continue;
+            }
+            ruledOut++;
+            for (int k = 0; k < 20; k++) {
+                double[] d = unit(random);
+                double r = random.nextDouble() * radius;
+                assertEquals(0, shape.lightInBeam(x + d[0] * r, y + d[1] * r, z + d[2] * r, a[0], a[1], a[2],
+                        u[0], u[1], u[2], v[0], v[1], v[2], 0.3));
+            }
+        }
+        assertTrue(ruledOut > 1000);
+    }
+
+    private static double[] unit(java.util.Random random) {
+        double x = random.nextGaussian();
+        double y = random.nextGaussian();
+        double z = random.nextGaussian();
+        double length = Math.sqrt(x * x + y * y + z * z);
+        return new double[] {x / length, y / length, z / length};
+    }
 }
