@@ -1,6 +1,8 @@
 package com.goldskinmc.lightworks;
 
 import com.goldskinmc.lightworks.compat.Shaders;
+import java.util.List;
+import java.util.Locale;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /** Client config: how beams look on this computer. */
@@ -18,6 +20,7 @@ public final class LightworksClientConfig {
     public static final ModConfigSpec SPEC;
     private static final ModConfigSpec.EnumValue<BeamVisual> BEAM_VISUAL;
     private static final ModConfigSpec.EnumValue<BeamVisual> BEAM_VISUAL_WITH_SHADERS;
+    private static final ModConfigSpec.ConfigValue<List<? extends String>> SHADER_PACKS_WITHOUT_BEAMS;
     private static final ModConfigSpec.BooleanValue COLOURED_LIGHT;
     private static final ModConfigSpec.BooleanValue LENS_GLOW;
     private static final ModConfigSpec.BooleanValue INSIDE_HAZE;
@@ -35,6 +38,13 @@ public final class LightworksClientConfig {
                 .comment("The same while an Iris shader pack is on; shader packs often add their own glow.")
                 .translation("lightworks.configuration.beamVisualWithShaders")
                 .defineEnum("beamVisualWithShaders", BeamVisual.FAINT);
+        SHADER_PACKS_WITHOUT_BEAMS = builder
+                .comment("Shader packs that draw the visible beam and lens glow wrong (dark, see-through or not at all): under a",
+                        "pack whose name contains one of these, they are left out. Lights still light the world.",
+                        "Checked Nov 2026: Bliss draws beams black, Solas nearly invisible, Photon not at all.")
+                .translation("lightworks.configuration.shaderPacksWithoutBeams")
+                .defineListAllowEmpty("shaderPacksWithoutBeams", List.of("bliss", "solas", "photon"), () -> "",
+                        value -> value instanceof String);
         COLOURED_LIGHT = builder
                 .comment("Dyed lights and signal lamps tint the blocks they light with their colour. Off while an",
                         "Iris shader pack is on: shader packs light the world their own way.")
@@ -74,7 +84,27 @@ public final class LightworksClientConfig {
         if (!SPEC.isLoaded()) {
             return BeamVisual.FULL.alpha;
         }
+        if (Shaders.inUse() && packDrawsBeamsWrong()) {
+            return 0;
+        }
         return (Shaders.inUse() ? BEAM_VISUAL_WITH_SHADERS : BEAM_VISUAL).get().alpha;
+    }
+
+    /** True while the selected shader pack is one of {@code shaderPacksWithoutBeams}. */
+    public static boolean packDrawsBeamsWrong() {
+        if (!SPEC.isLoaded()) {
+            return false;
+        }
+        String pack = Shaders.packName().toLowerCase(Locale.ROOT);
+        if (pack.isEmpty()) {
+            return false;
+        }
+        for (String name : SHADER_PACKS_WITHOUT_BEAMS.get()) {
+            if (!name.isBlank() && pack.contains(name.toLowerCase(Locale.ROOT).trim())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Whether dyed lights and signal lamps tint the world (never under a shader pack). */
@@ -83,7 +113,7 @@ public final class LightworksClientConfig {
     }
 
     public static boolean lensGlow() {
-        return !SPEC.isLoaded() || LENS_GLOW.get();
+        return (!SPEC.isLoaded() || LENS_GLOW.get()) && !(Shaders.inUse() && packDrawsBeamsWrong());
     }
 
     public static boolean insideHaze() {
