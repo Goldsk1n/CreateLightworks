@@ -18,10 +18,10 @@
   that nothing draws; on moving contraptions that work was redone every block and piled up for the session.
 - In the End under Complementary Shaders, the visible beam is a smooth haze again: the pack broke it up into static there,
   taking it for the Ender Dragon's death beams. (Against the End sky the pack still paints over beams, as before.)
-- Under shader packs that drew the visible beam wrong, it now shows properly or is left out: Bliss (black shapes before)
-  and Photon (no beam, a large white disc for the lens glow) now draw it the way they draw particles; under Solas (a faint
-  smear) it is left out, while lights still light the world. Client configs `shaderPacksWithParticleBeams` and
-  `shaderPacksWithoutBeams` list them, matched against the pack's name.
+- Under shader packs that drew the visible beam wrong, it now shows as a soft haze: Bliss (black shapes before) and
+  Photon (no beam, and a large white disc for the lens glow) draw it the way they draw particles, Solas (a faint smear)
+  the way it draws beacon beams. Client configs `shaderPacksWithParticleBeams`, `shaderPacksWithBeaconBeams` and
+  `shaderPacksWithoutBeams` (to leave it out) list packs by name.
 - Beams shining into water now light it: the invisible light blocks go into water sources too (waterlogged, like
   vanilla's Light block) and give the water back when they go. Before, a lamp aimed into a pond, a flooded cave or the sea
   lit nothing under the surface, standing or on a vehicle.

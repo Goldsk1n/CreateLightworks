@@ -22,6 +22,7 @@ public final class LightworksClientConfig {
     private static final ModConfigSpec.EnumValue<BeamVisual> BEAM_VISUAL_WITH_SHADERS;
     private static final ModConfigSpec.ConfigValue<List<? extends String>> SHADER_PACKS_WITHOUT_BEAMS;
     private static final ModConfigSpec.ConfigValue<List<? extends String>> SHADER_PACKS_WITH_PARTICLE_BEAMS;
+    private static final ModConfigSpec.ConfigValue<List<? extends String>> SHADER_PACKS_WITH_BEACON_BEAMS;
     private static final ModConfigSpec.BooleanValue COLOURED_LIGHT;
     private static final ModConfigSpec.BooleanValue LENS_GLOW;
     private static final ModConfigSpec.BooleanValue INSIDE_HAZE;
@@ -46,12 +47,18 @@ public final class LightworksClientConfig {
                 .translation("lightworks.configuration.shaderPacksWithParticleBeams")
                 .defineListAllowEmpty("shaderPacksWithParticleBeams", List.of("bliss", "photon"), () -> "",
                         value -> value instanceof String);
+        SHADER_PACKS_WITH_BEACON_BEAMS = builder
+                .comment("Shader packs that draw the usual visible beam wrong but draw it well the way they draw beacon beams:",
+                        "under a pack whose name contains one of these, the beam and lens glow are drawn that way.",
+                        "Checked Nov 2026: Solas drew the usual beam nearly invisible.")
+                .translation("lightworks.configuration.shaderPacksWithBeaconBeams")
+                .defineListAllowEmpty("shaderPacksWithBeaconBeams", List.of("solas"), () -> "",
+                        value -> value instanceof String);
         SHADER_PACKS_WITHOUT_BEAMS = builder
-                .comment("Shader packs that draw the visible beam wrong either way: under a pack whose name contains one of",
-                        "these, the beam and lens glow are left out. Lights still light the world.",
-                        "Checked Nov 2026: Solas draws it nearly invisible.")
+                .comment("Shader packs that draw the visible beam wrong every way: under a pack whose name contains one of",
+                        "these, the beam and lens glow are left out. Lights still light the world.")
                 .translation("lightworks.configuration.shaderPacksWithoutBeams")
-                .defineListAllowEmpty("shaderPacksWithoutBeams", List.of("solas"), () -> "",
+                .defineListAllowEmpty("shaderPacksWithoutBeams", List.of(), () -> "",
                         value -> value instanceof String);
         COLOURED_LIGHT = builder
                 .comment("Dyed lights and signal lamps tint the blocks they light with their colour. Off while an",
@@ -106,6 +113,11 @@ public final class LightworksClientConfig {
     /** True while the selected shader pack is one of {@code shaderPacksWithParticleBeams}. */
     public static boolean packWantsParticleBeams() {
         return SPEC.isLoaded() && packListed(SHADER_PACKS_WITH_PARTICLE_BEAMS.get());
+    }
+
+    /** True while the selected shader pack is one of {@code shaderPacksWithBeaconBeams}. */
+    public static boolean packWantsBeaconBeams() {
+        return SPEC.isLoaded() && packListed(SHADER_PACKS_WITH_BEACON_BEAMS.get());
     }
 
     private static boolean packListed(List<? extends String> names) {

@@ -19,7 +19,8 @@ import net.minecraft.resources.ResourceLocation;
  * drew the usual beam black (Bliss: Iris falls back to its entity program, which it draws opaque) or not at all (Photon),
  * but every pack has to draw particles well (rain, smoke, flames). The particle shader drops fragments fainter than a
  * tenth, as packs do too, so each vertex carries at least that alpha and its colour is scaled down to keep the light it
- * adds; full-bright light, a white texture. Solas drew nothing this way either: it stays in {@code shaderPacksWithoutBeams}.
+ * adds; full-bright light, a white texture. Solas drew nothing this way (it squares alpha and then drops what is under
+ * 0.02): {@link PackBeaconBeam} serves it.
  */
 final class PackParticleBeam {
     private static final ResourceLocation WHITE = Lightworks.id("textures/misc/white.png");
