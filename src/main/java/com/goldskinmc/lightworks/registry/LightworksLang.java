@@ -75,6 +75,7 @@ public final class LightworksLang {
         add("lightworks.configuration.beamVisual", "Visible beam");
         add("lightworks.configuration.beamVisualWithShaders", "Visible beam with shaders");
         add("lightworks.configuration.shaderPacksWithoutBeams", "Shader packs without visible beams");
+        add("lightworks.configuration.shaderPacksWithParticleBeams", "Shader packs with particle-style beams");
         add("lightworks.configuration.colouredLight", "Coloured light");
         add("lightworks.configuration.lensGlow", "Lens glow");
         add("lightworks.configuration.insideHaze", "Haze inside a beam");

@@ -185,6 +185,8 @@ public final class BeamVisual {
         // Ponder draws block entities before the scene's blocks: there the beam goes in the late phase. In the End under a
         // shader pack it goes another way, which the pack does not break up (EndPackBeam)
         VertexConsumer out = buffers instanceof SuperRenderTypeBuffer phased ? phased.getLateBuffer(BEAM)
+                : !beam.preview() && PackParticleBeam.active()
+                        ? PackParticleBeam.wrap(buffers.getBuffer(PackParticleBeam.BEAM))
                 : !beam.preview() && EndPackBeam.active() ? EndPackBeam.wrap(buffers.getBuffer(EndPackBeam.BEAM))
                 : buffers.getBuffer(BEAM);
         // The four sides, walking the square's rim from ray to ray
@@ -263,7 +265,8 @@ public final class BeamVisual {
         float red = mix((rgb >> 16 & 0xFF) / 255f);
         float green = mix((rgb >> 8 & 0xFF) / 255f);
         float blue = mix((rgb & 0xFF) / 255f);
-        VertexConsumer out = EndPackBeam.active() ? EndPackBeam.wrap(buffers.getBuffer(EndPackBeam.GLOW))
+        VertexConsumer out = PackParticleBeam.active() ? PackParticleBeam.wrap(buffers.getBuffer(PackParticleBeam.GLOW))
+                : EndPackBeam.active() ? EndPackBeam.wrap(buffers.getBuffer(EndPackBeam.GLOW))
                 : buffers.getBuffer(GLOW);
         float[] rings = {0, GLOW_CORE, 1};
         float[] ringAlpha = {alpha, alpha * 0.45f, 0};
@@ -359,6 +362,8 @@ public final class BeamVisual {
         buffers.endBatch(GLOW);
         buffers.endBatch(EndPackBeam.BEAM);
         buffers.endBatch(EndPackBeam.GLOW);
+        buffers.endBatch(PackParticleBeam.BEAM);
+        buffers.endBatch(PackParticleBeam.GLOW);
     }
 
     static float mix(float channel) {
