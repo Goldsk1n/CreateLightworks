@@ -46,7 +46,7 @@ final class PackBeaconBeam {
     }
 
     static boolean active() {
-        return Shaders.inUse() && LightworksClientConfig.packWantsBeaconBeams();
+        return !LateBeams.active() && Shaders.inUse() && LightworksClientConfig.packWantsBeaconBeams();
     }
 
     static VertexConsumer wrap(VertexConsumer out) {

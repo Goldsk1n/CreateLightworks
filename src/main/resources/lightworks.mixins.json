@@ -4,7 +4,8 @@
   "package": "com.goldskinmc.lightworks.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "ClientLevelMixin"
+    "ClientLevelMixin",
+    "GameRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 0

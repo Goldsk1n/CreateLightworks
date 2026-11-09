@@ -75,6 +75,7 @@ public final class LightworksLang {
         add("lightworks.configuration.beamVisual", "Visible beam");
         add("lightworks.configuration.beamVisualWithShaders", "Visible beam with shaders");
         add("lightworks.configuration.shaderPacksWithoutBeams", "Shader packs without visible beams");
+        add("lightworks.configuration.beamsAfterShaderPack", "Beams after the shader pack");
         add("lightworks.configuration.shaderPacksWithParticleBeams", "Shader packs with particle-style beams");
         add("lightworks.configuration.shaderPacksWithBeaconBeams", "Shader packs with beacon-style beams");
         add("lightworks.configuration.colouredLight", "Coloured light");

@@ -50,12 +50,19 @@ public final class InsideHaze {
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL || !ClientSafety.works(ClientSafety.BEAMS)
-                || !LightworksClientConfig.insideHaze()) {
+        // Under a shader pack with the late pass, drawn by it on the pack's finished picture instead
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL || LateBeams.active()) {
+            return;
+        }
+        drawSafely(event.getCamera(), event.getPartialTick().getGameTimeDeltaPartialTick(false));
+    }
+
+    static void drawSafely(Camera camera, float partialTick) {
+        if (!ClientSafety.works(ClientSafety.BEAMS) || !LightworksClientConfig.insideHaze()) {
             return;
         }
         try {
-            draw(event.getCamera(), event.getPartialTick().getGameTimeDeltaPartialTick(false));
+            draw(camera, partialTick);
         } catch (RuntimeException e) {
             ClientSafety.failed(ClientSafety.BEAMS, e);
         }

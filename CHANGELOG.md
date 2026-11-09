@@ -16,12 +16,14 @@
   the lit square and dye colour no longer draw as black patches.
 - Under a shader pack, or with `colouredLight` off, Warning, Tail and Brake Lights no longer work out a coloured glow
   that nothing draws; on moving contraptions that work was redone every block and piled up for the session.
-- In the End under Complementary Shaders, the visible beam is a smooth haze again: the pack broke it up into static there,
-  taking it for the Ender Dragon's death beams. (Against the End sky the pack still paints over beams, as before.)
-- Under shader packs that drew the visible beam wrong, it now shows as a soft haze: Bliss (black shapes before) and
-  Photon (no beam, and a large white disc for the lens glow) draw it the way they draw particles, Solas (a faint smear)
-  the way it draws beacon beams. Client configs `shaderPacksWithParticleBeams`, `shaderPacksWithBeaconBeams` and
-  `shaderPacksWithoutBeams` (to leave it out) list packs by name.
+- Under shader packs, visible beams, lens glows and dyed lights' colour are now drawn once the pack has finished the
+  picture, so they look as they do without one, in every pack: dyed beams colour what they light again (shader packs
+  showed no colour at all), the lit square shows, the pack's sky no longer paints over beams (in the End it hid them), and
+  packs that drew beams wrong show them as usual: Bliss (black shapes), Photon (none, and a large white disc round the
+  lens), Solas (a faint smear) and Complementary in the End (static). Tested with Complementary Reimagined, BSL, MakeUp
+  Ultra Fast, Solas, Bliss and Photon. Client config `beamsAfterShaderPack` turns it off, should beams show through walls
+  with another pack; the pack then draws them, and `shaderPacksWithParticleBeams`, `shaderPacksWithBeaconBeams` and
+  `shaderPacksWithoutBeams` pick how for packs that draw them wrong.
 - Beams shining into water now light it: the invisible light blocks go into water sources too (waterlogged, like
   vanilla's Light block) and give the water back when they go. Before, a lamp aimed into a pond, a flooded cave or the sea
   lit nothing under the surface, standing or on a vehicle.

@@ -53,7 +53,7 @@ final class PackParticleBeam {
 
     /** True while a pack listed in {@code shaderPacksWithParticleBeams} draws the world. */
     static boolean active() {
-        return Shaders.inUse() && LightworksClientConfig.packWantsParticleBeams();
+        return !LateBeams.active() && Shaders.inUse() && LightworksClientConfig.packWantsParticleBeams();
     }
 
     static VertexConsumer wrap(VertexConsumer out) {

@@ -88,7 +88,7 @@ final class EndPackBeam {
     /** True while a shader pack draws the world and the camera is in the End: the beam takes this route then. */
     static boolean active() {
         Level level = Minecraft.getInstance().level;
-        return level != null && level.dimension() == Level.END && Shaders.inUse();
+        return level != null && level.dimension() == Level.END && Shaders.inUse() && !LateBeams.active();
     }
 
     /** Takes the beam's position-and-colour vertices and gives the eyes program what it needs as well. */

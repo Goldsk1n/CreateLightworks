@@ -712,21 +712,29 @@ public final class ProjectedTint {
         Level level = Minecraft.getInstance().level;
         long now = level == null ? 0 : level.getGameTime();
         ACTIVE.removeIf(tint -> now > tint.expires);
-        // Shader packs replace the blending, which would turn the tint into glaring patches
-        if (!LightworksClientConfig.colouredLight() || !ClientSafety.works(ClientSafety.LAYERS)) {
+        // Shader packs replace the blending, which would turn the tint into glaring patches; under one the late pass may
+        // draw it on the finished picture instead (LateBeams)
+        if (!LightworksClientConfig.colouredLight() || !ClientSafety.works(ClientSafety.LAYERS) || LateBeams.capturing()) {
+            return;
+        }
+        drawSafely(event.getCamera().getPosition(), event.getPoseStack(),
+                event.getPartialTick().getGameTimeDeltaPartialTick(false));
+    }
+
+    /** Draws the layers now, from this camera; the late pass calls it after a shader pack's final picture. */
+    static void drawSafely(Vec3 camera, PoseStack poseStack, float partialTick) {
+        if (ACTIVE.isEmpty() || !LightworksClientConfig.colouredLight() || !ClientSafety.works(ClientSafety.LAYERS)) {
             return;
         }
         try {
-            draw(event);
+            draw(camera, poseStack, partialTick);
         } catch (RuntimeException e) {
             ClientSafety.failed(ClientSafety.LAYERS, e);
         }
     }
 
-    private static void draw(RenderLevelStageEvent event) {
+    private static void draw(Vec3 camera, PoseStack poseStack, float partialTick) {
         long start = Timer.start();
-        Vec3 camera = event.getCamera().getPosition();
-        PoseStack poseStack = event.getPoseStack();
         float day = BeamVisual.daylight();
         poseStack.pushPose();
         try {
@@ -734,7 +742,6 @@ public final class ProjectedTint {
             Matrix4f pose = poseStack.last().pose();
             long now = Minecraft.getInstance().level == null ? 0 : Minecraft.getInstance().level.getGameTime();
             ACTIVE.removeIf(tint -> now > tint.expires);
-            float partialTick = event.getPartialTick().getGameTimeDeltaPartialTick(false);
             for (ProjectedTint tint : ACTIVE) {
                 tint.frameShown = tint.prepare(camera, partialTick);
             }

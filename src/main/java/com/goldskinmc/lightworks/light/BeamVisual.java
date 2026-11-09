@@ -131,6 +131,10 @@ public final class BeamVisual {
      */
     public static void render(PoseStack poseStack, MultiBufferSource buffers, Vector3f lens, Vector3f axis,
             ClientBeam beam, int rgb) {
+        if (LateBeams.capturing()) {
+            LateBeams.record(poseStack, lens, axis, beam, rgb);
+            return;
+        }
         if (ClientSafety.works(ClientSafety.BEAMS)) {
             try {
                 draw(poseStack, buffers, lens, axis, beam, rgb);

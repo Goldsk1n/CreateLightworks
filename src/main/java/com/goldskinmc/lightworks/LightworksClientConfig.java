@@ -20,6 +20,7 @@ public final class LightworksClientConfig {
     public static final ModConfigSpec SPEC;
     private static final ModConfigSpec.EnumValue<BeamVisual> BEAM_VISUAL;
     private static final ModConfigSpec.EnumValue<BeamVisual> BEAM_VISUAL_WITH_SHADERS;
+    private static final ModConfigSpec.BooleanValue BEAMS_AFTER_SHADER_PACK;
     private static final ModConfigSpec.ConfigValue<List<? extends String>> SHADER_PACKS_WITHOUT_BEAMS;
     private static final ModConfigSpec.ConfigValue<List<? extends String>> SHADER_PACKS_WITH_PARTICLE_BEAMS;
     private static final ModConfigSpec.ConfigValue<List<? extends String>> SHADER_PACKS_WITH_BEACON_BEAMS;
@@ -37,9 +38,15 @@ public final class LightworksClientConfig {
                 .translation("lightworks.configuration.beamVisual")
                 .defineEnum("beamVisual", BeamVisual.FULL);
         BEAM_VISUAL_WITH_SHADERS = builder
-                .comment("The same while an Iris shader pack is on; shader packs often add their own glow.")
+                .comment("The same while an Iris shader pack draws the beams itself (beamsAfterShaderPack off).")
                 .translation("lightworks.configuration.beamVisualWithShaders")
                 .defineEnum("beamVisualWithShaders", BeamVisual.FAINT);
+        BEAMS_AFTER_SHADER_PACK = builder
+                .comment("Under an Iris shader pack, draw visible beams, lens glows and coloured light after the pack has",
+                        "finished the picture, as without a pack: they look alike in every pack and keep their colour.",
+                        "Turn it off if beams show through walls with your pack; the lists below then pick how the pack draws them.")
+                .translation("lightworks.configuration.beamsAfterShaderPack")
+                .define("beamsAfterShaderPack", true);
         SHADER_PACKS_WITH_PARTICLE_BEAMS = builder
                 .comment("Shader packs that draw the usual visible beam wrong but draw it well the way they draw particles:",
                         "under a pack whose name contains one of these, the beam and lens glow are drawn that way.",
@@ -99,10 +106,12 @@ public final class LightworksClientConfig {
         if (!SPEC.isLoaded()) {
             return BeamVisual.FULL.alpha;
         }
-        if (Shaders.inUse() && packDrawsBeamsWrong()) {
+        // Drawn after the pack's final picture, the beam is drawn as without a pack
+        boolean shaders = Shaders.inUse() && !com.goldskinmc.lightworks.light.LateBeams.active();
+        if (shaders && packDrawsBeamsWrong()) {
             return 0;
         }
-        return (Shaders.inUse() ? BEAM_VISUAL_WITH_SHADERS : BEAM_VISUAL).get().alpha;
+        return (shaders ? BEAM_VISUAL_WITH_SHADERS : BEAM_VISUAL).get().alpha;
     }
 
     /** True while the selected shader pack is one of {@code shaderPacksWithoutBeams}. */
@@ -133,9 +142,14 @@ public final class LightworksClientConfig {
         return false;
     }
 
-    /** Whether dyed lights and signal lamps tint the world (never under a shader pack). */
+    public static boolean beamsAfterShaderPack() {
+        return !SPEC.isLoaded() || BEAMS_AFTER_SHADER_PACK.get();
+    }
+
+    /** Whether dyed lights and signal lamps tint the world (under a shader pack, only drawn after it). */
     public static boolean colouredLight() {
-        return (!SPEC.isLoaded() || COLOURED_LIGHT.get()) && !Shaders.inUse();
+        return (!SPEC.isLoaded() || COLOURED_LIGHT.get())
+                && (!Shaders.inUse() || com.goldskinmc.lightworks.light.LateBeams.active());
     }
 
     public static boolean lensGlow() {
