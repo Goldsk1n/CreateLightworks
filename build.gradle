@@ -260,6 +260,8 @@ dependencies {
                 'entityculling'        : ["maven.modrinth:entityculling:${entityculling_version}"],
                 'immediatelyfast'      : ["maven.modrinth:immediatelyfast:${immediatelyfast_version}"],
                 'sodium-extra'         : ["maven.modrinth:sodium-extra:${sodium_extra_version}"],
+                // True Darkness (its NeoForge 1.21.1 fork, True Darkness Biomes): darker nights and caves through the lightmap
+                'true-darkness'        : ["maven.modrinth:true-darkness-biomes:${true_darkness_version}"],
                 // Bridges that make light-giving blocks on contraptions and Sable vehicles glow dynamically
                 'sable-dynamic-lights' : ["maven.modrinth:sable-dynamic-lights:${sable_dynamic_lights_version}"],
                 'create-sable-dynamic-lights': ["maven.modrinth:create-sable-dynamic-lights:${create_sable_dynamic_lights_version}",
