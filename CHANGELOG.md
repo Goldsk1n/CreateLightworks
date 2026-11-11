@@ -6,6 +6,10 @@
   suggestions still go to GitHub Issues.
 - A turning Rotating Beacon or Pan-Tilt Head no longer draws its beam a tick ahead of the light it casts: the lit spot
   stays at the beam's end instead of trailing behind it.
+- A moving light shining on dirt paths, farmland, slabs, carpet or snow layers lights them evenly. With
+  LambDynamicLights some of those blocks inside the beam stayed dark, and with any setup squares of them could be left
+  without the lit square. With LambDynamicLights the light round a beam's spot also no longer stops short on the far
+  side of where the beam lands.
 - The lit square and dye colour of a moving light (on a turning head, a contraption or a vehicle) now follow its beam
   every frame. They were placed 20 times a second while the beam moved on, so on a turning Pan-Tilt Head the spot
   stepped and seemed to flicker. (The light a dynamic lights mod adds still moves a block at a time.)

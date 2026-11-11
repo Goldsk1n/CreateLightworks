@@ -40,9 +40,17 @@ public final class BeamTrace {
      * @param onVehicle where the beam stopped in a Sable vehicle's own (plot) coordinates when it stopped on one, where
      *                  its faces are found to paint; null otherwise
      */
-    public record Hit(Vec3 end, @Nullable BlockPos block, double distance, @Nullable Vec3 onVehicle) {
+    /**
+     * @param normal    unit normal of the face it struck, out of the face; null when not known (out of range, or on a Sable
+     *                  vehicle, whose faces turn with it)
+     */
+    public record Hit(Vec3 end, @Nullable BlockPos block, double distance, @Nullable Vec3 onVehicle, @Nullable Vec3 normal) {
         public Hit(Vec3 end, @Nullable BlockPos block, double distance) {
-            this(end, block, distance, null);
+            this(end, block, distance, null, null);
+        }
+
+        public Hit(Vec3 end, @Nullable BlockPos block, double distance, @Nullable Vec3 normal) {
+            this(end, block, distance, null, normal);
         }
 
         public boolean hitBlock() {
@@ -60,8 +68,9 @@ public final class BeamTrace {
         }
         Vec3 dir = direction.normalize();
         Vec3 centre = hit.end().subtract(dir.scale(0.5));
+        Vec3 normal = hit.normal() == null ? Vec3.ZERO : hit.normal();
         return new BeamSpot(centre.x, centre.y, centre.z, hit.end().x, hit.end().y, hit.end().z,
-                dir.x, dir.y, dir.z, peak);
+                dir.x, dir.y, dir.z, peak, normal.x, normal.y, normal.z);
     }
 
     /** How far a beam of this shape reaches: its own range, capped by the server's {@code maxBeamRange}. */
@@ -216,6 +225,7 @@ public final class BeamTrace {
         Vec3 end = result.getLocation();
         // clip() can hand back a mutable position that it reuses; keep our own copy
         BlockPos block = result.getBlockPos().immutable();
+        Vec3 normal = Vec3.atLowerCornerOf(result.getDirection().getNormal());
         Vec3 onVehicle = null;
         if (level instanceof Level world) {
             Vec3 inWorld = SableHost.outOfVehicle(world, end);
@@ -226,8 +236,9 @@ public final class BeamTrace {
                 // in the world, so light goes in front of it and nothing there is painted)
                 end = inWorld;
                 block = BlockPos.containing(end.add(dir.scale(0.01)));
+                normal = null;
             }
         }
-        return new Hit(end, block, end.distanceTo(origin), onVehicle);
+        return new Hit(end, block, end.distanceTo(origin), onVehicle, normal);
     }
 }

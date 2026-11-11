@@ -107,7 +107,8 @@ final class BeamArea {
             Vec3 toAir = candidate.face().add(candidate.normal().scale(AIR_ABOVE_FACE)).subtract(origin);
             BeamTrace.Hit hit = BeamTrace.trace(level, origin, toAir, toAir.length());
             if (!hit.hitBlock() || candidate.block().equals(hit.block())) {
-                landings.add(new BeamTrace.Landing(new BeamTrace.Hit(candidate.face(), candidate.block(), toFace.length()),
+                landings.add(new BeamTrace.Landing(new BeamTrace.Hit(candidate.face(), candidate.block(), toFace.length(),
+                        candidate.normal()),
                         candidate.normal().scale(-1), candidate.light()));
             }
         }

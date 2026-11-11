@@ -32,6 +32,32 @@ class BeamSpotTest {
         assertEquals(0, spot.lightAt(11.5, 64.5, 0.5, LDL_RATIO), EPS);
     }
 
+    // A beam coming down at 45 degrees from the west onto ground whose top is y = 64, the struck face's normal up
+    private final BeamSpot onGround = new BeamSpot(9.65, 64.35, 0.5, 10, 64, 0.5,
+            Math.sqrt(0.5), -Math.sqrt(0.5), 0, 15, 0, 1, 0);
+
+    @Test
+    void lightsTheGroundLayerItself() {
+        // A dirt path's top lies inside its own block, lit by that block's light: the ground layer keeps it, on both
+        // sides of the landing
+        assertTrue(onGround.lightAt(10.5, 63.5, 0.5, LDL_RATIO) > 0);
+        assertTrue(onGround.lightAt(12.5, 63.5, 0.5, LDL_RATIO) > 0);
+        assertTrue(onGround.lightAt(8.5, 63.5, 0.5, LDL_RATIO) > 0);
+        // and the air above it on the far side, which the old plane square to the beam left dark
+        assertTrue(onGround.lightAt(12.5, 64.5, 0.5, LDL_RATIO) > 0);
+    }
+
+    @Test
+    void stopsAtTheLayerBehindTheStruckFace() {
+        assertEquals(0, onGround.lightAt(10.5, 62.5, 0.5, LDL_RATIO), EPS);
+        // A wall one block thick, struck on its west face at x = 10: the wall's own block may hold light (it is drawn
+        // from its neighbours' light), the far side of it may not
+        BeamSpot onWall = new BeamSpot(9.5, 64.5, 0.5, 10, 64.5, 0.5, 1, 0, 0, 15, -1, 0, 0);
+        assertEquals(0, onWall.lightAt(11.5, 64.5, 0.5, LDL_RATIO), EPS);
+        assertEquals(0, onWall.lightAt(11.5, 65.5, 0.5, LDL_RATIO), EPS);
+        assertTrue(onWall.lightAt(9.5, 64.5, 0.5, LDL_RATIO) > 0);
+    }
+
     @Test
     void neverNegative() {
         assertEquals(0, spot.lightAt(-20, 64.5, 0.5, LDL_RATIO), EPS);

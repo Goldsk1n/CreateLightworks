@@ -476,11 +476,21 @@ public final class ProjectedTint {
         return List.of();
     }
 
-    /** A face on the block's edge with a full block against it. What other blocks hide, the depth test hides. */
+    /**
+     * A face on the block's edge that the block against it hides, by the game's own test: a full block, and also a dirt
+     * path, farmland or slab lying on it. What other blocks hide, the depth test hides. Counting only full blocks, the
+     * dirt under a path counted as open; a moving light asks one ray per two-block cell, and the ray to that buried face,
+     * stopped by the path, left the path's own faces in the cell unpainted (dark squares on a path, Nov 11).
+     */
     private static boolean coveredByNeighbour(Level level, BlockPos pos, AABB box, Direction side, BlockPos.MutableBlockPos neighbour) {
         boolean onEdge = side.getAxisDirection() == Direction.AxisDirection.POSITIVE
                 ? box.max(side.getAxis()) >= 1 : box.min(side.getAxis()) <= 0;
-        return onEdge && level.getBlockState(neighbour.setWithOffset(pos, side)).isSolidRender(level, neighbour);
+        if (!onEdge) {
+            return false;
+        }
+        neighbour.setWithOffset(pos, side);
+        return level.getBlockState(neighbour).isSolidRender(level, neighbour)
+                || !Block.shouldRenderFace(level.getBlockState(pos), level, pos, side, neighbour);
     }
 
     private static Vec3 faceCentre(BlockPos pos, AABB box, Direction side) {
