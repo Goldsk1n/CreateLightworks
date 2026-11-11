@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.1 (unreleased)
+## 1.0.1 (2026-11-11)
 
 - The Mods screen's website link now opens the mod's CurseForge page (it opened the GitHub repository); bugs and
   suggestions still go to GitHub Issues.

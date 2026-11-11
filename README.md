@@ -21,7 +21,7 @@ trains and [Create Aeronautics](https://modrinth.com/mod/create-aeronautics) veh
 
 Redstone dims every light (brightness = 15 − signal); the server config `invertRedstone` makes lights
 off unless powered. Dyed lights and signal lamps colour what they light (client config `colouredLight`;
-off under shader packs; Edge Lights only colour their own lens). Engineer's Goggles show a light's state. Every block has a recipe,
+Edge Lights only colour their own lens). Engineer's Goggles show a light's state. Every block has a recipe,
 a tooltip and a Ponder scene.
 
 ## How light reaches the world
@@ -29,9 +29,17 @@ a tooltip and a Ponder scene.
 - **Fixed lights** place invisible light blocks where the beam lands, several for a wide beam (server side,
   so it works for every player).
 - **Moving lights** (on contraptions, trains, Sable vehicles, or on a turning Pan-Tilt Head) light the world
-  on each client through [LambDynamicLights](https://modrinth.com/mod/lambdynamiclights) or [Sodium Dynamic Lights](https://modrinth.com/mod/sodium-dynamic-lights), if installed.
-- **Every beam** is also drawn as a faint cone, so players without either still see where
-  moving lights point. Client config: `beamVisual`, `beamVisualWithShaders`.
+  on each client: through [LambDynamicLights](https://modrinth.com/mod/lambdynamiclights) or [Sodium Dynamic Lights](https://modrinth.com/mod/sodium-dynamic-lights) if installed,
+  otherwise through an invisible light block in that client's world only (client config `clientLightBlocks`).
+  Light blocks go into water too, so beams light ponds and the sea.
+- **Every beam** is also drawn as a faint square cone, with a lit square where it lands. Client config: `beamVisual`,
+  `beamVisualWithShaders`.
+
+## Shader packs
+
+Under an Iris shader pack, beams, lens glows and coloured light are drawn once the pack has finished the picture, so
+they look as they do without one (client config `beamsAfterShaderPack`). Tested with Complementary Reimagined, BSL,
+MakeUp Ultra Fast, Solas, Bliss and Photon.
 
 ## Requirements
 
@@ -42,7 +50,8 @@ a tooltip and a Ponder scene.
 | Create | 6.0.0 or newer, below 6.1.0 |
 | Optional | LambDynamicLights 4+ or Sodium Dynamic Lights (client), Sable 1.0.4+ with Create Aeronautics |
 
-Tested with Sodium 0.8 and Iris 1.8. Create: Dynamic Lights cannot be installed next to
+Tested with Sodium 0.8, Iris 1.8, Entity Culling, ImmediatelyFast, Sodium Extra, Contraption Lights and Create: Train
+Lights. Create: Dynamic Lights cannot be installed next to
 LambDynamicLights, so it is not supported.
 
 ## Building
