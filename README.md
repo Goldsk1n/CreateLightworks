@@ -5,6 +5,7 @@ beacons, warning lights, edge markers and vehicle lights that keep landing where
 trains and [Create Aeronautics](https://modrinth.com/mod/create-aeronautics) vehicles.
 
 **Download:** [CurseForge](https://www.curseforge.com/minecraft/mc-mods/create-lightworks). Changes: [CHANGELOG.md](CHANGELOG.md).
+**Community and support:** [Discord](https://discord.gg/HAtMB7UQss). Bugs: [GitHub Issues](https://github.com/Goldsk1n/CreateLightworks/issues).
 
 ## Blocks
 
