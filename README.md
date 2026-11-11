@@ -73,6 +73,4 @@ On [GitHub Issues](https://github.com/Goldsk1n/CreateLightworks/issues).
 
 ## Licence
 
-Code: [MIT](LICENSE). The art is our own; a few models show Create's textures and
-parts by resource location, from Create itself. This project contains no assets or code from Create or Create
-Aeronautics.
+[MIT](LICENSE).
