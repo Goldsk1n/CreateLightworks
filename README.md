@@ -16,8 +16,8 @@ trains and [Create Aeronautics](https://modrinth.com/mod/create-aeronautics) veh
 | Pan-Tilt Head | Kinetic mount: shaft pans the light on top, full circle or sweeping back and forth; analog redstone tilts it 6° per level | Shaft speed, redstone, value box |
 | Rotating Beacon | Two opposite beams sweeping with shaft speed | Shaft speed, redstone, dye |
 | Warning Light | Amber lamp: steady, blink, opposite blink, pulse, double flash or strobe, always or only at night | Value box, redstone, dye |
-| Headlight | Forward beam; on a moving vehicle only the leading ones light | Redstone at assembly keeps it lit both ways |
-| Tail and Brake Light | Red lamp; brightens for a second when the vehicle slows | Redstone, dye |
+| Headlight | Forward beam: full to 12 blocks, dark by 20; on a moving vehicle only the leading ones light | Pan and Tilt boards, redstone, dye; any signal keeps it lit both ways |
+| Tail Light | Red lamp; brightens for a second when the vehicle slows, as a brake light | Redstone, dye |
 | Edge Light | Low marker for runways, taxiways and platforms; no collision, nothing ticks, eight from a recipe | Redstone, dye |
 
 Redstone dims every light (brightness = 15 − signal); the server config `invertRedstone` makes lights
@@ -39,8 +39,8 @@ a tooltip and a Ponder scene.
 ## Shader packs
 
 Under an Iris shader pack, beams, lens glows and coloured light are drawn once the pack has finished the picture, so
-they look as they do without one (client config `beamsAfterShaderPack`). Tested with Complementary Reimagined, BSL,
-MakeUp Ultra Fast, Solas, Bliss and Photon.
+they look as they do without one (client config `beamsAfterShaderPack`). Tested with Complementary Reimagined and Unbound,
+BSL, MakeUp Ultra Fast, Solas, Bliss and Photon.
 
 ## Requirements
 
@@ -61,15 +61,10 @@ Requires JDK 21.
 
 ```bash
 ./gradlew build               # jar in build/libs; runs unit, architecture and content tests
-./gradlew runData             # regenerate src/generated (models, lang, recipes, Ponder schematics)
+./gradlew runData             # regenerate src/generated (blockstates, lang, recipes, loot, Ponder schematics)
 ./gradlew runGameTestServer   # headless game tests
 ./gradlew runClient           # dev client
 ```
-
-
-## Bugs and suggestions
-
-On [GitHub Issues](https://github.com/Goldsk1n/CreateLightworks/issues).
 
 ## Licence
 
