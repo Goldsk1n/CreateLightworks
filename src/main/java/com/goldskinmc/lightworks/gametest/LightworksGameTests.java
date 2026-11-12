@@ -47,8 +47,8 @@ public final class LightworksGameTests {
     }
 
     /**
-     * Reference for the light scenarios: block light around a source settles. It takes real time, and game
-     * test ticks are short (see S1 in {@link BeamLightGameTests}), hence the long timeout.
+     * Reference for the light tests: block light around a source settles. It takes real time, and game
+     * test ticks are short (see {@link BeamLightGameTests}), hence the long timeout.
      */
     @GameTest(template = EMPTY, timeoutTicks = 1000)
     public static void blockLightProbeReadsLightLevels(GameTestHelper helper) {

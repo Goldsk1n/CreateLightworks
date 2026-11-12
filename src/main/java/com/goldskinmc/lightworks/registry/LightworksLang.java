@@ -81,6 +81,7 @@ public final class LightworksLang {
         add("lightworks.configuration.colouredLight", "Coloured light");
         add("lightworks.configuration.lensGlow", "Lens glow");
         add("lightworks.configuration.insideHaze", "Haze inside a beam");
+        add("lightworks.configuration.boardsOnlyWithWrench", "Boards only with a Wrench");
         add("lightworks.configuration.shaderHint", "Shader tip");
         add("lightworks.configuration.clientLightBlocks", "Client light blocks");
         add("lightworks.hint.moving_lights_shaders", "Lightworks: under a shader pack, lights on vehicles, contraptions and "

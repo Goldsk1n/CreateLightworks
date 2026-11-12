@@ -27,6 +27,12 @@ final class SweepBoard extends ScrollValueBehaviour {
         between(0, STEPS);
     }
 
+    /** Shown and clickable only while {@link com.goldskinmc.lightworks.content.BoardGate} allows it. */
+    @Override
+    public boolean isActive() {
+        return super.isActive() && com.goldskinmc.lightworks.content.BoardGate.open(getWorld());
+    }
+
     /** Text for a value, short enough for the board; also the goggles' line. */
     static MutableComponent named(int steps) {
         return steps == 0 ? Component.translatable("lightworks.pan_tilt_head.sweep_off")

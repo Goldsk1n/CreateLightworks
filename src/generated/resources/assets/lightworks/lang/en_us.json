@@ -85,6 +85,7 @@
   "lightworks.configuration.beamVisual": "Visible beam",
   "lightworks.configuration.beamVisualWithShaders": "Visible beam with shaders",
   "lightworks.configuration.beamsAfterShaderPack": "Beams after the shader pack",
+  "lightworks.configuration.boardsOnlyWithWrench": "Boards only with a Wrench",
   "lightworks.configuration.clientLightBlocks": "Client light blocks",
   "lightworks.configuration.colouredLight": "Coloured light",
   "lightworks.configuration.debugOverlay": "Debug overlay (F3)",

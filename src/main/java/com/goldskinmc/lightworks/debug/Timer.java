@@ -3,7 +3,7 @@ package com.goldskinmc.lightworks.debug;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
- * Wall-clock time spent in our own code, for the load scenarios (S6, S7). Thread-safe:
+ * Wall-clock time spent in our own code, for performance checks. Thread-safe:
  * LambDynamicLights calls {@code lightAtPos} from chunk-meshing threads.
  */
 public enum Timer {

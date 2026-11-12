@@ -74,7 +74,7 @@ def runDir = runProfile == 'latest' ? 'run' : "run-${runProfile}"
 def quickPlayWorld = providers.gradleProperty('quickplay_world').getOrElse('lightworks-test')
 // -Pquickplay_server=localhost joins that server instead of the test world (dedicated-server checks)
 def quickPlayServer = providers.gradleProperty('quickplay_server').getOrNull()
-// -Pdev_perf=true adds Sodium, Iris and spark for the shader and performance scenarios
+// -Pdev_perf=true adds Sodium, Iris and spark for shader and performance checks
 def devPerf = providers.gradleProperty('dev_perf').map { it.toBoolean() }.getOrElse(false)
 // -Pdev_ldl=false leaves LambDynamicLights out of `latest` runs: a player without the optional client mod
 def devLdl = providers.gradleProperty('dev_ldl').map { it.toBoolean() }.getOrElse(true)
@@ -86,7 +86,7 @@ def devTools = providers.gradleProperty('dev_tools').map { it.toBoolean() }.getO
 // never shipped
 def devCopycats = providers.gradleProperty('dev_copycats').map { it.toBoolean() }.getOrElse(false)
 // -Pdev_conflicts=contraption-lights,create-train-lights,create-dynamic-lights adds other lighting mods
-// (with what they require) to `latest` runs for the S9 conflict test; entityculling adds Entity Culling, which skips
+// (with what they require) to `latest` runs to check them side by side; entityculling adds Entity Culling, which skips
 // drawing block entities it thinks are hidden; immediatelyfast
 // and sodium-extra (with -Pdev_perf) add two more that big Create packs ship, which change how things are drawn. create-dynamic-lights needs -Pdev_perf
 // and -Pdev_ldl=false: LambDynamicLights refuses to load next to Sodium Dynamic Lights, which it requires.
@@ -104,7 +104,7 @@ neoForge {
         client {
             client()
             jvmArgument '-Xmx4G'
-            // -Pwindow=1920x1080 opens the game at that size (screenshots are taken at the window's size)
+            // -Pwindow=1920x1080 opens the game at that size
             def window = providers.gradleProperty('window').getOrNull()
             if (window != null) {
                 def (width, height) = window.tokenize('x')
@@ -283,7 +283,7 @@ tasks.named('test', Test) {
     useJUnitPlatform()
 }
 
-// Puts Complementary Reimagined into this profile's shaderpacks folder (for scenario S5).
+// Puts Complementary Reimagined into this profile's shaderpacks folder (for shader checks).
 // Its licence allows personal use; it is never bundled or redistributed.
 configurations {
     shaderpack
@@ -374,8 +374,7 @@ idea {
     }
 }
 
-// Optional local additions for development, kept outside this repository: -Pdev_extras=<path to a Gradle script>
-// (or dev_extras in ~/.gradle/gradle.properties) applies that script last
+// -Pdev_extras=<path to a Gradle script> (or dev_extras in ~/.gradle/gradle.properties) applies a local script last
 def devExtras = providers.gradleProperty('dev_extras').getOrElse('')
 if (!devExtras.isBlank() && file(devExtras).exists()) {
     apply from: devExtras

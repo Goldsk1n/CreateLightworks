@@ -921,7 +921,7 @@ public final class ProjectedTint {
     /**
      * Draws a layer at once, with this frame's view. The world's shared buffers may hold a layer back: Iris, even with no
      * shader pack, drew ours a frame late, with the next frame's turn of the camera, so the faces left the blocks they
-     * lie on and lost the depth test while the camera moved (filmed every frame).
+     * lie on and lost the depth test while the camera moved (seen frame by frame).
      */
     private static void drawNow(RenderType type, java.util.function.Consumer<VertexConsumer> fill) {
         BufferBuilder builder = Tesselator.getInstance().begin(type.mode(), type.format());

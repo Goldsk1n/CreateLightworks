@@ -25,7 +25,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * Server light-block path (the no-client-mods fallback): the light lands where a fixed Searchlight points,
- * follows it, cleans up after it, and stays invisible to redstone. Scenario IDs refer to the tech spike plan.
+ * follows it, cleans up after it, and stays invisible to redstone.
  */
 @GameTestHolder(Lightworks.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -46,7 +46,7 @@ public final class BeamLightGameTests {
     }
 
     /**
-     * S1: aimed at a wall 20 blocks away, the spot in front of the wall reaches light level 12 or more.
+     * Aimed at a wall 20 blocks away, the spot in front of the wall reaches light level 12 or more.
      * The game test server does not wait between ticks (4-7 ms each, not 50) while the light engine works
      * in real time on its own thread: measured up to 639 ms, 66 ticks. So the default 100 ticks are too few.
      */
@@ -66,7 +66,7 @@ public final class BeamLightGameTests {
         });
     }
 
-    /** S1: re-aiming moves the light in the same or the next tick. */
+    /** Re-aiming moves the light in the same or the next tick. */
     @GameTest(template = EMPTY)
     public static void s1ReAimingMovesTheLightWithinOneTick(GameTestHelper helper) {
         BlockPos light = new BlockPos(0, 2, 2);
@@ -313,7 +313,7 @@ public final class BeamLightGameTests {
         helper.succeedWhen(() -> helper.assertFalse(isBeamLight(helper, spot), "abandoned beam light is still there"));
     }
 
-    /** S10: an observer watching the spot never fires while the light appears there. */
+    /** An observer watching the spot never fires while the light appears there. */
     @GameTest(template = EMPTY)
     public static void s10ObserverDoesNotNoticeTheBeamLight(GameTestHelper helper) {
         BlockPos light = new BlockPos(0, 2, 2);

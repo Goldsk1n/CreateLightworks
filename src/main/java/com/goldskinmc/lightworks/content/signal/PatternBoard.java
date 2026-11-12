@@ -26,6 +26,12 @@ final class PatternBoard extends ScrollOptionBehaviour<WarningPattern> {
         this.lamp = lamp;
     }
 
+    /** Shown and clickable only while {@link com.goldskinmc.lightworks.content.BoardGate} allows it. */
+    @Override
+    public boolean isActive() {
+        return super.isActive() && com.goldskinmc.lightworks.content.BoardGate.open(getWorld());
+    }
+
     /** Text for a pattern and row, also the goggles' line. */
     static MutableComponent named(Component pattern, boolean nightOnly) {
         return Component.translatable(nightOnly ? NIGHT : ALWAYS, pattern);

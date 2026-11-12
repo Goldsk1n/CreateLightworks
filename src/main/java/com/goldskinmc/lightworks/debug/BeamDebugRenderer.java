@@ -100,7 +100,7 @@ public final class BeamDebugRenderer {
         }
     }
 
-    /** Block light in the air the beam passed through just before it hit: what S1 measures. */
+    /** Block light in the air the beam passed through just before it hit. */
     private static int lightInFrontOf(Minecraft mc, BeamTrace.Hit hit, Vec3 direction) {
         BlockPos air = BlockPos.containing(hit.end().subtract(direction.normalize().scale(0.5)));
         return mc.level.getBrightness(LightLayer.BLOCK, air);

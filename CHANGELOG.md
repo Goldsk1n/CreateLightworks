@@ -2,6 +2,8 @@
 
 ## 1.1 (unreleased)
 
+- New client config `boardsOnlyWithWrench` (off by default): the Pan, Tilt, sweep and pattern boards show, and take
+  clicks, only while you hold a Wrench or a Clipboard, so they no longer cover the light when you just look at it.
 - The `colouredLight` client config's description no longer says coloured light is off under shader packs: since
   1.0.1 it is drawn after the pack.
 

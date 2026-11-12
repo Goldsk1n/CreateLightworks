@@ -50,6 +50,12 @@ public class AimBoard extends ScrollValueBehaviour {
         onlyActiveWhen(() -> light.head() == null);
     }
 
+    /** Shown and clickable only while {@link com.goldskinmc.lightworks.content.BoardGate} allows it. */
+    @Override
+    public boolean isActive() {
+        return super.isActive() && com.goldskinmc.lightworks.content.BoardGate.open(getWorld());
+    }
+
     @Override
     public BehaviourType<?> getType() {
         return pan ? PAN : TILT;
