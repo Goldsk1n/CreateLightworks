@@ -21,10 +21,9 @@ sourceSets.main.resources {
     exclude('.cache/**')
 }
 
-// Dev runs load classes and resources from the build folders, so the self-test, the game tests and their structure
-// templates stay out of the release jar and work as before in runClient and runGameTestServer
+// Dev runs load classes and resources from the build folders, so the game tests and their structure templates stay
+// out of the release jar and work as before in runGameTestServer
 tasks.named('jar', Jar) {
-    exclude('com/goldskinmc/lightworks/debug/selftest/**')
     exclude('com/goldskinmc/lightworks/gametest/**')
     exclude('data/lightworks/structure/**')
 }
@@ -83,12 +82,12 @@ def devLdl = providers.gradleProperty('dev_ldl').map { it.toBoolean() }.getOrEls
 def devSdl = providers.gradleProperty('dev_sdl').map { it.toBoolean() }.getOrElse(false)
 // -Pdev_tools=true adds JEI and The One Probe to `latest`/`lite` runs, for playing by hand: dev only, never shipped
 def devTools = providers.gradleProperty('dev_tools').map { it.toBoolean() }.getOrElse(false)
-// -Pdev_copycats=true adds Copycats+ to `latest`/`lite` runs, whose slopes shape the self-test's showcase cars: dev only,
+// -Pdev_copycats=true adds Copycats+ to `latest`/`lite` runs, for building with sloped blocks: dev only,
 // never shipped
 def devCopycats = providers.gradleProperty('dev_copycats').map { it.toBoolean() }.getOrElse(false)
 // -Pdev_conflicts=contraption-lights,create-train-lights,create-dynamic-lights adds other lighting mods
 // (with what they require) to `latest` runs for the S9 conflict test; entityculling adds Entity Culling, which skips
-// drawing block entities it thinks are hidden (the `walk-past` self-test logs whether it skips ours); immediatelyfast
+// drawing block entities it thinks are hidden; immediatelyfast
 // and sodium-extra (with -Pdev_perf) add two more that big Create packs ship, which change how things are drawn. create-dynamic-lights needs -Pdev_perf
 // and -Pdev_ldl=false: LambDynamicLights refuses to load next to Sodium Dynamic Lights, which it requires.
 def devConflicts = providers.gradleProperty('dev_conflicts').map { it.split(',')*.trim() as Set }.getOrElse([] as Set)
@@ -105,15 +104,6 @@ neoForge {
         client {
             client()
             jvmArgument '-Xmx4G'
-            // -Pselftest=true builds a test Searchlight on join and logs both light paths (debug/SelfTest)
-            systemProperty 'lightworks.selftest', providers.gradleProperty('selftest').getOrElse('false')
-            // -Pselftest_quit=true closes the game once the self-test is done (unattended runs)
-            systemProperty 'lightworks.selftest.quit', providers.gradleProperty('selftest_quit').getOrElse('false')
-            // -Pselftest_conditions=fabulous,rain,nether,... sets the world and settings it runs under (debug/selftest/Conditions),
-            // -Pselftest_tag=<name> names its screenshot folder, -Pselftest_site=x,z moves its test site
-            systemProperty 'lightworks.selftest.conditions', providers.gradleProperty('selftest_conditions').getOrElse('')
-            systemProperty 'lightworks.selftest.tag', providers.gradleProperty('selftest_tag').getOrElse('')
-            systemProperty 'lightworks.selftest.site', providers.gradleProperty('selftest_site').getOrElse('')
             // -Pwindow=1920x1080 opens the game at that size (screenshots are taken at the window's size)
             def window = providers.gradleProperty('window').getOrNull()
             if (window != null) {
@@ -130,11 +120,6 @@ neoForge {
         server {
             server()
             programArgument '--nogui'
-            systemProperty 'lightworks.selftest', providers.gradleProperty('selftest').getOrElse('false')
-            // With the self-test, -Pselftest_quit=true stops the server once it is done
-            systemProperty 'lightworks.selftest.quit', providers.gradleProperty('selftest_quit').getOrElse('false')
-            systemProperty 'lightworks.selftest.conditions', providers.gradleProperty('selftest_conditions').getOrElse('')
-            systemProperty 'lightworks.selftest.site', providers.gradleProperty('selftest_site').getOrElse('')
         }
         // Headless load check: boots every mod, runs game tests, exits
         gameTestServer {
@@ -387,4 +372,11 @@ idea {
         downloadSources = true
         downloadJavadoc = true
     }
+}
+
+// Optional local additions for development, kept outside this repository: -Pdev_extras=<path to a Gradle script>
+// (or dev_extras in ~/.gradle/gradle.properties) applies that script last
+def devExtras = providers.gradleProperty('dev_extras').getOrElse('')
+if (!devExtras.isBlank() && file(devExtras).exists()) {
+    apply from: devExtras
 }
