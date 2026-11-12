@@ -59,8 +59,9 @@ import org.joml.Matrix4f;
  * Coloured light painted onto the world. Minecraft's block light and LambDynamicLights are colourless, so
  * a dyed beam, or a signal lamp, tints the block faces it lights. Every frame the colours of all the lights
  * reaching a face are added up ({@link LightMix}) and the one result is multiplied over what is already
- * drawn, after the world (like the visible beam, it needs no client mod and works with Sodium). Shader packs
- * replace the blending, so it is off while one is on (client config {@code colouredLight}).
+ * drawn, after the world (like the visible beam, it needs no client mod and works with Sodium). Under a shader
+ * pack it is drawn on the pack's finished picture by {@link LateBeams}, and left out with that off (client config
+ * {@code colouredLight}).
  * <p>
  * Block light cannot draw a beam's square either, so every beam, dyed or not, also has a {@linkplain #spot spot}:
  * the same faces brightened in proportion to what they show, after the colours.

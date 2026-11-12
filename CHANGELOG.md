@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1 (unreleased)
+
+- The `colouredLight` client config's description no longer says coloured light is off under shader packs: since
+  1.0.1 it is drawn after the pack.
+
 ## 1.0.1 (2026-11-11)
 
 - The Mods screen's website link now opens the mod's CurseForge page (it opened the GitHub repository); bugs and

@@ -68,8 +68,8 @@ public final class LightworksClientConfig {
                 .defineListAllowEmpty("shaderPacksWithoutBeams", List.of(), () -> "",
                         value -> value instanceof String);
         COLOURED_LIGHT = builder
-                .comment("Dyed lights and signal lamps tint the blocks they light with their colour. Off while an",
-                        "Iris shader pack is on: shader packs light the world their own way.")
+                .comment("Dyed lights and signal lamps tint the blocks they light with their colour. Works under Iris",
+                        "shader packs too, drawn after the pack (beamsAfterShaderPack); with that off it is left out under a pack.")
                 .translation("lightworks.configuration.colouredLight")
                 .define("colouredLight", true);
         LENS_GLOW = builder
