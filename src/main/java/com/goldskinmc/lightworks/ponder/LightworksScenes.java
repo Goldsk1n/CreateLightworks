@@ -348,6 +348,16 @@ final class LightworksScenes {
                 .pointAt(util.vector().blockSurface(head, Direction.NORTH));
         scene.idle(120);
 
+        scene.world().modifyBlockEntityNBT(util.select().position(head), PanTiltHeadBlockEntity.class,
+                nbt -> nbt.putFloat("Pan", nbt.getFloat("Pan") - 90));
+        scene.overlay().showControls(util.vector().blockSurface(light, Direction.NORTH), Pointing.RIGHT, 40).rightClick();
+        scene.overlay().showText(100)
+                .attachKeyFrame()
+                .text("Its light's Pan box turns it, and the sweep centres there")
+                .placeNearTarget()
+                .pointAt(util.vector().blockSurface(light, Direction.NORTH));
+        scene.idle(120);
+
         scene.world().setKineticSpeed(kinetics, 0);
         scene.overlay().showText(60)
                 .attachKeyFrame()

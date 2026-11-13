@@ -3,6 +3,7 @@ package com.goldskinmc.lightworks.content.directional;
 import com.goldskinmc.lightworks.beam.PanTilt;
 import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.content.SideValueBox;
+import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlockEntity;
 import com.google.common.collect.ImmutableList;
 import com.simibubi.create.foundation.blockEntity.behaviour.BehaviourType;
 import com.simibubi.create.foundation.blockEntity.behaviour.ValueSettingsBoard;
@@ -28,8 +29,9 @@ import net.minecraft.world.phys.Vec3;
  * One of a directional light's two value boards, Pan or Tilt, set like Create's Valve Handle: hold
  * right-click on its value box and pick a row (which way) and a value (how far). Pan has rows ⟲ and ⟳,
  * tilt ↑ and ↓ (only the one that points away from a floor or ceiling). Two boxes sit on each side face
- * ({@link Slot}). The values live in the light (its {@link PanTilt}), not in this behaviour, and the boards
- * are hidden on a Pan-Tilt Head, which aims the light instead.
+ * ({@link Slot}). The values live in the light (its {@link PanTilt}), not in this behaviour. On a Pan-Tilt Head
+ * the Tilt board hides (the head's redstone tilts the light) and the Pan board turns the head instead, full circle
+ * either way: the head keeps that pan and sweeps round it.
  */
 public class AimBoard extends ScrollValueBehaviour {
     public static final BehaviourType<AimBoard> PAN = new BehaviourType<>("lightworks_pan");
@@ -47,7 +49,9 @@ public class AimBoard extends ScrollValueBehaviour {
                 new Slot(pan, (DirectionalLightBlock) light.getBlockState().getBlock()));
         this.light = light;
         this.pan = pan;
-        onlyActiveWhen(() -> light.head() == null);
+        if (!pan) {
+            onlyActiveWhen(() -> light.head() == null);
+        }
     }
 
     /** Shown and clickable only while {@link com.goldskinmc.lightworks.content.BoardGate} allows it. */
@@ -107,7 +111,7 @@ public class AimBoard extends ScrollValueBehaviour {
 
     @Override
     public ValueSettingsBoard createBoard(Player player, BlockHitResult hitResult) {
-        int max = pan ? PanTilt.maxPan(fy()) : 90;
+        int max = pan ? light.head() != null ? 180 : PanTilt.maxPan(fy()) : 90;
         return new ValueSettingsBoard(label, max, pan && max == 180 ? 45 : 15, rows(),
                 new ValueSettingsFormatter(this::formatSettings));
     }
@@ -115,6 +119,11 @@ public class AimBoard extends ScrollValueBehaviour {
     /** The signed angle as a board row and a size: the first row is left or up (down on a ceiling). */
     @Override
     public ValueSettings getValueSettings() {
+        PanTiltHeadBlockEntity head = pan ? light.head() : null;
+        if (head != null) {
+            int value = head.boardPan();
+            return new ValueSettings(value < 0 ? 0 : 1, Math.abs(value));
+        }
         PanTilt aim = light.panTilt();
         if (pan) {
             return new ValueSettings(aim.pan() < 0 ? 0 : 1, Math.abs(aim.pan()));
@@ -125,6 +134,12 @@ public class AimBoard extends ScrollValueBehaviour {
     @Override
     public void setValueSettings(Player player, ValueSettings settings, boolean ctrlDown) {
         if (settings.equals(getValueSettings())) {
+            return;
+        }
+        PanTiltHeadBlockEntity head = pan ? light.head() : null;
+        if (head != null) {
+            head.setBoardPan(settings.row() == 0 ? -settings.value() : settings.value());
+            playFeedbackSound(this);
             return;
         }
         PanTilt aim = light.panTilt();

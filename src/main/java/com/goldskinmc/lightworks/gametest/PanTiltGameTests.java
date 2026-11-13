@@ -1,6 +1,7 @@
 package com.goldskinmc.lightworks.gametest;
 
 import com.goldskinmc.lightworks.Lightworks;
+import com.goldskinmc.lightworks.content.directional.AimBoard;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
@@ -9,14 +10,19 @@ import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.content.kinetics.motor.CreativeMotorBlock;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
+import com.simibubi.create.foundation.blockEntity.behaviour.ValueSettingsBehaviour.ValueSettings;
 import com.simibubi.create.foundation.blockEntity.behaviour.scrollValue.ScrollValueBehaviour;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LeverBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -165,6 +171,88 @@ public final class PanTiltGameTests {
                 })
                 .thenIdle(120)
                 .thenExecute(() -> helper.assertTrue(round[0] > 170, "pan should go round again, got to " + round[0]))
+                .thenSucceed();
+    }
+
+    /** Compass bearing of a level beam: clockwise from north, in degrees. */
+    private static float bearing(DirectionalLightBlockEntity light) {
+        Vec3 d = light.beamDirection();
+        return (float) Math.toDegrees(Math.atan2(d.x, -d.z));
+    }
+
+    /** Heads placed by a player facing east, on the floor and on a ceiling, point their lights east; Pan reads 90. */
+    @GameTest(template = EMPTY)
+    public static void placedHeadPointsAwayFromThePlayer(GameTestHelper helper) {
+        Player player = helper.makeMockPlayer(GameType.CREATIVE);
+        player.setYRot(-90);
+        for (Direction facing : new Direction[] {Direction.UP, Direction.DOWN}) {
+            BlockPos head = facing == Direction.UP ? new BlockPos(1, 1, 1) : new BlockPos(3, 3, 3);
+            BlockPos light = head.relative(facing);
+            BlockState state = LightworksBlocks.PAN_TILT_HEAD.getDefaultState().setValue(PanTiltHeadBlock.FACING, facing);
+            helper.setBlock(head, state);
+            state.getBlock().setPlacedBy(helper.getLevel(), helper.absolutePos(head), state, player, ItemStack.EMPTY);
+            helper.setBlock(light, LightworksBlocks.SEARCHLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, facing));
+            DirectionalLightBlockEntity searchlight = helper.getBlockEntity(light);
+            PanTiltHeadBlockEntity entity = helper.getBlockEntity(head);
+            helper.assertTrue(searchlight.beamDirection().distanceTo(new Vec3(1, 0, 0)) < 1e-6,
+                    facing + " head placed facing east points " + searchlight.beamDirection());
+            helper.assertTrue(entity.boardPan() == 90, facing + " head's Pan reads " + entity.boardPan());
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The light's Pan box turns a stopped head to its value at once, a sweep then centres there, and a head whose
+     * shaft stops stays where it is.
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 400)
+    public static void panBoxCentresTheSweep(GameTestHelper helper) {
+        BlockPos motor = new BlockPos(2, 1, 2);
+        BlockPos head = motor.above();
+        BlockPos light = head.above();
+        helper.setBlock(motor, AllBlocks.CREATIVE_MOTOR.getDefaultState().setValue(CreativeMotorBlock.FACING, Direction.UP));
+        helper.setBlock(head, LightworksBlocks.PAN_TILT_HEAD.getDefaultState().setValue(PanTiltHeadBlock.FACING, Direction.UP));
+        helper.setBlock(light, LightworksBlocks.SEARCHLIGHT.getDefaultState().setValue(DirectionalLightBlock.FACING, Direction.UP));
+        PanTiltHeadBlockEntity entity = helper.getBlockEntity(head);
+        DirectionalLightBlockEntity searchlight = helper.getBlockEntity(light);
+        float[] range = {Float.MAX_VALUE, -Float.MAX_VALUE};
+        boolean[] sweeping = {false};
+        float[] stoppedAt = {0};
+        helper.onEachTick(() -> {
+            if (sweeping[0]) {
+                float b = bearing(searchlight);
+                range[0] = Math.min(range[0], b);
+                range[1] = Math.max(range[1], b);
+            }
+        });
+        // A Creative Motor starts at 16 rpm: stop it, so the Pan box turns a stopped head
+        setSpeed(helper, motor, 0);
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(entity.getSpeed() == 0, "head still has speed"))
+                .thenExecute(() -> {
+                    searchlight.getBehaviour(AimBoard.PAN).setValueSettings(null, new ValueSettings(1, 90), false);
+                    helper.assertFalse(entity.turning(), "a head set by its Pan box counts as turning");
+                    helper.assertTrue(Math.abs(bearing(searchlight) - 90) < 0.01, "head turned to " + bearing(searchlight));
+                })
+                .thenExecute(() -> {
+                    entity.getBehaviour(ScrollValueBehaviour.TYPE).setValue(9);
+                    setSpeed(helper, motor, 32);
+                    sweeping[0] = true;
+                })
+                .thenIdle(120)
+                .thenExecute(() -> {
+                    sweeping[0] = false;
+                    helper.assertTrue(range[0] >= 44.99f && range[1] <= 135.01f,
+                            "sweep left its arc round east: " + range[0] + " to " + range[1]);
+                    helper.assertTrue(range[0] < 50 && range[1] > 130, "sweep missed an end: " + range[0] + " to " + range[1]);
+                    setSpeed(helper, motor, 0);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(entity.getSpeed() == 0, "head still has speed"))
+                // At partial tick 0 a head that has ticked reads its previous angle: let the last step land first
+                .thenExecuteAfter(2, () -> stoppedAt[0] = bearing(searchlight))
+                .thenIdle(20)
+                .thenExecute(() -> helper.assertTrue(Math.abs(bearing(searchlight) - stoppedAt[0]) < 0.01,
+                        "stopped head moved from " + stoppedAt[0] + " to " + bearing(searchlight)))
                 .thenSucceed();
     }
 }

@@ -22,8 +22,11 @@ import net.minecraft.world.level.block.state.BlockState;
  * the head's facing, exactly as fast as the shaft turns; analog redstone sets the tilt, 6 degrees per
  * signal level from along the mount (0) to straight out of it (15), which the head slews to at
  * {@value #TILT_PER_TICK} degrees a tick. The value box makes the pan {@link Sweep} back and forth instead of
- * going round. Both sides integrate the angles every tick, so client and server agree without packets except
- * when the speed, the signal or the box changes.
+ * going round, centred where the head points when the box is set. The light's Pan box sets the pan directly
+ * ({@link #setBoardPan}): the head turns there at once, as a standing light does, and a sweep then centres there;
+ * nothing ever turns it back. Both sides
+ * integrate the angles every tick, so client and server agree without packets except when the speed, the signal,
+ * the box or the Pan box changes.
  */
 public class PanTiltHeadBlockEntity extends KineticBlockEntity {
     public static final float TILT_PER_SIGNAL = 6f;
@@ -55,6 +58,47 @@ public class PanTiltHeadBlockEntity extends KineticBlockEntity {
     /** How far the head sweeps either way; 0 goes full circle. */
     private float arc() {
         return sweepBoard == null ? 0 : sweepBoard.getValue() * SweepBoard.DEGREES_PER_STEP;
+    }
+
+    /**
+     * Pan as the light's Pan box shows it, from yaw in the mount frame: clockwise seen from above on a floor or
+     * ceiling (from north, as on a standing light), clockwise seen from the front on a wall (from up). Yaw turns
+     * the other way except on a ceiling.
+     */
+    private int toBoard(float yaw) {
+        float pan = facing() == Direction.DOWN ? yaw : -yaw;
+        int rounded = Math.round(Mth.wrapDegrees(pan));
+        return rounded == -180 ? 180 : rounded;
+    }
+
+    private float fromBoard(int pan) {
+        return facing() == Direction.DOWN ? pan : -pan;
+    }
+
+    /** The pan the light's Pan box shows: where the head points, or with a sweep its centre. */
+    public int boardPan() {
+        return toBoard(pan.get() - sweep.offset());
+    }
+
+    /** Turns the head to {@code value} on the Pan box at once; a sweep then centres there. */
+    public void setBoardPan(int value) {
+        float centre = pan.get() - sweep.offset();
+        pan.set(pan.get() + Mth.wrapDegrees(fromBoard(value) - centre));
+        setChanged();
+        if (level != null && !level.isClientSide) {
+            sendData();
+        }
+    }
+
+    /**
+     * A head placed by a player on a floor or ceiling points the light away from them ({@code heading}, a
+     * horizontal direction), as a light placed by itself does; on a wall it points up.
+     */
+    public void placedFacing(Direction heading) {
+        if (facing().getAxis().isVertical()) {
+            pan.set(fromBoard((int) heading.toYRot() - 180));
+            setChanged();
+        }
     }
 
     private float targetTilt() {
@@ -146,7 +190,7 @@ public class PanTiltHeadBlockEntity extends KineticBlockEntity {
     public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
         super.addToGoggleTooltip(tooltip, isPlayerSneaking);
         LightGoggles.title(tooltip, getBlockState().getBlock().getName());
-        LightGoggles.line(tooltip, "pan_tilt", ChatFormatting.AQUA, Math.round(Mth.wrapDegrees(yaw(0)) + 360) % 360,
+        LightGoggles.line(tooltip, "pan_tilt", ChatFormatting.AQUA, Math.floorMod(toBoard(yaw(0)), 360),
                 Math.round(elevation(0)));
         LightGoggles.line(tooltip, "tilt_signal", ChatFormatting.RED, signal, Math.round(targetTilt()));
         LightGoggles.line(tooltip, "sweep", ChatFormatting.AQUA, SweepBoard.named(sweepBoard.getValue()));

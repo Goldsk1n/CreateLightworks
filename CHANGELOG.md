@@ -2,6 +2,10 @@
 
 ## 1.1 (unreleased)
 
+- A Pan-Tilt Head can be aimed: the light's Pan box, hidden on a head until now, turns the head to face that way, where
+  it stays, and a sweep swings either way of it. Before, a new head always started facing north (on a Sable vehicle,
+  its north before assembly), and the only way to move a sweep's centre was to set the sweep while the shaft turned
+  the head past the right spot. A head placed on a floor or ceiling now points its light away from you, as lights do.
 - New client config `boardsOnlyWithWrench` (off by default): the Pan, Tilt, sweep and pattern boards show, and take
   clicks, only while you hold a Wrench or a Clipboard, so they no longer cover the light when you just look at it.
 - The `colouredLight` client config's description no longer says coloured light is off under shader packs: since

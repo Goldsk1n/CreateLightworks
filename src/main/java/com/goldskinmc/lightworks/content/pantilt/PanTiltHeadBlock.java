@@ -5,12 +5,15 @@ import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.foundation.block.IBE;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Mount for a Searchlight, Floodlight or Headlight placed on its {@link #FACING} side. The shaft comes in from the
@@ -25,6 +28,15 @@ public class PanTiltHeadBlock extends DirectionalKineticBlock implements IBE<Pan
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         return defaultBlockState().setValue(FACING, context.getClickedFace());
+    }
+
+    /** Pointing the light away from the player, as a light placed by itself does. */
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (placer != null) {
+            withBlockEntityDo(level, pos, head -> head.placedFacing(placer.getDirection()));
+        }
     }
 
     @Override

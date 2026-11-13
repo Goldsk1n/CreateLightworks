@@ -44,7 +44,7 @@ public final class LightworksLang {
         add("lightworks.goggles.pattern.label", "Pattern:");
         add("lightworks.goggles.pattern", "%s");
         add("lightworks.goggles.hint.aim", "Hold R-click on Pan or Tilt to aim");
-        add("lightworks.goggles.hint.on_head", "Aimed by the Pan-Tilt Head below");
+        add("lightworks.goggles.hint.on_head", "Hold R-click on Pan to turn the head below; it sweeps round that");
         add("lightworks.goggles.hint.dye", "Dye: colour the lens, beam and light");
         add("lightworks.clipboard.needs_dye", "Needs %s to paste the colour");
         add("lightworks.goggles.hint.clipboard", "Clipboard: R-click copies its settings, L-click pastes them");
@@ -116,7 +116,8 @@ public final class LightworksLang {
         tooltip("pan_tilt_head", "A kinetic mount for a _Searchlight_, _Floodlight_ or _Headlight_ placed on top of it.",
                 behaviour("When rotated", "_Pans_ the light round, as fast as the shaft turns."),
                 behaviour("When powered by Redstone", "_Tilts_ the light up 6° per signal level, straight up at 15."),
-                action("When R-click is held on the box", "Makes it _sweep_ back and forth, this far either way of where it points now."));
+                action("When R-click is held on the box", "Makes it _sweep_ back and forth, this far either way of where it points now."),
+                action("When R-click is held on the light's Pan", "Turns it to face that way, where it stays; a sweep centres there."));
         tooltip("rotating_beacon", "Two opposite _beams_ that sweep round with the shaft: a rotating warning beacon for towers, airships and trains.",
                 behaviour("When rotated", "The beams turn _as fast as the shaft_."),
                 behaviour("When stopped", "Lights where the beams land, like two fixed Searchlights."),
