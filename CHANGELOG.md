@@ -8,6 +8,9 @@
   the head past the right spot. A head placed on a floor or ceiling now points its light away from you, as lights do.
 - New client config `boardsOnlyWithWrench` (off by default): the Pan, Tilt, sweep and pattern boards show, and take
   clicks, only while you hold a Wrench or a Clipboard, so they no longer cover the light when you just look at it.
+- The Floodlight's head no longer sinks into its mounting plate as it tilts, and no longer flickers at the bottom of its
+  back when pointing level: behind a rim round its front the housing steps in a pixel, and its yoke sits straight
+  on the plate.
 - The `colouredLight` client config's description no longer says coloured light is off under shader packs: since
   1.0.1 it is drawn after the pack.
 
