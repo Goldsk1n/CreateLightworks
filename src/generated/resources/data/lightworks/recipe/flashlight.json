@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "G": {
+      "tag": "c:glass_blocks/colorless"
+    },
+    "P": {
+      "tag": "c:plates/brass"
+    },
+    "T": {
+      "item": "create:electron_tube"
+    }
+  },
+  "pattern": [
+    " G ",
+    "PTP",
+    " P "
+  ],
+  "result": {
+    "count": 1,
+    "id": "lightworks:flashlight"
+  }
+}

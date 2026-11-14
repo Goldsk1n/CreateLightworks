@@ -2,6 +2,8 @@ package com.goldskinmc.lightworks;
 
 import com.goldskinmc.lightworks.ponder.PonderSchematics;
 import com.goldskinmc.lightworks.registry.LightworksBlockEntities;
+import com.goldskinmc.lightworks.registry.LightworksComponents;
+import com.goldskinmc.lightworks.registry.LightworksItems;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.goldskinmc.lightworks.registry.LightworksCreativeTab;
 import com.goldskinmc.lightworks.registry.LightworksLang;
@@ -39,6 +41,8 @@ public final class Lightworks {
         EdgeLightBlock.registerMovementChecks();
         LightworksBlocks.register();
         LightworksBlockEntities.register();
+        LightworksItems.register();
+        LightworksComponents.register(modBus);
         LightworksRecipes.register();
         LightworksCreativeTab.register(modBus);
         modBus.addListener(GatherDataEvent.class, PonderSchematics::gatherData);

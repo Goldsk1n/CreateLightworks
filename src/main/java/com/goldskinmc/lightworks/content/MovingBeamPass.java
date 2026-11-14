@@ -1,5 +1,6 @@
 package com.goldskinmc.lightworks.content;
 
+import com.goldskinmc.lightworks.content.carried.CarriedBeam;
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.light.BeamSource;
@@ -15,7 +16,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 /**
- * Draws the beams of lights on contraptions, trains and turning heads' contraptions in the world, each frame, from where
+ * Draws the beams of carried lamps and of lights on contraptions, trains and turning heads' contraptions in the world, each frame, from where
  * they are this frame. Inside the contraption's own renderer they vanished whenever Minecraft judged the contraption out
  * of view, though its beams reached into it (looking down at a lit floor with the lamps above the screen). Drawn after
  * block entities, as fixed lights' beams are, and at once.
@@ -42,6 +43,12 @@ public final class MovingBeamPass {
                 BeamPose pose = moving.renderBeam(partialTick);
                 BeamVisual.renderInWorld(poseStack, buffers, camera, pose.origin(), pose.direction(), moving.beam(),
                         moving.rgb());
+                drew = true;
+            } else if (source instanceof CarriedBeam carried && carried.level() == mc.level && !carried.isGone()
+                    && carried.beam().length() > 0) {
+                BeamPose pose = carried.renderBeam(partialTick);
+                BeamVisual.renderInWorld(poseStack, buffers, camera, pose.origin(), pose.direction(), carried.beam(),
+                        carried.rgb());
                 drew = true;
             }
         }

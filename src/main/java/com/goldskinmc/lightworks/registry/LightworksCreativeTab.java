@@ -30,11 +30,11 @@ public final class LightworksCreativeTab {
     private LightworksCreativeTab() {
     }
 
-    /** Beam lights, their mount, then the vehicle lamps. */
+    /** Beam lights, their mount, the vehicle lamps, then carried lamps. */
     public static List<ItemLike> contents() {
         return List.of(LightworksBlocks.SEARCHLIGHT, LightworksBlocks.FLOODLIGHT, LightworksBlocks.PAN_TILT_HEAD,
                 LightworksBlocks.ROTATING_BEACON, LightworksBlocks.WARNING_LIGHT, LightworksBlocks.HEADLIGHT,
-                LightworksBlocks.TAIL_LIGHT, LightworksBlocks.EDGE_LIGHT);
+                LightworksBlocks.TAIL_LIGHT, LightworksBlocks.EDGE_LIGHT, LightworksItems.FLASHLIGHT);
     }
 
     public static void register(IEventBus modBus) {

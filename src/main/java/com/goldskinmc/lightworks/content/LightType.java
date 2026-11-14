@@ -48,6 +48,9 @@ public record LightType(String name, @Nullable ConeFalloff beam, Kind kind, int 
     /** Each of the beacon's two beams: medium width, full brightness to 20 blocks, dark at 32. */
     public static final LightType ROTATING_BEACON = new LightType("rotating_beacon",
             new ConeFalloff(5, 4, 20, 32, 15), Kind.BEACON, 0xFFF4DC, 0, 4.8 / 16, 3 / 16.0, BeamRays.SINGLE);
+    /** Hand lamp: a narrow beam, full brightness to 20 blocks, dark at 28; it starts at the hand, not a block. */
+    public static final LightType FLASHLIGHT = new LightType("flashlight",
+            new ConeFalloff(8, 5, 20, 28, 15), Kind.BEAM, WARM_WHITE, 0, 0, 1.5 / 16, BeamRays.SINGLE);
     public static final LightType WARNING_LIGHT = new LightType("warning_light",
             null, Kind.WARNING, 0xFFA21A, 12, 0, 0, BeamRays.SINGLE);
     public static final LightType TAIL_LIGHT = new LightType("tail_light",

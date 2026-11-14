@@ -48,6 +48,9 @@ public final class LightworksRecipes {
         shaped(LightworksBlocks.ROTATING_BEACON, 1, "GGG", "GTG", " C ")
                 .define('G', GLASS).define('T', AllItems.ELECTRON_TUBE).define('C', AllBlocks.BRASS_CASING)
                 .save(out);
+        shaped(LightworksItems.FLASHLIGHT, 1, " G ", "PTP", " P ")
+                .define('G', GLASS).define('P', BRASS_PLATES).define('T', AllItems.ELECTRON_TUBE)
+                .save(out);
         shaped(LightworksBlocks.HEADLIGHT, 2, " G ", "ITI", " B ")
                 .define('G', GLASS).define('I', IRON_PLATES).define('T', AllItems.ELECTRON_TUBE)
                 .define('B', BRASS_PLATES)

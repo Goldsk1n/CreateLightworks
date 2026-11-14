@@ -98,6 +98,7 @@ public final class LightworksLang {
      * highlighted.
      */
     private static void tooltips() {
+        itemTooltips();
         tooltip("searchlight", "A long, narrow _beam_ that lights the block it points at: full out to _32 blocks_, dark by 48. Keeps landing where it points on contraptions, trains and Sable vehicles.",
                 behaviour("When placed", "Points _level_, away from you. Mount it on a _Pan-Tilt Head_ to sweep it round."),
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
@@ -140,6 +141,11 @@ public final class LightworksLang {
     private record Line(boolean action, String condition, String text) {
     }
 
+    private static void itemTooltips() {
+        itemTooltip("flashlight", "A brass hand lamp with a narrow _beam_, bright out to _20 blocks_. Lights where you look, in either hand.",
+                action("When R-clicked", "Switches it _on_ or _off_."));
+    }
+
     private static Line behaviour(String condition, String text) {
         return new Line(false, condition, text);
     }
@@ -149,7 +155,14 @@ public final class LightworksLang {
     }
 
     private static void tooltip(String block, String summary, Line... lines) {
-        String key = "block." + Lightworks.MOD_ID + "." + block + ".tooltip";
+        tooltipFor("block." + Lightworks.MOD_ID + "." + block + ".tooltip", summary, lines);
+    }
+
+    private static void itemTooltip(String item, String summary, Line... lines) {
+        tooltipFor("item." + Lightworks.MOD_ID + "." + item + ".tooltip", summary, lines);
+    }
+
+    private static void tooltipFor(String key, String summary, Line... lines) {
         add(key + ".summary", summary);
         int behaviours = 0;
         int actions = 0;
