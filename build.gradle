@@ -74,6 +74,7 @@ def runDir = runProfile == 'latest' ? 'run' : "run-${runProfile}"
 def quickPlayWorld = providers.gradleProperty('quickplay_world').getOrElse('lightworks-test')
 // -Pquickplay_server=localhost joins that server instead of the test world (dedicated-server checks)
 def quickPlayServer = providers.gradleProperty('quickplay_server').getOrNull()
+def devPlayer = providers.gradleProperty('dev_player').getOrNull()
 // -Pdev_perf=true adds Sodium, Iris and spark for shader and performance checks
 def devPerf = providers.gradleProperty('dev_perf').map { it.toBoolean() }.getOrElse(false)
 // -Pdev_ldl=false leaves LambDynamicLights out of `latest` runs: a player without the optional client mod
@@ -110,6 +111,11 @@ neoForge {
                 def (width, height) = window.tokenize('x')
                 programArguments.addAll '--width', width, '--height', height
             }
+            // -Pdev_player=<name> plays under that name, for a second client on the dedicated server (the same name kicks
+            // the first one off); its game folder is run-<name>, so two clients never share logs or options
+            if (devPlayer != null) {
+                programArguments.addAll '--username', devPlayer
+            }
             // Join the test world straight from launch once it exists in this profile's saves
             if (quickPlayServer != null) {
                 programArguments.addAll '--quickPlayMultiplayer', quickPlayServer
@@ -134,7 +140,8 @@ neoForge {
         }
         configureEach {
             // The dedicated server gets its own folder, so its log and world never clash with a client's
-            gameDirectory = file(name == 'server' ? "${runDir}-server" : runDir)
+            gameDirectory = file(name == 'server' ? "${runDir}-server"
+                    : name == 'client' && devPlayer != null ? "run-${devPlayer}" : runDir)
             logLevel = org.slf4j.event.Level.INFO
         }
     }
