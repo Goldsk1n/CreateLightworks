@@ -1,0 +1,68 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "sheet": "lightworks:block/flashlight",
+    "particle": "create:block/brass_casing"
+  },
+  "elements": [
+    {
+      "from": [
+        6,
+        6,
+        1.7
+      ],
+      "to": [
+        10,
+        10,
+        2
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            5.5,
+            3.5,
+            7.5,
+            5.5
+          ],
+          "texture": "#sheet"
+        },
+        "east": {
+          "uv": [
+            9.5,
+            3.5,
+            9.65,
+            5.5
+          ],
+          "texture": "#sheet"
+        },
+        "west": {
+          "uv": [
+            9.5,
+            3.5,
+            9.65,
+            5.5
+          ],
+          "texture": "#sheet"
+        },
+        "up": {
+          "uv": [
+            5.5,
+            5.5,
+            7.5,
+            5.65
+          ],
+          "texture": "#sheet"
+        },
+        "down": {
+          "uv": [
+            5.5,
+            5.5,
+            7.5,
+            5.65
+          ],
+          "texture": "#sheet"
+        }
+      }
+    }
+  ]
+}

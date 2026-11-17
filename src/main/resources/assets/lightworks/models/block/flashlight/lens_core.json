@@ -1,0 +1,124 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "sheet": "lightworks:block/flashlight",
+    "particle": "create:block/brass_casing"
+  },
+  "elements": [
+    {
+      "from": [
+        6,
+        6,
+        1.68
+      ],
+      "to": [
+        10,
+        10,
+        1.68
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            7.5,
+            3.5,
+            9.5,
+            5.5
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "from": [
+        10.02,
+        6,
+        1.7
+      ],
+      "to": [
+        10.02,
+        10,
+        2
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            10.0,
+            3.5,
+            10.15,
+            5.5
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "from": [
+        5.98,
+        6,
+        1.7
+      ],
+      "to": [
+        5.98,
+        10,
+        2
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            10.0,
+            3.5,
+            10.15,
+            5.5
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "from": [
+        6,
+        10.02,
+        1.7
+      ],
+      "to": [
+        10,
+        10.02,
+        2
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            7.5,
+            5.5,
+            9.5,
+            5.65
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "from": [
+        6,
+        5.98,
+        1.7
+      ],
+      "to": [
+        10,
+        5.98,
+        2
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            7.5,
+            5.5,
+            9.5,
+            5.65
+          ],
+          "texture": "#sheet"
+        }
+      }
+    }
+  ]
+}

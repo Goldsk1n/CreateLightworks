@@ -20,6 +20,7 @@ public final class LightworksClient {
         modBus.addListener(Partials::register);
         modBus.addListener(EdgeLightColours::register);
         modBus.addListener(LampItemColours::register);
+        modBus.addListener(LampItemColours::registerProperties);
         modBus.addListener(FMLClientSetupEvent.class, event -> LightworksPonder.registerPlugin());
         container.registerConfig(ModConfig.Type.CLIENT, LightworksClientConfig.SPEC);
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
