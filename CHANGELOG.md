@@ -2,6 +2,9 @@
 
 ## 1.1 (unreleased)
 
+- New: the Flashlight, a brass hand lamp. Right-click switches it on or off, in either hand; it throws a narrow beam
+  where you look, and other players see it from your hand. Crafted with a dye, its beam takes the colour; washing it
+  with a fan through water, or in a water cauldron, takes the colour off.
 - A Pan-Tilt Head can be aimed: the light's Pan box, hidden on a head until now, turns the head to face that way, where
   it stays, and a sweep swings either way of it. Before, a new head always started facing north (on a Sable vehicle,
   its north before assembly), and the only way to move a sweep's centre was to set the sweep while the shaft turned

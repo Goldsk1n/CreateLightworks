@@ -1,0 +1,152 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:not",
+      "value": {
+        "type": "lightworks:create_version",
+        "at_least": "6.0.3"
+      }
+    }
+  ],
+  "type": "create:splashing",
+  "ingredients": [
+    {
+      "type": "neoforge:compound",
+      "children": [
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "white"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "orange"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "magenta"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "light_blue"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "yellow"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "lime"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "pink"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "gray"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "light_gray"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "cyan"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "purple"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "blue"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "brown"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "green"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "red"
+          },
+          "strict": false
+        },
+        {
+          "type": "neoforge:components",
+          "items": "lightworks:flashlight",
+          "components": {
+            "lightworks:lamp_colour": "black"
+          },
+          "strict": false
+        }
+      ]
+    }
+  ],
+  "results": [
+    {
+      "item": "lightworks:flashlight"
+    }
+  ]
+}

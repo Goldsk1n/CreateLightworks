@@ -2,8 +2,11 @@ package com.goldskinmc.lightworks.registry;
 
 import static com.goldskinmc.lightworks.Lightworks.REGISTRATE;
 
+import com.goldskinmc.lightworks.Lightworks;
+import com.goldskinmc.lightworks.content.carried.FlashlightDyeingRecipe;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllItems;
+import net.minecraft.data.recipes.SpecialRecipeBuilder;
 import com.tterrag.registrate.providers.ProviderType;
 import com.tterrag.registrate.providers.RegistrateRecipeProvider;
 import net.minecraft.advancements.critereon.InventoryChangeTrigger;
@@ -51,6 +54,9 @@ public final class LightworksRecipes {
         shaped(LightworksItems.FLASHLIGHT, 1, " G ", "PTP", " P ")
                 .define('G', GLASS).define('P', BRASS_PLATES).define('T', AllItems.ELECTRON_TUBE)
                 .save(out);
+        SpecialRecipeBuilder.special(FlashlightDyeingRecipe::new).save(out, Lightworks.id("flashlight_dyeing"));
+        // Washing it clean with a fan through water: data/lightworks/recipe/washing/, written by hand in two files, one
+        // per Create recipe format (CreateVersionCondition); Create's recipe builder differs between 6.0.0 and 6.0.10 too
         shaped(LightworksBlocks.HEADLIGHT, 2, " G ", "ITI", " B ")
                 .define('G', GLASS).define('I', IRON_PLATES).define('T', AllItems.ELECTRON_TUBE)
                 .define('B', BRASS_PLATES)

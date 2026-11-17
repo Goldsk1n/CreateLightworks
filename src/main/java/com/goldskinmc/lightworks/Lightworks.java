@@ -7,7 +7,11 @@ import com.goldskinmc.lightworks.registry.LightworksItems;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.goldskinmc.lightworks.registry.LightworksCreativeTab;
 import com.goldskinmc.lightworks.registry.LightworksLang;
+import com.goldskinmc.lightworks.registry.CreateVersionCondition;
+import com.goldskinmc.lightworks.registry.LightworksRecipeSerializers;
 import com.goldskinmc.lightworks.registry.LightworksRecipes;
+import com.goldskinmc.lightworks.content.carried.FlashlightItem;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.simibubi.create.foundation.item.ItemDescription;
@@ -43,7 +47,11 @@ public final class Lightworks {
         LightworksBlockEntities.register();
         LightworksItems.register();
         LightworksComponents.register(modBus);
+        LightworksRecipeSerializers.register(modBus);
+        CreateVersionCondition.register(modBus);
         LightworksRecipes.register();
+        modBus.addListener(FMLCommonSetupEvent.class, event -> event.enqueueWork(
+                () -> FlashlightItem.registerCauldronWashing(LightworksItems.FLASHLIGHT.get())));
         LightworksCreativeTab.register(modBus);
         modBus.addListener(GatherDataEvent.class, PonderSchematics::gatherData);
         container.registerConfig(ModConfig.Type.SERVER, LightworksConfig.SPEC);
