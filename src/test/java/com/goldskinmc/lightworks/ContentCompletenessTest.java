@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
@@ -33,6 +34,25 @@ class ContentCompletenessTest {
             requireFile(DATA.resolve("recipe/" + block + ".json"), missing);
             requireFile(DATA.resolve("loot_table/blocks/" + block + ".json"), missing);
             requireFile(ASSETS.resolve("ponder/" + block + ".nbt"), missing);
+        }
+        assertTrue(missing.isEmpty(), "missing: " + missing);
+    }
+
+    /**
+     * Items that are not blocks (the Flashlight): a name, a tooltip, a recipe and an item model. They are found by their
+     * names in the generated lang file, which Registrate writes for every registered item.
+     */
+    @Test
+    void everyItemHasNameTooltipRecipeAndModel() throws IOException {
+        String lang = Files.readString(ASSETS.resolve("lang/en_us.json"));
+        List<String> items = Pattern.compile("\"item\\.lightworks\\.([a-z0-9_]+)\":").matcher(lang).results()
+                .map(match -> match.group(1)).distinct().sorted().toList();
+        assertTrue(items.contains("flashlight"), "expected the Flashlight among the items, found " + items);
+        List<String> missing = new ArrayList<>();
+        for (String item : items) {
+            requireKey(lang, "item.lightworks." + item + ".tooltip.summary", missing);
+            requireFile(DATA.resolve("recipe/" + item + ".json"), missing);
+            requireFile(Path.of("src/main/resources/assets/lightworks/models/item/" + item + ".json"), missing);
         }
         assertTrue(missing.isEmpty(), "missing: " + missing);
     }
