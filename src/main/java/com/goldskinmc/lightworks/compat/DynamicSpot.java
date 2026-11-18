@@ -21,4 +21,13 @@ public interface DynamicSpot {
 
     /** Removes the light for good. */
     void remove();
+
+    /**
+     * True when the light may be moved every frame, for a lamp turned with the mouse. Only LambDynamicLights' is: under
+     * Sodium Dynamic Lights the game ran at half its frame rate with it, and a client light block made the ground pulse
+     * (self-test handheld-motion, Nov 18).
+     */
+    default boolean movesEveryFrame() {
+        return false;
+    }
 }

@@ -134,5 +134,11 @@ public final class LdlSpots {
         public boolean isRemoved() {
             return removed;
         }
+
+        /** LambDynamicLights re-lights a moved spot quickly enough to follow a carried lamp every frame. */
+        @Override
+        public boolean movesEveryFrame() {
+            return true;
+        }
     }
 }

@@ -61,6 +61,8 @@ public final class CarriedBeam implements BeamSource {
         this.player = player;
         this.type = type;
         this.beam = new ClientBeam(Objects.requireNonNull(type.beam()), (float) type.lensHalf());
+        // Turned with the mouse: LambDynamicLights' light follows the beam each frame
+        this.beam.followSpotEveryFrame();
         this.lastPose = pose(1);
     }
 

@@ -105,6 +105,9 @@ public final class ClientBeam {
     private long changesSeen = BlockChanges.count();
     @Nullable
     private BeamSpot lastSpot;
+    /** For a light that follows its beam each frame: the tick's spot when its painted faces were last found. */
+    @Nullable
+    private BeamSpot tickSpot;
     private double length;
     /** Corner length over centre length at the last corner trace, by {@link BeamFrame#corner} index. */
     private final float[] cornerRatios = new float[CORNERS];
@@ -127,9 +130,66 @@ public final class ClientBeam {
     @Nullable
     private Vec3 layersEnd;
 
+    /**
+     * Set by carried lamps: LambDynamicLights' light follows the beam as it is drawn each frame, not once a tick. A
+     * lamp turned with the mouse otherwise left the light a tick behind (owner, Nov 18: "light jumps from block to
+     * block"); under LambDynamicLights the turning clips of self-test handheld-motion blinked about half as often.
+     */
+    private boolean spotEveryFrame;
+
     public ClientBeam(ConeFalloff shape, float lensHalf) {
         this.shape = shape;
         this.lensHalf = lensHalf;
+    }
+
+    /** The dynamic light follows the beam every frame (carried lamps); see {@link #spotEveryFrame}. */
+    public void followSpotEveryFrame() {
+        this.spotEveryFrame = true;
+    }
+
+    /** Moves the dynamic light of every light that follows its beam each frame to where the beam lands this frame. */
+    static void followSpots(float partialTick) {
+        if (!ClientSafety.works(ClientSafety.DYNAMIC_LIGHT)) {
+            return;
+        }
+        try {
+            for (BeamSource source : ClientBeams.snapshot()) {
+                ClientBeam beam = source.beam();
+                if (beam.followsFrames() && beam.moving && beam.brightness > 0) {
+                    beam.followFrame(source.renderBeam(partialTick));
+                }
+            }
+        } catch (RuntimeException e) {
+            ClientSafety.failed(ClientSafety.DYNAMIC_LIGHT, e);
+        }
+    }
+
+    /**
+     * True when the dynamic light follows the beam each frame: a carried lamp under LambDynamicLights
+     * ({@link DynamicSpot#movesEveryFrame}). A client light block stays at once a tick and a whole block: every move
+     * makes Minecraft relight and re-mesh the sections round it, finished over several frames, and moved every frame,
+     * or in half blocks (two blocks a level lower near a border), the ground pulsed brighter and darker far more often.
+     * Sodium Dynamic Lights moved every frame halved the frame rate and blinked more (self-test handheld-motion, Nov 18).
+     */
+    private boolean followsFrames() {
+        return spotEveryFrame && spot != null && spot.movesEveryFrame();
+    }
+
+    private void followFrame(BeamPose at) {
+        Level level = Minecraft.getInstance().level;
+        if (level == null) {
+            return;
+        }
+        BeamTrace.Hit hit = BeamTrace.trace(level, at.origin(), at.direction(), BeamTrace.range(shape));
+        if (!hit.hitBlock()) {
+            // Landing nowhere: the tick's edge landing stands
+            return;
+        }
+        BeamSpot next = BeamTrace.spotFor(hit, at.direction(), shape.onAxis(hit.distance()) * brightness / 15.0);
+        if (worthPublishing(lastSpot, next)) {
+            lastSpot = next;
+            setSpot(next);
+        }
     }
 
     public float lensHalf() {
@@ -184,10 +244,26 @@ public final class ClientBeam {
         // Open sky at the lens: daylight washes the visible beam out there (Ponder scenes never)
         skyExposure = ClientBeams.isRealWorld(level)
                 ? level.getBrightness(LightLayer.SKY, BlockPos.containing(at.origin())) / 15f : 0;
-        boolean moved = worthPublishing(lastSpot, next);
-        if (moved) {
-            lastSpot = next;
-            setSpot(next);
+        boolean moved;
+        if (followsFrames()) {
+            // The dynamic light is moved each frame (followFrame), so lastSpot no longer says whether the painted faces
+            // need finding again: judged from the tick's own spot. From lastSpot they were never found again once the
+            // frames had moved it, and the square stayed on old faces with a stepped edge (owner, Nov 18)
+            moved = worthPublishing(tickSpot, next);
+            if (moved) {
+                tickSpot = next;
+            }
+            // Where the centre ray lands nowhere, the tick's edge landing is the light's
+            if (!hit.hitBlock() && worthPublishing(lastSpot, next)) {
+                lastSpot = next;
+                setSpot(next);
+            }
+        } else {
+            moved = worthPublishing(lastSpot, next);
+            if (moved) {
+                lastSpot = next;
+                setSpot(next);
+            }
         }
         if (ClientSafety.works(ClientSafety.LAYERS)) {
             try {
@@ -534,6 +610,7 @@ public final class ClientBeam {
     /** Light switched off (disabled by Contraption Controls, say): no spot and no beam until the next update. */
     public void off() {
         lastSpot = null;
+        tickSpot = null;
         length = 0;
         brightness = 0;
         if (spot != null) {
@@ -554,6 +631,7 @@ public final class ClientBeam {
         vehicleTint = null;
         vehicleSpot = null;
         lastSpot = null;
+        tickSpot = null;
         length = 0;
         brightness = 0;
     }
