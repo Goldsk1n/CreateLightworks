@@ -3,7 +3,8 @@
 ## 1.1 (unreleased)
 
 - New: the Flashlight, a brass hand lamp. Right-click switches it on or off, in either hand; it throws a narrow beam
-  where you look, and other players see it from your hand. Crafted with a dye, its beam takes the colour; washing it
+  where you look, and other players see it from your hand. With LambDynamicLights its light keeps up with the view
+  every frame. Crafted with a dye, its beam takes the colour; washing it
   with a fan through water, or in a water cauldron, takes the colour off.
 - A Pan-Tilt Head can be aimed: the light's Pan box, hidden on a head until now, turns the head to face that way, where
   it stays, and a sweep swings either way of it. Before, a new head always started facing north (on a Sable vehicle,
@@ -14,6 +15,8 @@
 - The Floodlight's head no longer sinks into its mounting plate as it tilts, and no longer flickers at the bottom of its
   back when pointing level: behind a rim round its front the housing steps in a pixel, and its yoke sits straight
   on the plate.
+- Moving lights (on heads, bearings, vehicles and in hand): where a block stands in a beam, its shadow on what the beam
+  lights beyond it follows the block's outline, rather than steps two blocks wide.
 - The `colouredLight` client config's description no longer says coloured light is off under shader packs: since
   1.0.1 it is drawn after the pack.
 

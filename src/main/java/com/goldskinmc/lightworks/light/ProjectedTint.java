@@ -183,9 +183,12 @@ public final class ProjectedTint {
 
     /**
      * Whether a beam's lens sees a block, per side, while one beam finds its faces: the colour and the spot ask about
-     * the same faces, and a ray to each is most of the work. A moving beam asks once per cell of two blocks.
+     * the same faces, and a ray to each is most of the work. A moving beam asks once per cell of two blocks, and per
+     * face in cells along a shadow's edge.
      */
     private static final Long2BooleanOpenHashMap[] SEEN_BY_BEAM = new Long2BooleanOpenHashMap[Direction.values().length];
+    /** The same per face, for faces in cells along a shadow's edge, asked of each face on its own. */
+    private static final Long2BooleanOpenHashMap[] SEEN_FACE = new Long2BooleanOpenHashMap[Direction.values().length];
 
     /** Which faces are in the mix, per part and side: block position to place in the two arrays below. */
     private static final Long2IntOpenHashMap[] MIXED_FACES = new Long2IntOpenHashMap[MAX_PARTS * Direction.values().length];
@@ -196,6 +199,7 @@ public final class ProjectedTint {
     static {
         for (int side = 0; side < SEEN_BY_BEAM.length; side++) {
             SEEN_BY_BEAM[side] = new Long2BooleanOpenHashMap();
+            SEEN_FACE[side] = new Long2BooleanOpenHashMap();
         }
         for (int face = 0; face < MIXED_FACES.length; face++) {
             MIXED_FACES[face] = new Long2IntOpenHashMap();
@@ -296,6 +300,9 @@ public final class ProjectedTint {
     /** Call before finding one beam's faces: what its lens saw last time no longer holds. */
     static void newBeam() {
         for (Long2BooleanOpenHashMap seen : SEEN_BY_BEAM) {
+            seen.clear();
+        }
+        for (Long2BooleanOpenHashMap seen : SEEN_FACE) {
             seen.clear();
         }
     }
@@ -772,6 +779,31 @@ public final class ProjectedTint {
         if (bits == NOT_SHARED) {
             return sees(level, source.position(), faceCentre, normal, pos);
         }
+        boolean answer = cellSees(level, source, side, faceCentre, normal, pos, bits);
+        // A cell the shadow's edge runs through: its neighbours along the face answer otherwise. Asked per face there,
+        // so the edge follows the blocks, not the cells (a block's shadow on the grass behind it was drawn in two-block
+        // steps, owner, Nov 18); the rest keeps one ray per cell
+        int size = 1 << bits;
+        for (Direction along : Direction.values()) {
+            if (along.getAxis() == side.getAxis()) {
+                continue;
+            }
+            Vec3 step = Vec3.atLowerCornerOf(along.getNormal()).scale(size);
+            if (cellSees(level, source, side, faceCentre.add(step), normal, pos.relative(along, size), bits) != answer) {
+                Long2BooleanOpenHashMap faces = SEEN_FACE[side.ordinal()];
+                long face = pos.asLong();
+                if (!faces.containsKey(face)) {
+                    faces.put(face, sees(level, source.position(), faceCentre, normal, pos));
+                }
+                return faces.get(face);
+            }
+        }
+        return answer;
+    }
+
+    /** The answer the cell holding {@code pos} shares, asked of this face the first time. */
+    private static boolean cellSees(Level level, Source source, Direction side, Vec3 faceCentre, Vec3 normal, BlockPos pos,
+            int bits) {
         long cell = BlockPos.asLong(pos.getX() >> bits, pos.getY() >> bits, pos.getZ() >> bits);
         Long2BooleanOpenHashMap seen = SEEN_BY_BEAM[side.ordinal()];
         if (seen.containsKey(cell)) {
