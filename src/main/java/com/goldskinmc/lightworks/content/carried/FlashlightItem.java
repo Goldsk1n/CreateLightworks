@@ -44,8 +44,11 @@ public class FlashlightItem extends Item {
             stack.set(LightworksComponents.LAMP_ON.get(), on);
             level.playSound(null, player.getX(), player.getEyeY(), player.getZ(), SoundEvents.LEVER_CLICK,
                     SoundSource.PLAYERS, 0.3f, on ? 1.4f : 1.1f);
+        } else {
+            FlashlightPress.press(hand, level.getGameTime());
         }
-        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
+        // Consumed on both sides, not a success: a success swings the arm as a punch does, for everyone to see
+        return InteractionResultHolder.consume(stack);
     }
 
     /** A dyed Flashlight says its colour under its name, the colour's name drawn in that colour. */
