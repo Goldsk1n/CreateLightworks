@@ -26,7 +26,15 @@ public final class FlashlightHand implements IClientItemExtensions {
     public boolean applyForgeHandTransform(PoseStack poseStack, LocalPlayer player, HumanoidArm arm, ItemStack itemInHand,
             float partialTick, float equipProcess, float swingProcess) {
         InteractionHand hand = arm == player.getMainArm() ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
-        float depth = FlashlightPress.depth(hand, player.level().getGameTime(), partialTick);
+        long now = player.level().getGameTime();
+        if (FlashlightPress.pressing(hand, now, partialTick)) {
+            // A right-click the item consumes makes Minecraft lower the hand as if the item were just equipped
+            // (Minecraft.startUseItem calls ItemInHandRenderer.itemUsed): the lamp dropped 0.6 blocks and rose again
+            // over 3 ticks. Its arm pose lowers by 0.6 times the equip progress, so lift that back while the switch is
+            // pressed, as Create's Potato Cannon ignores the equip progress after a shot
+            poseStack.translate(0, 0.6f * equipProcess, 0);
+        }
+        float depth = FlashlightPress.depth(hand, now, partialTick);
         if (depth > 0) {
             // Minecraft's rest pose for a held item (ItemInHandRenderer.applyItemArmTransform)
             float side = arm == HumanoidArm.RIGHT ? 1 : -1;

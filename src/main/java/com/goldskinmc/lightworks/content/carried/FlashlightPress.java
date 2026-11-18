@@ -25,6 +25,12 @@ public final class FlashlightPress {
         pressedAt = gameTime;
     }
 
+    /** Whether that hand pressed the switch within the press's {@link #TICKS}. */
+    public static boolean pressing(InteractionHand inHand, long gameTime, float partialTick) {
+        float t = gameTime - pressedAt + partialTick;
+        return inHand == hand && t >= 0 && t <= TICKS;
+    }
+
     /**
      * How far down the press is in that hand, 0 at rest to 1 at its lowest, eased at both ends. The game time counts
      * whole ticks; the partial tick makes it smooth between them.
