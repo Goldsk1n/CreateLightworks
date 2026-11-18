@@ -15,6 +15,9 @@
 - The Floodlight's head no longer sinks into its mounting plate as it tilts, and no longer flickers at the bottom of its
   back when pointing level: behind a rim round its front the housing steps in a pixel, and its yoke sits straight
   on the plate.
+- Dyed beams and signal lamps now colour doors, trapdoors, fences, walls, pressure plates, buttons, beds, chests,
+  ladders and Create's copycat panels and steps too, not only full blocks, slabs, stairs, carpet, snow, paths and
+  farmland.
 - Moving lights (on heads, bearings, vehicles and in hand): where a block stands in a beam, its shadow on what the beam
   lights beyond it follows the block's outline, rather than steps two blocks wide.
 - The `colouredLight` client config's description no longer says coloured light is off under shader packs: since

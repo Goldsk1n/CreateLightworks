@@ -8,6 +8,8 @@ import com.goldskinmc.lightworks.beam.LightMix;
 import com.goldskinmc.lightworks.debug.Timer;
 import com.goldskinmc.lightworks.host.SableHost;
 import com.goldskinmc.lightworks.render.MainTarget;
+import com.simibubi.create.content.decoration.copycat.CopycatPanelBlock;
+import com.simibubi.create.content.decoration.copycat.CopycatStepBlock;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
@@ -34,13 +36,22 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.AbstractChestBlock;
+import net.minecraft.world.level.block.BasePressurePlateBlock;
+import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.ButtonBlock;
 import net.minecraft.world.level.block.CarpetBlock;
 import net.minecraft.world.level.block.DirtPathBlock;
+import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.FarmBlock;
+import net.minecraft.world.level.block.FenceBlock;
+import net.minecraft.world.level.block.LadderBlock;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.SnowLayerBlock;
 import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.WallBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -477,8 +488,18 @@ public final class ProjectedTint {
             return FULL_BLOCK;
         }
         Block block = state.getBlock();
+        // Blocks whose outline is what is drawn (owner, Nov 18: a door in a green beam stayed brown). Fences and walls,
+        // whose posts and arms the outline follows; pressure plates, buttons, beds and chests (normal, trapped, ender),
+        // boxes inside their block; ladders (Create's metal ones too) and Create's copycat panels and steps. A door's
+        // window, a ladder's rungs and a bed's legs get paint over the gaps, which only tints the dark or the wall right
+        // behind. Not fence gates (one box over the bars), glass, panes, bars, leaves, plants, or blocks whose outline is
+        // a rough box round their model (cauldrons, hoppers, anvils, Create's cogwheels)
         if (block instanceof SlabBlock || block instanceof StairBlock || block instanceof CarpetBlock
-                || block instanceof SnowLayerBlock || block instanceof FarmBlock || block instanceof DirtPathBlock) {
+                || block instanceof SnowLayerBlock || block instanceof FarmBlock || block instanceof DirtPathBlock
+                || block instanceof DoorBlock || block instanceof TrapDoorBlock || block instanceof FenceBlock
+                || block instanceof WallBlock || block instanceof BasePressurePlateBlock || block instanceof ButtonBlock
+                || block instanceof BedBlock || block instanceof AbstractChestBlock || block instanceof LadderBlock
+                || block instanceof CopycatPanelBlock || block instanceof CopycatStepBlock) {
             return state.getShape(level, pos).toAabbs();
         }
         return List.of();
