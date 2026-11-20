@@ -47,6 +47,12 @@ public final class LightworksLang {
         add("lightworks.goggles.hint.on_head", "Hold R-click on Pan to turn the head below; it sweeps round that");
         add("lightworks.goggles.hint.dye", "Dye: colour the lens, beam and light");
         add("item.lightworks.flashlight.colour", "Dyed %s");
+        add("lightworks.headlamp.fitted", "Headlamp fitted, %s");
+        add("lightworks.headlamp.on", "on");
+        add("lightworks.headlamp.off", "off");
+        add("lightworks.headlamp.key_hint", "Press %s to switch it on or off");
+        add("key.lightworks.headlamp", "Switch headlamp on or off");
+        add("key.categories.lightworks", "Create: Lightworks");
         add("lightworks.clipboard.needs_dye", "Needs %s to paste the colour");
         add("lightworks.goggles.hint.clipboard", "Clipboard: R-click copies its settings, L-click pastes them");
         add("lightworks.goggles.hint.redstone", "Redstone dims it; 15 turns it off");
@@ -145,7 +151,8 @@ public final class LightworksLang {
     private static void itemTooltips() {
         itemTooltip("flashlight", "A brass hand lamp with a narrow _beam_, bright out to _20 blocks_. Lights where you look, in either hand.",
                 action("When R-clicked", "Switches it _on_ or _off_."),
-                behaviour("When crafted with a dye", "Its beam takes the _colour_. _Washing_ it with a fan through water, or in a cauldron, takes it off."));
+                behaviour("When crafted with a dye", "Its beam takes the _colour_. _Washing_ it with a fan through water, or in a cauldron, takes it off."),
+                behaviour("When crafted with goggles or a diving helmet", "Fits on as a _headlamp_, lighting where you look with both hands free. The helmet alone in a crafting grid gives it _back_."));
     }
 
     private static Line behaviour(String condition, String text) {

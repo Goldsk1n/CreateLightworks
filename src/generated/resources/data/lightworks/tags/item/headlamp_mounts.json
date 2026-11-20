@@ -1,0 +1,16 @@
+{
+  "values": [
+    {
+      "id": "create:goggles",
+      "required": false
+    },
+    {
+      "id": "create:copper_diving_helmet",
+      "required": false
+    },
+    {
+      "id": "create:netherite_diving_helmet",
+      "required": false
+    }
+  ]
+}

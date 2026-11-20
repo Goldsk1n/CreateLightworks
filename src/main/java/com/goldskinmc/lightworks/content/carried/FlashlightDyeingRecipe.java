@@ -38,7 +38,7 @@ public class FlashlightDyeingRecipe extends CustomRecipe {
         return dyed;
     }
 
-    /** One Flashlight and one dye of another colour than it has, nothing else; null otherwise. */
+    /** One Flashlight, or headgear with a headlamp, and one dye of another colour than it has, nothing else; null otherwise. */
     private static @Nullable Found find(CraftingInput input) {
         ItemStack flashlight = ItemStack.EMPTY;
         DyeColor colour = null;
@@ -47,7 +47,7 @@ public class FlashlightDyeingRecipe extends CustomRecipe {
             if (stack.isEmpty()) {
                 continue;
             }
-            if (stack.getItem() instanceof FlashlightItem && flashlight.isEmpty()) {
+            if ((stack.getItem() instanceof FlashlightItem || Headlamps.isFitted(stack)) && flashlight.isEmpty()) {
                 flashlight = stack;
             } else if (stack.getItem() instanceof DyeItem dye && colour == null) {
                 colour = dye.getDyeColor();
@@ -55,7 +55,7 @@ public class FlashlightDyeingRecipe extends CustomRecipe {
                 return null;
             }
         }
-        if (flashlight.isEmpty() || colour == null || colour == FlashlightItem.colour(flashlight)) {
+        if (flashlight.isEmpty() || colour == null || colour == flashlight.get(LightworksComponents.LAMP_COLOUR.get())) {
             return null;
         }
         return new Found(flashlight, colour);

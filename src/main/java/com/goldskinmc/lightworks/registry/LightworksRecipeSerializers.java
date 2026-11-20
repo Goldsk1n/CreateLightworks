@@ -2,6 +2,8 @@ package com.goldskinmc.lightworks.registry;
 
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.content.carried.FlashlightDyeingRecipe;
+import com.goldskinmc.lightworks.content.carried.HeadlampFittingRecipe;
+import com.goldskinmc.lightworks.content.carried.HeadlampRemovingRecipe;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer;
@@ -17,6 +19,13 @@ public final class LightworksRecipeSerializers {
     public static final DeferredHolder<RecipeSerializer<?>, SimpleCraftingRecipeSerializer<FlashlightDyeingRecipe>>
             FLASHLIGHT_DYEING = SERIALIZERS.register("flashlight_dyeing",
                     () -> new SimpleCraftingRecipeSerializer<>(FlashlightDyeingRecipe::new));
+
+    public static final DeferredHolder<RecipeSerializer<?>, SimpleCraftingRecipeSerializer<HeadlampFittingRecipe>>
+            HEADLAMP_FITTING = SERIALIZERS.register("headlamp_fitting",
+                    () -> new SimpleCraftingRecipeSerializer<>(HeadlampFittingRecipe::new));
+    public static final DeferredHolder<RecipeSerializer<?>, SimpleCraftingRecipeSerializer<HeadlampRemovingRecipe>>
+            HEADLAMP_REMOVING = SERIALIZERS.register("headlamp_removing",
+                    () -> new SimpleCraftingRecipeSerializer<>(HeadlampRemovingRecipe::new));
 
     private LightworksRecipeSerializers() {
     }

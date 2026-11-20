@@ -64,7 +64,7 @@ public class FlashlightItem extends Item {
     }
 
     /** A dark colour (black, blue, brown) mixed with white until it reads on the tooltip's near-black background. */
-    private static int readable(int rgb) {
+    static int readable(int rgb) {
         int r = rgb >> 16 & 0xFF;
         int g = rgb >> 8 & 0xFF;
         int b = rgb & 0xFF;

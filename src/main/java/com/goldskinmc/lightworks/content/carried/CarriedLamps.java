@@ -11,6 +11,7 @@ import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -20,12 +21,14 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Keeps a {@link CarriedBeam} for every player in the client world holding a lit lamp, the main hand's first. The game
- * already sends held items to everyone nearby, so other players' lamps need nothing from the server.
+ * Keeps a {@link CarriedBeam} for every player in the client world holding a lit lamp, the main hand's first, and one
+ * more for a lit headlamp on their head: a player may carry both. The game already sends held and worn items to everyone
+ * nearby, so other players' lamps need nothing from the server.
  */
 @EventBusSubscriber(modid = Lightworks.MOD_ID, value = Dist.CLIENT)
 public final class CarriedLamps {
-    private static final Map<UUID, CarriedBeam> BEAMS = new HashMap<>();
+    private static final Map<UUID, CarriedBeam> HELD = new HashMap<>();
+    private static final Map<UUID, CarriedBeam> WORN = new HashMap<>();
 
     private CarriedLamps() {
     }
@@ -37,25 +40,45 @@ public final class CarriedLamps {
             clear();
             return;
         }
-        Set<UUID> lit = new HashSet<>();
+        Set<UUID> held = new HashSet<>();
+        Set<UUID> worn = new HashSet<>();
         for (AbstractClientPlayer player : mc.level.players()) {
-            InteractionHand hand = litHand(player);
-            if (hand == null || player.isSpectator()) {
+            if (player.isSpectator()) {
                 continue;
             }
-            lit.add(player.getUUID());
-            CarriedBeam beam = BEAMS.get(player.getUUID());
-            if (beam == null || beam.player() != player) {
-                if (beam != null) {
-                    drop(beam);
-                }
-                beam = new CarriedBeam(player, LightType.FLASHLIGHT);
-                BEAMS.put(player.getUUID(), beam);
-                ClientBeams.add(beam);
+            InteractionHand hand = litHand(player);
+            if (hand != null) {
+                held.add(player.getUUID());
+                beam(HELD, player, LightType.FLASHLIGHT, false)
+                        .tick(hand, FlashlightItem.colour(player.getItemInHand(hand)));
             }
-            beam.tick(hand, FlashlightItem.colour(player.getItemInHand(hand)));
+            ItemStack head = player.getItemBySlot(EquipmentSlot.HEAD);
+            if (Headlamps.isOn(head)) {
+                worn.add(player.getUUID());
+                beam(WORN, player, LightType.HEADLAMP, true).tick(null, Headlamps.colour(head));
+            }
         }
-        BEAMS.entrySet().removeIf(entry -> {
+        dropAllBut(HELD, held);
+        dropAllBut(WORN, worn);
+    }
+
+    /** The player's beam in {@code beams}, made anew when there is none or it was made for an earlier player object. */
+    private static CarriedBeam beam(Map<UUID, CarriedBeam> beams, AbstractClientPlayer player, LightType type,
+            boolean onHead) {
+        CarriedBeam beam = beams.get(player.getUUID());
+        if (beam == null || beam.player() != player) {
+            if (beam != null) {
+                drop(beam);
+            }
+            beam = new CarriedBeam(player, type, onHead);
+            beams.put(player.getUUID(), beam);
+            ClientBeams.add(beam);
+        }
+        return beam;
+    }
+
+    private static void dropAllBut(Map<UUID, CarriedBeam> beams, Set<UUID> lit) {
+        beams.entrySet().removeIf(entry -> {
             if (lit.contains(entry.getKey())) {
                 return false;
             }
@@ -80,8 +103,10 @@ public final class CarriedLamps {
     }
 
     private static void clear() {
-        BEAMS.values().forEach(CarriedLamps::drop);
-        BEAMS.clear();
+        HELD.values().forEach(CarriedLamps::drop);
+        WORN.values().forEach(CarriedLamps::drop);
+        HELD.clear();
+        WORN.clear();
     }
 
     @SubscribeEvent

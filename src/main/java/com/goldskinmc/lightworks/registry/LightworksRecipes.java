@@ -4,6 +4,8 @@ import static com.goldskinmc.lightworks.Lightworks.REGISTRATE;
 
 import com.goldskinmc.lightworks.Lightworks;
 import com.goldskinmc.lightworks.content.carried.FlashlightDyeingRecipe;
+import com.goldskinmc.lightworks.content.carried.HeadlampFittingRecipe;
+import com.goldskinmc.lightworks.content.carried.HeadlampRemovingRecipe;
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllItems;
 import net.minecraft.data.recipes.SpecialRecipeBuilder;
@@ -55,6 +57,8 @@ public final class LightworksRecipes {
                 .define('G', GLASS).define('P', BRASS_PLATES).define('T', AllItems.ELECTRON_TUBE)
                 .save(out);
         SpecialRecipeBuilder.special(FlashlightDyeingRecipe::new).save(out, Lightworks.id("flashlight_dyeing"));
+        SpecialRecipeBuilder.special(HeadlampFittingRecipe::new).save(out, Lightworks.id("headlamp_fitting"));
+        SpecialRecipeBuilder.special(HeadlampRemovingRecipe::new).save(out, Lightworks.id("headlamp_removing"));
         // Washing it clean with a fan through water: data/lightworks/recipe/washing/, written by hand in two files, one
         // per Create recipe format (CreateVersionCondition); Create's recipe builder differs between 6.0.0 and 6.0.10 too
         shaped(LightworksBlocks.HEADLIGHT, 2, " G ", "ITI", " B ")

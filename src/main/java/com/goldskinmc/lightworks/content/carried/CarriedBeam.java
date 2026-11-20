@@ -8,6 +8,7 @@ import java.util.Objects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
@@ -19,8 +20,9 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * The beam of a lamp a player carries, on the client: in first person from just ahead of the eye, beside the hand holding
- * it (or short of a wall the face is against); seen from outside, from the player model's hand. Either way toward what
+ * The beam of a lamp a player carries, on the client: a Flashlight's in first person from just ahead of the eye, beside
+ * the hand holding it (or short of a wall the face is against), seen from outside from the player model's hand; a
+ * headlamp's from the forehead, the same either way. Either way toward what
  * the player's crosshair is on, so the spot sits on it. Traced once a tick as any moving
  * light is, and drawn every frame from the player's interpolated eye and view, so it follows the mouse. Its own holder
  * gets no inside haze and no lens glow from it: both need the eye in front of the lens.
@@ -45,11 +47,33 @@ public final class CarriedBeam implements BeamSource {
      */
     private static final double CONVERGE = 16;
     private static final double MIN_CONVERGE = 1;
+    /**
+     * The player model's neck, where its head turns, below the eye in blocks: standing (24 model pixels up, the model
+     * drawn at 0.9375, against an eye at 1.62) and crouching (the head 4.2 pixels lower, the eye at 1.27).
+     */
+    private static final double NECK_BELOW_EYE = 0.214;
+    private static final double NECK_BELOW_EYE_CROUCHING = 0.11;
+
+    /**
+     * Where a headlamp's lens is: up from the neck and ahead of it in the head's own frame, as {@code HeadlampLayer}
+     * draws it ({@code headlamp/lens} centred 7.1 pixels up and 2.4 ahead of the head's front on goggles, 1.2 higher on
+     * a helmet, times the model's 0.9375). Ahead of the eye, as a Flashlight's start is, so its wearer gets no inside
+     * haze or lens glow from it.
+     */
+    private Vec3 headLens(Vec3 eye, Vec3 look, Vec3 up) {
+        boolean goggles = Headlamps.onGoggles(player.getItemBySlot(EquipmentSlot.HEAD));
+        double lensUp = (goggles ? 7.1 : 8.3) / 16 * 0.9375;
+        double lensAhead = 6.4 / 16 * 0.9375;
+        Vec3 neck = eye.subtract(0, player.isCrouching() ? NECK_BELOW_EYE_CROUCHING : NECK_BELOW_EYE, 0);
+        return neck.add(up.scale(lensUp)).add(look.scale(lensAhead));
+    }
     /** A start that would be inside a block moves back toward the eye to this share of the way to the block. */
     private static final double HAND_IN_WALL = 0.8;
 
     private final Player player;
     private final LightType type;
+    /** A headlamp, worn on the head, rather than a Flashlight in a hand. */
+    private final boolean worn;
     private final ClientBeam beam;
     private InteractionHand hand = InteractionHand.MAIN_HAND;
     @Nullable
@@ -57,9 +81,10 @@ public final class CarriedBeam implements BeamSource {
     private BeamPose lastPose;
     private boolean gone;
 
-    CarriedBeam(Player player, LightType type) {
+    CarriedBeam(Player player, LightType type, boolean worn) {
         this.player = player;
         this.type = type;
+        this.worn = worn;
         this.beam = new ClientBeam(Objects.requireNonNull(type.beam()), (float) type.lensHalf());
         // Turned with the mouse: LambDynamicLights' light follows the beam each frame
         this.beam.followSpotEveryFrame();
@@ -70,8 +95,11 @@ public final class CarriedBeam implements BeamSource {
         return player;
     }
 
-    void tick(InteractionHand hand, @Nullable DyeColor colour) {
-        this.hand = hand;
+    /** A tick of the lamp; {@code hand} is the hand holding it, or null for a headlamp. */
+    void tick(@Nullable InteractionHand hand, @Nullable DyeColor colour) {
+        if (hand != null) {
+            this.hand = hand;
+        }
         this.colour = colour;
         lastPose = pose(1);
         beam.update(player.level(), lastPose, lastPose, 15, colour == null ? -1 : rgb());
@@ -99,10 +127,13 @@ public final class CarriedBeam implements BeamSource {
         Vec3 up = right.cross(look).normalize();
         HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
         double sign = arm == HumanoidArm.RIGHT ? 1 : -1;
-        Vec3 origin = seenFromOwnEyes()
-                ? eye.add(look.scale(AHEAD)).add(right.scale(sign * SIDE)).subtract(up.scale(DOWN))
-                : modelHand(eye, sign, partialTick);
-        // Face to a wall, the hand is in it: start where the way from the eye meets it, or the beam lights its inside
+        Vec3 origin = worn
+                // A headlamp: its lens on the player model's head, turned with it, the same whoever looks
+                ? headLens(eye, look, up)
+                : seenFromOwnEyes()
+                        ? eye.add(look.scale(AHEAD)).add(right.scale(sign * SIDE)).subtract(up.scale(DOWN))
+                        : modelHand(eye, sign, partialTick);
+        // Face to a wall, the lamp is in it: start where the way from the eye meets it, or the beam lights its inside
         BlockHitResult toHand = level.clip(new ClipContext(eye, origin, ClipContext.Block.VISUAL, ClipContext.Fluid.NONE,
                 player));
         if (toHand.getType() != HitResult.Type.MISS) {
@@ -123,6 +154,14 @@ public final class CarriedBeam implements BeamSource {
      * True for the local player in first person, whose hand is drawn in a pass of its own with no place in the world.
      * Everyone else, and the local player in third person, has a hand on the player model.
      */
+    /**
+     * False for a headlamp seen from its wearer's own eyes: its beam starts just above the view and wraps round it, so
+     * its sides were a faint glassy box over the whole picture. The light and the lit square stay.
+     */
+    public boolean showsBeam() {
+        return !(worn && seenFromOwnEyes());
+    }
+
     private boolean seenFromOwnEyes() {
         Minecraft mc = Minecraft.getInstance();
         return player == mc.player && mc.options.getCameraType().isFirstPerson();

@@ -10,7 +10,9 @@ import com.goldskinmc.lightworks.registry.LightworksLang;
 import com.goldskinmc.lightworks.registry.CreateVersionCondition;
 import com.goldskinmc.lightworks.registry.LightworksRecipeSerializers;
 import com.goldskinmc.lightworks.registry.LightworksRecipes;
+import com.goldskinmc.lightworks.registry.LightworksTags;
 import com.goldskinmc.lightworks.content.carried.FlashlightItem;
+import com.goldskinmc.lightworks.content.carried.ToggleHeadlampPayload;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.foundation.data.CreateRegistrate;
@@ -48,8 +50,10 @@ public final class Lightworks {
         LightworksItems.register();
         LightworksComponents.register(modBus);
         LightworksRecipeSerializers.register(modBus);
+        ToggleHeadlampPayload.register(modBus);
         CreateVersionCondition.register(modBus);
         LightworksRecipes.register();
+        LightworksTags.register();
         modBus.addListener(FMLCommonSetupEvent.class, event -> event.enqueueWork(
                 () -> FlashlightItem.registerCauldronWashing(LightworksItems.FLASHLIGHT.get())));
         LightworksCreativeTab.register(modBus);

@@ -51,6 +51,9 @@ public record LightType(String name, @Nullable ConeFalloff beam, Kind kind, int 
     /** Hand lamp: a narrow beam, full brightness to 20 blocks, dark at 28; it starts at the hand, not a block. */
     public static final LightType FLASHLIGHT = new LightType("flashlight",
             new ConeFalloff(8, 5, 20, 28, 15), Kind.BEAM, WARM_WHITE, 0, 0, 1.5 / 16, BeamRays.SINGLE);
+    /** Lamp on goggles or a diving helmet: wide and short, a 20 degree core, full brightness to 10 blocks, dark at 16. */
+    public static final LightType HEADLAMP = new LightType("headlamp",
+            new ConeFalloff(20, 10, 10, 16, 15), Kind.BEAM, WARM_WHITE, 0, 0, 1.5 / 16, BeamRays.SINGLE);
     public static final LightType WARNING_LIGHT = new LightType("warning_light",
             null, Kind.WARNING, 0xFFA21A, 12, 0, 0, BeamRays.SINGLE);
     public static final LightType TAIL_LIGHT = new LightType("tail_light",

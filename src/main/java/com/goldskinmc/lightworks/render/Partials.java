@@ -22,6 +22,7 @@ public final class Partials {
             "rotating_beacon/rotor", "rotating_beacon/lens", "rotating_beacon/lens_core",
             "warning_light/lens", "warning_light/lens_core", "tail_light/lens", "tail_light/lens_core",
             "edge_light/lens",
+            "headlamp/body", "headlamp/lens", "headlamp/lens_core",
     };
     private static final Map<String, ModelResourceLocation> MODELS = new LinkedHashMap<>();
 

@@ -45,7 +45,7 @@ public final class MovingBeamPass {
                         moving.rgb());
                 drew = true;
             } else if (source instanceof CarriedBeam carried && carried.level() == mc.level && !carried.isGone()
-                    && carried.beam().length() > 0) {
+                    && carried.beam().length() > 0 && carried.showsBeam()) {
                 BeamPose pose = carried.renderBeam(partialTick);
                 BeamVisual.renderInWorld(poseStack, buffers, camera, pose.origin(), pose.direction(), carried.beam(),
                         carried.rgb());

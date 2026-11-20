@@ -20,6 +20,13 @@ public final class LightworksComponents {
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> LAMP_ON =
             COMPONENTS.registerComponentType("lamp_on",
                     builder -> builder.persistent(Codec.BOOL).networkSynchronized(ByteBufCodecs.BOOL));
+    /**
+     * On headgear (Create's goggles and diving helmets, item tag {@code lightworks:headlamp_mounts}): a headlamp is fitted.
+     * Its on state and dye are {@link #LAMP_ON} and {@link #LAMP_COLOUR} on the same item, as on a Flashlight.
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> HEADLAMP =
+            COMPONENTS.registerComponentType("headlamp",
+                    builder -> builder.persistent(Codec.BOOL).networkSynchronized(ByteBufCodecs.BOOL));
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<DyeColor>> LAMP_COLOUR =
             COMPONENTS.registerComponentType("lamp_colour",
                     builder -> builder.persistent(DyeColor.CODEC).networkSynchronized(DyeColor.STREAM_CODEC));
