@@ -31,6 +31,16 @@ public final class ClientLightSpot implements DynamicSpot {
     private BlockPos placed;
     private int placedLevel;
 
+    /** A client light block placed or taken away by another holder ({@link ClientLightPool}), for the status and tests. */
+    static void track(BlockPos pos, boolean placed) {
+        if (placed) {
+            PLACED.add(pos);
+            MOVES.incrementAndGet();
+        } else {
+            PLACED.remove(pos);
+        }
+    }
+
     public static String status() {
         return String.format("client light blocks %d, moved %d times", PLACED.size(), MOVES.get());
     }

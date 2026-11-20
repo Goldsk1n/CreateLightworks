@@ -13,7 +13,6 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.RenderFrameEvent;
 
 /**
  * Every {@link BeamSource} in the client world. Some lights vanish without telling anyone (a contraption
@@ -62,14 +61,6 @@ public final class ClientBeams {
      */
     public static boolean isRealWorld(Level level) {
         return level == Minecraft.getInstance().level;
-    }
-
-    /** Before the level is drawn, so a moved light block is in this frame's light update. */
-    @SubscribeEvent
-    public static void onRenderFrame(RenderFrameEvent.Pre event) {
-        if (Minecraft.getInstance().level != null) {
-            ClientBeam.followSpots(event.getPartialTick().getGameTimeDeltaPartialTick(false));
-        }
     }
 
     @SubscribeEvent

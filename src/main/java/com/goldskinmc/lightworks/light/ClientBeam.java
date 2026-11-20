@@ -60,6 +60,9 @@ public final class ClientBeam {
     /** How far beyond a moving beam's edge its faces are looked for, in blocks, at least and at most. */
     private static final double LIVE_MARGIN_MIN = 0.3;
     private static final double LIVE_MARGIN_MAX = 1.5;
+    /** A carried lamp's faces are found again between ticks at most this often, when its beam has gone this share of the margin. */
+    private static final int MAX_REFINDS_PER_TICK = 3;
+    private static final double REFIND_SHARE = 0.8;
     /**
      * Faces of moving beams lit again per frame, all lights together: about 25 beam-shape sums each. Over it, the rest
      * keep their light from the tick.
@@ -129,6 +132,11 @@ public final class ClientBeam {
     /** Where a moving light's centre landed when its faces were last found, for how far to look beyond its edge. */
     @Nullable
     private Vec3 layersEnd;
+    /** How far beyond its edge the faces were looked for when last found. */
+    private double layersMargin = LIVE_MARGIN_MIN;
+    /** Faces found again between ticks this tick ({@link #refindIfLeft}), and whether that is happening now. */
+    private int refindsThisTick;
+    private boolean refinding;
 
     /**
      * Set by carried lamps: LambDynamicLights' light follows the beam as it is drawn each frame, not once a tick. A
@@ -136,6 +144,29 @@ public final class ClientBeam {
      * block"); under LambDynamicLights the turning clips of self-test handheld-motion blinked about half as often.
      */
     private boolean spotEveryFrame;
+    /** A carried lamp's grid of client light blocks, in {@link #poolMode}. */
+    @Nullable
+    private ClientLightPool pool;
+    /** The world the pool's blocks stand in, to take them away again (never the client's world fetched here: see followSpots). */
+    @Nullable
+    private Level poolLevel;
+    /** Where the carried lamp's beam was at the last pool update, for how far it moves in a tick. */
+    @Nullable
+    private Vec3 poolOrigin;
+    @Nullable
+    private Vec3 poolDirection;
+    /** A beam that turned and moved less than this in a tick counts as held still. */
+    private static final double POOL_STILL_DEGREES = 0.5;
+    private static final double POOL_STILL_BLOCKS = 0.05;
+    /**
+     * The level of each of a carried lamp's pool blocks at full brightness (owner, Nov 20: chosen over 10 and 15, and
+     * over one block at 15).
+     */
+    private static final int POOL_LEVEL = 12;
+    /** Neighbouring pool rays landing further apart than this get one between them, at most this many times over. */
+    private static final double POOL_GAP = 2;
+    private static final int POOL_SPLITS = 3;
+    private static final int POOL_MAX_RAYS = 64;
 
     public ClientBeam(ConeFalloff shape, float lensHalf) {
         this.shape = shape;
@@ -147,20 +178,60 @@ public final class ClientBeam {
         this.spotEveryFrame = true;
     }
 
-    /** Moves the dynamic light of every light that follows its beam each frame to where the beam lands this frame. */
-    static void followSpots(float partialTick) {
-        if (!ClientSafety.works(ClientSafety.DYNAMIC_LIGHT)) {
-            return;
-        }
-        try {
-            for (BeamSource source : ClientBeams.snapshot()) {
-                ClientBeam beam = source.beam();
-                if (beam.followsFrames() && beam.moving && beam.brightness > 0) {
-                    beam.followFrame(source.renderBeam(partialTick));
+    /**
+     * Moves the dynamic light of every light that follows its beam each frame to where the beam lands this frame. Handed
+     * the client's world by {@link ClientBeamFrames}: this class is loaded on dedicated servers too (every light makes
+     * one), and storing {@code Minecraft.getInstance().level} in a {@code Level} here made Java load the client-only
+     * {@code ClientLevel} with it, which crashed a dedicated server as soon as a light was placed (game tests, Nov 20).
+     */
+    static void followSpots(Level level, float partialTick) {
+        for (BeamSource source : ClientBeams.snapshot()) {
+            ClientBeam beam = source.beam();
+            if (!beam.spotEveryFrame || !beam.moving || beam.brightness <= 0) {
+                continue;
+            }
+            BeamPose at = source.renderBeam(partialTick);
+            BeamTrace.Hit hit = BeamTrace.trace(level, at.origin(), at.direction(), BeamTrace.range(beam.shape));
+            if (beam.followsFrames() && ClientSafety.works(ClientSafety.DYNAMIC_LIGHT)) {
+                try {
+                    beam.followFrame(at, hit);
+                } catch (RuntimeException e) {
+                    ClientSafety.failed(ClientSafety.DYNAMIC_LIGHT, e);
                 }
             }
-        } catch (RuntimeException e) {
-            ClientSafety.failed(ClientSafety.DYNAMIC_LIGHT, e);
+            if (ClientSafety.works(ClientSafety.LAYERS)) {
+                try {
+                    beam.refindIfLeft(level, at, hit);
+                } catch (RuntimeException e) {
+                    ClientSafety.failed(ClientSafety.LAYERS, e);
+                    beam.clearLayers();
+                }
+            }
+        }
+    }
+
+    /**
+     * A carried lamp turned fast: its painted faces are found once a tick, a little beyond its edge, and a flick (20
+     * degrees a tick, its spot 5 blocks a tick 15 blocks away) ran the drawn beam past them, so the lit square went out or
+     * showed in part for a frame or two (self-test handheld-motion, Nov 18). When the beam drawn this frame has gone most
+     * of that margin from where they were found, they are found again now, from where it lands, at most
+     * {@value #MAX_REFINDS_PER_TICK} times a tick. A wider margin instead reached the face limit and cost more on every tick.
+     */
+    private void refindIfLeft(Level level, BeamPose at, BeamTrace.Hit hit) {
+        if (!layersShown || layersEnd == null || !hit.hitBlock() || refindsThisTick >= MAX_REFINDS_PER_TICK) {
+            return;
+        }
+        Vec3 end = hit.end();
+        if (end.distanceTo(layersEnd) <= layersMargin * REFIND_SHARE) {
+            return;
+        }
+        refindsThisTick++;
+        refinding = true;
+        try {
+            updateLayers(level, at, new BeamTrace.Landing(hit, at.direction(), shape.onAxis(hit.distance())),
+                    List.of(end), brightness, tintRgb, true);
+        } finally {
+            refinding = false;
         }
     }
 
@@ -175,12 +246,7 @@ public final class ClientBeam {
         return spotEveryFrame && spot != null && spot.movesEveryFrame();
     }
 
-    private void followFrame(BeamPose at) {
-        Level level = Minecraft.getInstance().level;
-        if (level == null) {
-            return;
-        }
-        BeamTrace.Hit hit = BeamTrace.trace(level, at.origin(), at.direction(), BeamTrace.range(shape));
+    private void followFrame(BeamPose at, BeamTrace.Hit hit) {
         if (!hit.hitBlock()) {
             // Landing nowhere: the tick's edge landing stands
             return;
@@ -217,6 +283,7 @@ public final class ClientBeam {
      *                   ({@link ProjectedTint}); -1 for an undyed light, whose light stays white
      */
     public void update(Level level, BeamPose beam, BeamPose drawn, int brightness, int tintRgb) {
+        refindsThisTick = 0;
         if (!ClientBeams.enabled() || brightness <= 0) {
             off();
             return;
@@ -244,6 +311,7 @@ public final class ClientBeam {
         // Open sky at the lens: daylight washes the visible beam out there (Ponder scenes never)
         skyExposure = ClientBeams.isRealWorld(level)
                 ? level.getBrightness(LightLayer.SKY, BlockPos.containing(at.origin())) / 15f : 0;
+        updatePool(level, at, brightness);
         boolean moved;
         if (followsFrames()) {
             // The dynamic light is moved each frame (followFrame), so lastSpot no longer says whether the painted faces
@@ -275,11 +343,136 @@ public final class ClientBeam {
         }
     }
 
+    /**
+     * With no dynamic lights mod, a carried lamp lights the blocks its beam lands in ({@link ClientLightPool}) rather than
+     * one bright block at its spot, which stepped a block at a time after the square (owner, Nov 18-20).
+     */
+    private boolean poolMode() {
+        return spotEveryFrame && spot instanceof ClientLightSpot;
+    }
+
+    /** The carried lamp's grid of client light blocks, from a 3x3 spread of rays over its whole visible beam (corners, edges, centre). */
+    private void updatePool(Level level, BeamPose at, int brightness) {
+        if (!poolMode() || !ClientBeams.isRealWorld(level) || !ClientSafety.works(ClientSafety.DYNAMIC_LIGHT)) {
+            clearPool();
+            return;
+        }
+        try {
+            if (pool == null || poolLevel != level) {
+                clearPool();
+                pool = new ClientLightPool();
+                poolLevel = level;
+            }
+            int lightLevel = Math.max(1, Math.min(15, POOL_LEVEL * brightness / 15));
+            // Block light changes 20 times a second and shows a frame or two later, so a lamp spun round left its light
+            // behind (owner, Nov 20). While it moves, the cells go where the beam will be a tick on, by how far it moved
+            // in the last tick, and a cell the beam has left goes at once; held still, cells keep their light a few ticks
+            // so the beam's edge does not blink
+            Vec3 origin = at.origin();
+            Vec3 direction = at.direction().normalize();
+            boolean still = true;
+            if (poolOrigin != null && poolDirection != null) {
+                double turned = Math.toDegrees(Math.acos(Math.max(-1, Math.min(1, direction.dot(poolDirection)))));
+                double moved = origin.distanceTo(poolOrigin);
+                still = turned < POOL_STILL_DEGREES && moved < POOL_STILL_BLOCKS;
+                if (!still) {
+                    Vec3 aheadOrigin = origin.add(origin.subtract(poolOrigin));
+                    Vec3 aheadDirection = direction.add(direction.subtract(poolDirection)).normalize();
+                    poolOrigin = origin;
+                    poolDirection = direction;
+                    origin = aheadOrigin;
+                    direction = aheadDirection;
+                }
+            }
+            if (still) {
+                poolOrigin = origin;
+                poolDirection = direction;
+            }
+            List<BeamTrace.Landing> landings = poolLandings(level, origin, direction);
+            pool.update(level, landings, lightLevel, level.getGameTime(), still ? ClientLightPool.HOLD_TICKS : 0);
+        } catch (RuntimeException e) {
+            ClientSafety.failed(ClientSafety.DYNAMIC_LIGHT, e);
+            clearPool();
+        }
+    }
+
+    /**
+     * Where the carried lamp's beam lands, for its light blocks: a 3x3 spread of rays over its whole visible beam, and
+     * between any two neighbouring rays that land more than {@value #POOL_GAP} blocks apart, more rays, halving the gap
+     * up to {@value #POOL_SPLITS} times. On ground seen at a slant the three rows of the spread landed several blocks
+     * apart, block light fell a level or two between them, and the lit area had dark bands across it (owner, Nov 20).
+     */
+    private List<BeamTrace.Landing> poolLandings(Level level, Vec3 origin, Vec3 axis) {
+        double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
+        double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
+        double spread = Math.tan(BeamTrace.visibleHalfAngle(shape)) / 2;
+        double range = BeamTrace.range(shape);
+        int size = 2 << POOL_SPLITS;   // lattice points per side minus one: rays at multiples of 1/(size/2)
+        BeamTrace.Hit[][] hits = new BeamTrace.Hit[size + 1][size + 1];
+        int[] traced = {0};
+        java.util.function.BiFunction<Integer, Integer, BeamTrace.Hit> cast = (i, j) -> {
+            if (hits[i][j] == null) {
+                double cu = i * 2.0 / size - 1;
+                double cv = j * 2.0 / size - 1;
+                Vec3[] ray = BeamTrace.ray(cu, cv, origin, axis, u, v, spread, lensHalf / 2);
+                hits[i][j] = BeamTrace.trace(level, ray[0], ray[1], range);
+                traced[0]++;
+            }
+            return hits[i][j];
+        };
+        int step = size / 2;
+        for (int i = 0; i <= size; i += step) {
+            for (int j = 0; j <= size; j += step) {
+                cast.apply(i, j);
+            }
+        }
+        // Halve the gaps along the rows and columns of the spread wherever two neighbours landed far apart
+        for (; step > 1 && traced[0] < POOL_MAX_RAYS; step /= 2) {
+            for (int line = 0; line <= size; line += step) {
+                for (int k = 0; k + step <= size; k += step) {
+                    for (boolean alongV : new boolean[] {true, false}) {
+                        int ai = alongV ? line : k, aj = alongV ? k : line;
+                        int bi = alongV ? line : k + step, bj = alongV ? k + step : line;
+                        BeamTrace.Hit a = hits[ai][aj];
+                        BeamTrace.Hit b = hits[bi][bj];
+                        if (a == null || b == null || !BeamTrace.landsUsefully(a) || !BeamTrace.landsUsefully(b)
+                                || a.end().distanceTo(b.end()) <= POOL_GAP || traced[0] >= POOL_MAX_RAYS) {
+                            continue;
+                        }
+                        int mi = (ai + bi) / 2, mj = (aj + bj) / 2;
+                        cast.apply(mi, mj);
+                    }
+                }
+            }
+        }
+        List<BeamTrace.Landing> landings = new ArrayList<>();
+        for (int i = 0; i <= size; i++) {
+            for (int j = 0; j <= size; j++) {
+                BeamTrace.Hit hit = hits[i][j];
+                if (hit != null && BeamTrace.landsUsefully(hit)) {
+                    landings.add(new BeamTrace.Landing(hit, hit.end().subtract(origin).normalize(), shape.onAxis(hit.distance())));
+                }
+            }
+        }
+        return landings;
+    }
+
+    private void clearPool() {
+        poolOrigin = null;
+        poolDirection = null;
+        if (pool != null && poolLevel != null) {
+            pool.clear(poolLevel);
+        }
+        pool = null;
+        poolLevel = null;
+    }
+
     private void setSpot(@Nullable BeamSpot to) {
         if (ClientSafety.works(ClientSafety.DYNAMIC_LIGHT)) {
             try {
                 // A client light block only for a moving light: a fixed one has the server's light blocks
-                spot.set(spot instanceof ClientLightSpot && !moving ? null : to);
+                // A carried lamp with a client light block lights through its pool instead
+                spot.set(spot instanceof ClientLightSpot && (!moving || poolMode()) ? null : to);
             } catch (RuntimeException e) {
                 ClientSafety.failed(ClientSafety.DYNAMIC_LIGHT, e);
             }
@@ -310,7 +503,8 @@ public final class ClientBeam {
         long tick = level.getGameTime();
         boolean sample = false;
         if (at.moving()) {
-            boolean turn = layersTurn(tick);
+            // Found again between ticks: outside the turns lights take, which are counted once a tick
+            boolean turn = refinding || layersTurn(tick);
             if (layersOff) {
                 clearLayers();
                 // One light a second still times the work, or the lights would never find out they fit again
@@ -336,6 +530,7 @@ public final class ClientBeam {
         double margin = at.moving() && end != null && layersEnd != null
                 ? Math.min(LIVE_MARGIN_MAX, LIVE_MARGIN_MIN + 1.5 * end.distanceTo(layersEnd)) : LIVE_MARGIN_MIN;
         layersEnd = at.moving() ? end : null;
+        layersMargin = margin;
         if (tintRgb < 0 || ends.isEmpty()) {
             if (tint != null) {
                 tint.clear();
@@ -609,6 +804,7 @@ public final class ClientBeam {
 
     /** Light switched off (disabled by Contraption Controls, say): no spot and no beam until the next update. */
     public void off() {
+        clearPool();
         lastSpot = null;
         tickSpot = null;
         length = 0;
@@ -621,6 +817,7 @@ public final class ClientBeam {
 
     /** Removes the dynamic light for good. */
     public void release() {
+        clearPool();
         if (spot != null) {
             spot.remove();
             spot = null;
