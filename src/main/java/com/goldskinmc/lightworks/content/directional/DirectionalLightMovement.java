@@ -3,6 +3,7 @@ package com.goldskinmc.lightworks.content.directional;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.content.MovingBeam;
+import com.goldskinmc.lightworks.content.SensedMovingBeam;
 import com.goldskinmc.lightworks.light.ClientBeams;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;
@@ -40,7 +41,25 @@ public class DirectionalLightMovement implements MovementBehaviour {
     public void tick(MovementContext context) {
         if (context.world.isClientSide) {
             moving(context).tick();
+        } else {
+            sensed(context).tick();
         }
+    }
+
+    /** The server's view of this beam, for Beam Sensors: made on its first server tick, as the client's is. */
+    private SensedMovingBeam sensed(MovementContext context) {
+        if (context.temporaryData instanceof SensedMovingBeam beam) {
+            return beam;
+        }
+        CompoundTag data = context.blockEntityData;
+        LightState state = LightState.of(data);
+        Direction facing = context.state.getValue(DirectionalLightBlock.FACING);
+        boolean onHead = data != null && data.contains(DirectionalLightBlockEntity.HEAD_ELEVATION);
+        float yaw = onHead ? data.getFloat(DirectionalLightBlockEntity.HEAD_YAW) : state.aim().yaw();
+        float elevation = onHead ? data.getFloat(DirectionalLightBlockEntity.HEAD_ELEVATION) : state.aim().elevation();
+        SensedMovingBeam beam = new SensedMovingBeam(context, type, state, facing, yaw, elevation);
+        context.temporaryData = beam;
+        return beam;
     }
 
     /** This actor's beam, made on its first client tick from the block entity's data at assembly. */

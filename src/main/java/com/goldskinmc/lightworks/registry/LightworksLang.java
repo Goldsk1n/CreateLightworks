@@ -46,6 +46,13 @@ public final class LightworksLang {
         add("lightworks.goggles.hint.aim", "Hold R-click on Pan or Tilt to aim");
         add("lightworks.goggles.hint.on_head", "Hold R-click on Pan to turn the head below; it sweeps round that");
         add("lightworks.goggles.hint.dye", "Dye: colour the lens, beam and light");
+        add("lightworks.goggles.sensor_signal.label", "Signal:");
+        add("lightworks.goggles.sensor_signal", "%s of 15");
+        add("lightworks.goggles.sensor_filter.label", "Senses:");
+        add("lightworks.goggles.sensor_filter", "%s beams only");
+        add("lightworks.goggles.sensor_filter_any.label", "Senses:");
+        add("lightworks.goggles.sensor_filter_any", "any beam");
+        add("lightworks.goggles.hint.sensor_dye", "Dye: sense only beams of that colour");
         add("item.lightworks.flashlight.colour", "Dyed %s");
         add("lightworks.headlamp.fitted", "Headlamp fitted, %s");
         add("lightworks.headlamp.on", "on");
@@ -140,6 +147,9 @@ public final class LightworksLang {
                 behaviour("When placed", "Glows dim red and gives a little block light."),
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
                 action("When R-clicked with Dye", "Changes its colour."));
+        tooltip("beam_sensor", "Gives a _redstone signal_ while a beam of light from a Lightworks light lands on its lens, stronger the brighter the light there: a Searchlight's, a Flashlight's, a turning beacon's.",
+                behaviour("When dyed", "Senses only beams of that colour; undyed, it senses any beam."),
+                behaviour("When lit", "Powers the block it is mounted on, like a lever, and its other neighbours."));
         tooltip("edge_light", "A low _marker_ for runway, taxiway and platform edges, bright enough to read from the air. Vehicles and players pass over it, and hundreds cost next to nothing.",
                 behaviour("When placed", "Glows _white_ and gives a little block light."),
                 behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),

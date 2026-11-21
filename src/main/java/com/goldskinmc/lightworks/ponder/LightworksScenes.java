@@ -6,6 +6,8 @@ import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlockEntity;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlockEntity;
+import com.goldskinmc.lightworks.content.sensor.BeamSensorBlock;
+import com.goldskinmc.lightworks.content.sensor.BeamSensorBlockEntity;
 import com.goldskinmc.lightworks.content.signal.EdgeLightBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
 import com.goldskinmc.lightworks.content.signal.WarningPattern;
@@ -33,6 +35,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.RedstoneLampBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 
@@ -61,6 +64,8 @@ final class LightworksScenes {
         scenes.forComponents(LightworksBlocks.TAIL_LIGHT).addStoryBoard("tail_light", LightworksScenes::tailLight, LIGHTS);
         scenes.forComponents(LightworksBlocks.EDGE_LIGHT)
                 .addStoryBoard("edge_light", LightworksScenes::edgeLight, LIGHTS);
+        scenes.forComponents(LightworksBlocks.BEAM_SENSOR)
+                .addStoryBoard("beam_sensor", LightworksScenes::beamSensor, LIGHTS);
     }
 
     static void registerTags(PonderTagRegistrationHelper<ResourceLocation> helper) {
@@ -79,7 +84,8 @@ final class LightworksScenes {
                 .add(LightworksBlocks.WARNING_LIGHT)
                 .add(LightworksBlocks.HEADLIGHT)
                 .add(LightworksBlocks.TAIL_LIGHT)
-                .add(LightworksBlocks.EDGE_LIGHT);
+                .add(LightworksBlocks.EDGE_LIGHT)
+                .add(LightworksBlocks.BEAM_SENSOR);
         tags.addToTag(AllCreatePonderTags.KINETIC_APPLIANCES)
                 .add(LightworksBlocks.PAN_TILT_HEAD)
                 .add(LightworksBlocks.ROTATING_BEACON);
@@ -536,6 +542,85 @@ final class LightworksScenes {
      */
     private static Vec3 onLamp(BlockPos pos, double x, double y, double z) {
         return Vec3.atLowerCornerOf(pos).add(x / 16, y / 16, z / 16);
+    }
+
+    /**
+     * The Beam Sensor: a Searchlight on its lens gives a signal, a dye makes it sense only that colour. Ponder worlds have
+     * no redstone and no server to sense with, so the scene sets the sensor's signal and the lamp's light itself.
+     */
+    static void beamSensor(SceneBuilder builder, SceneBuildingUtil util) {
+        CreateSceneBuilder scene = new CreateSceneBuilder(builder);
+        scene.title("beam_sensor", "Sensing beams with the Beam Sensor");
+        scene.configureBasePlate(0, 0, Layouts.Sensor.SIZE);
+        scene.showBasePlate();
+        scene.idle(10);
+        BlockPos light = Layouts.Sensor.LIGHT;
+        BlockPos sensor = Layouts.Sensor.SENSOR;
+        BlockPos lamp = Layouts.Sensor.LAMP;
+        brightness(scene, util, light, 0);
+        scene.world().showSection(util.select().fromTo(Layouts.Sensor.WALL_FROM, Layouts.Sensor.WALL_TO), Direction.DOWN);
+        scene.idle(10);
+        scene.world().showSection(util.select().position(sensor), Direction.WEST);
+        scene.world().showSection(util.select().position(lamp), Direction.DOWN);
+        scene.idle(20);
+
+        Vec3 lens = util.vector().blockSurface(sensor, Direction.WEST);
+        scene.overlay().showText(70)
+                .attachKeyFrame()
+                .text("A Beam Sensor gives a redstone signal")
+                .placeNearTarget()
+                .pointAt(lens);
+        scene.idle(80);
+
+        scene.world().showSection(util.select().position(light), Direction.DOWN);
+        scene.idle(15);
+        brightness(scene, util, light, 15);
+        sensed(scene, util, sensor, lamp, 15);
+        scene.overlay().showText(70)
+                .attachKeyFrame()
+                .text("when a beam lands on its lens")
+                .placeNearTarget()
+                .pointAt(lens);
+        scene.idle(80);
+        scene.overlay().showText(80)
+                .text("The brighter the light there, the stronger the signal")
+                .placeNearTarget()
+                .pointAt(util.vector().topOf(lamp));
+        scene.idle(90);
+
+        scene.overlay().showControls(lens, Pointing.LEFT, 40).rightClick().withItem(new ItemStack(Items.RED_DYE));
+        scene.idle(7);
+        dye(scene, util, sensor, BeamSensorBlockEntity.class, DyeColor.RED);
+        sensed(scene, util, sensor, lamp, 0);
+        scene.overlay().showText(70)
+                .attachKeyFrame()
+                .text("Dyed, it senses only beams of that colour")
+                .placeNearTarget()
+                .pointAt(lens);
+        scene.idle(80);
+        Vec3 top = util.vector().topOf(light);
+        scene.overlay().showControls(top, Pointing.DOWN, 40).rightClick().withItem(new ItemStack(Items.RED_DYE));
+        scene.idle(7);
+        dye(scene, util, light, DyeColor.RED);
+        sensed(scene, util, sensor, lamp, 15);
+        scene.idle(40);
+        scene.overlay().showText(90)
+                .attachKeyFrame()
+                .text("Turning lights, lights on vehicles and Flashlights count too")
+                .placeNearTarget()
+                .pointAt(lens);
+        scene.idle(100);
+        scene.markAsFinished();
+    }
+
+    /** What the server would make of it: the sensor's signal and the Redstone Lamp beside it. */
+    private static void sensed(CreateSceneBuilder scene, SceneBuildingUtil util, BlockPos sensor, BlockPos lamp,
+            int signal) {
+        scene.world().modifyBlock(sensor, state -> state.setValue(BeamSensorBlock.POWER, signal), false);
+        scene.world().modifyBlock(lamp, state -> state.setValue(RedstoneLampBlock.LIT, signal > 0), false);
+        if (signal > 0) {
+            scene.effects().indicateRedstone(sensor);
+        }
     }
 
     /** Changes a light's saved state the way a block entity would load it. */

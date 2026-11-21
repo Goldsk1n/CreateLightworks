@@ -13,6 +13,7 @@ import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.host.SableHost;
 import com.goldskinmc.lightworks.light.BeamLightOwner;
 import com.goldskinmc.lightworks.light.BeamSource;
+import com.goldskinmc.lightworks.light.BeamSensors;
 import com.goldskinmc.lightworks.light.BeamTrace;
 import com.goldskinmc.lightworks.light.ClientBeam;
 import com.goldskinmc.lightworks.light.ClientBeams;
@@ -302,6 +303,10 @@ public class RotatingBeaconBlockEntity extends KineticBlockEntity implements Bea
             int tint = state.colour() == null ? -1 : state.rgb(type);
             boolean changed = !beam.direction().equals(tracedDirection) || brightness != tracedBrightness
                     || beam.moving() != tracedMoving || tint != tracedTint;
+            if (!level.isClientSide && brightness > 0
+                    && BeamSensors.anyWithin(level, beam.origin(), BeamTrace.range(shape))) {
+                BeamSensors.shine(level, beam, shape, type.lensHalf(), brightness, state.colour());
+            }
             if (!beam.moving() && !retraceDue && !changed) {
                 return;
             }

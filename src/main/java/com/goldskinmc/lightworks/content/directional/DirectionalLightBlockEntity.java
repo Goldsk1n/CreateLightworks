@@ -16,6 +16,7 @@ import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.host.SableHost;
 import com.goldskinmc.lightworks.light.BeamLightOwner;
 import com.goldskinmc.lightworks.light.BeamSource;
+import com.goldskinmc.lightworks.light.BeamSensors;
 import com.goldskinmc.lightworks.light.BeamTrace;
 import com.goldskinmc.lightworks.light.ClientBeam;
 import com.goldskinmc.lightworks.light.ClientBeams;
@@ -339,6 +340,10 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
         int tint = lightState().colour() == null ? -1 : lightState().rgb(lightType());
         boolean changed = !beam.direction().equals(tracedDirection) || brightness != tracedBrightness
                 || beam.moving() != tracedMoving || tint != tracedTint;
+        // Beam Sensors in reach are told every tick, still or moving (one check each, and none without a sensor)
+        if (!level.isClientSide && brightness > 0 && BeamSensors.anyWithin(level, beam.origin(), BeamTrace.range(shape))) {
+            BeamSensors.shine(level, beam, shape, type.lensHalf(), brightness, lightState().colour());
+        }
         // On a vehicle the beam moves every tick; a fixed one is re-traced when it changes or periodically
         if (!beam.moving() && !retraceDue && !changed) {
             return;

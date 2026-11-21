@@ -73,6 +73,11 @@ public final class LightworksRecipes {
                 .define('G', GLASS).define('D', Tags.Items.DYES_RED).define('T', AllItems.ELECTRON_TUBE)
                 .define('I', IRON_PLATES)
                 .save(out);
+        // A lens over an Electron Tube on redstone: it gives a signal, as a Daylight Detector does
+        shaped(LightworksBlocks.BEAM_SENSOR, 1, " G ", " T ", "BRB")
+                .define('G', GLASS).define('T', AllItems.ELECTRON_TUBE).define('B', BRASS_PLATES)
+                .define('R', Tags.Items.DUSTS_REDSTONE)
+                .save(out);
         // Eight at a time: a runway takes a lot of them
         shaped(LightworksBlocks.EDGE_LIGHT, 8, " G ", " T ", " B ")
                 .define('G', GLASS).define('T', AllItems.ELECTRON_TUBE).define('B', BRASS_PLATES)

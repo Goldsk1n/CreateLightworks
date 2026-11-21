@@ -2,6 +2,7 @@
   "values": [
     "lightworks:warning_light",
     "lightworks:tail_light",
+    "lightworks:beam_sensor",
     "lightworks:edge_light"
   ]
 }

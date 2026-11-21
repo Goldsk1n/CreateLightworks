@@ -3,6 +3,7 @@ package com.goldskinmc.lightworks.content.beacon;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.content.MovingBeam;
+import com.goldskinmc.lightworks.content.SensedMovingBeam;
 import com.goldskinmc.lightworks.light.ClientBeams;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
@@ -30,6 +31,25 @@ public class RotatingBeaconMovement implements MovementBehaviour {
     @Override
     public void tick(MovementContext context) {
         if (!context.world.isClientSide) {
+            // The server's view of both beams, for Beam Sensors
+            SensedMovingBeam[] sensed;
+            if (context.temporaryData instanceof SensedMovingBeam[] existing) {
+                sensed = existing;
+            } else {
+                CompoundTag data = context.blockEntityData;
+                LightState state = LightState.of(data);
+                Direction facing = context.state.getValue(RotatingBeaconBlock.FACING);
+                float angle = data == null ? 0 : data.getFloat(RotatingBeaconBlockEntity.ANGLE);
+                sensed = new SensedMovingBeam[] {
+                        new SensedMovingBeam(context, LightType.ROTATING_BEACON, state, facing, angle,
+                                RotatingBeaconBlockEntity.ELEVATION),
+                        new SensedMovingBeam(context, LightType.ROTATING_BEACON, state, facing, angle + 180,
+                                RotatingBeaconBlockEntity.ELEVATION)};
+                context.temporaryData = sensed;
+            }
+            for (SensedMovingBeam beam : sensed) {
+                beam.tick();
+            }
             return;
         }
         MovingBeam[] beams;

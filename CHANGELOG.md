@@ -6,6 +6,10 @@
   where you look, and other players see it from your hand. With LambDynamicLights its light keeps up with the view
   every frame. Crafted with a dye, its beam takes the colour; washing it
   with a fan through water, or in a water cauldron, takes the colour off.
+- New: the Beam Sensor, asked for on CurseForge and GitHub. It gives a redstone signal while a beam from a Lightworks
+  light lands on its lens, stronger the brighter the light there: a Searchlight's, a Floodlight's, a turning beacon's or
+  head's, one on a train or Sable vehicle, or a Flashlight or headlamp pointed at it. Dyed, it senses only beams of that
+  colour. It powers the block it hangs on, as a lever does.
 - New: the headlamp. Craft a Flashlight together with Create's Engineer's Goggles or a Copper or Netherite Diving Helmet
   to fit it; the headgear keeps its enchantments, damage and name, and does all it did before. The lamp sits on the
   forehead and throws a wide, short beam where you look, its dye included. Press H (Controls, under Create:

@@ -75,6 +75,16 @@ final class Layouts {
         static final BlockPos[] RIGHT = {new BlockPos(5, 1, 1), new BlockPos(5, 1, 3), new BlockPos(5, 1, 5)};
     }
 
+    /** 7x7 plate: a Searchlight aimed at a Beam Sensor on a wall, a Redstone Lamp under the sensor. */
+    static final class Sensor {
+        static final int SIZE = 7;
+        static final BlockPos LIGHT = new BlockPos(1, 1, 3);
+        static final BlockPos SENSOR = new BlockPos(5, 2, 3);
+        static final BlockPos LAMP = new BlockPos(5, 1, 3);
+        static final BlockPos WALL_FROM = new BlockPos(6, 1, 2);
+        static final BlockPos WALL_TO = new BlockPos(6, 3, 4);
+    }
+
     private Layouts() {
     }
 }

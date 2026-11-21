@@ -9,6 +9,7 @@ import com.goldskinmc.lightworks.content.directional.DirectionalLightMovement;
 import com.goldskinmc.lightworks.content.beacon.RotatingBeaconBlock;
 import com.goldskinmc.lightworks.content.beacon.RotatingBeaconMovement;
 import com.goldskinmc.lightworks.content.pantilt.PanTiltHeadBlock;
+import com.goldskinmc.lightworks.content.sensor.BeamSensorBlock;
 import com.goldskinmc.lightworks.content.signal.EdgeLightBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
@@ -28,6 +29,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.neoforge.client.model.generators.ModelFile;
 import net.neoforged.neoforge.client.model.generators.MultiPartBlockStateBuilder;
@@ -77,6 +79,20 @@ public final class LightworksBlocks {
     public static final BlockEntry<SignalLampBlock> TAIL_LIGHT = signal("tail_light", LightType.TAIL_LIGHT,
             SignalLampBlock::new, () -> LightworksBlockEntities.TAIL_LIGHT.get(), Block.box(3, 0, 4, 13, 3, 12),
             "Tail and Brake Light");
+
+    /** A domed lens on a low foot, facing out of its mount; the lens is a part the renderer draws in its dye. */
+    public static final BlockEntry<BeamSensorBlock> BEAM_SENSOR = REGISTRATE
+            .block("beam_sensor", p -> new BeamSensorBlock(p, () -> LightworksBlockEntities.BEAM_SENSOR.get(),
+                    Shapes.or(Block.box(3, 0, 3, 13, 3, 13), Block.box(5.5, 3, 5.5, 10.5, 6, 10.5))))
+            .initialProperties(() -> Blocks.IRON_BLOCK)
+            .properties(p -> p.strength(1.5f).sound(SoundType.COPPER).noOcclusion())
+            .blockstate((c, p) -> p.directionalBlock(c.get(),
+                    p.models().getExistingFile(p.modLoc("block/beam_sensor/base"))))
+            .tag(BlockTags.MINEABLE_WITH_PICKAXE, LightworksTags.SABLE_SUPER_LIGHT)
+            .lang("Beam Sensor")
+            .item().model((c, p) -> {
+            }).build()
+            .register();
 
     public static final BlockEntry<EdgeLightBlock> EDGE_LIGHT = REGISTRATE
             .block("edge_light", EdgeLightBlock::new)

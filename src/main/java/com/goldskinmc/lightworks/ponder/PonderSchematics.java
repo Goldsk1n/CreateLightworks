@@ -64,6 +64,14 @@ public final class PonderSchematics implements DataProvider {
         searchlight.set(Layouts.Searchlight.LEVER, floorLever());
         all.add(searchlight);
 
+        Schematic sensor = new Schematic("beam_sensor", Layouts.Sensor.SIZE, 5);
+        sensor.fill(Layouts.Sensor.WALL_FROM, Layouts.Sensor.WALL_TO, Blocks.STONE_BRICKS.defaultBlockState());
+        sensor.light(Layouts.Sensor.SENSOR, LightworksBlocks.BEAM_SENSOR.getDefaultState(), Direction.WEST, null);
+        sensor.set(Layouts.Sensor.LAMP, Blocks.REDSTONE_LAMP.defaultBlockState());
+        sensor.light(Layouts.Sensor.LIGHT, LightworksBlocks.SEARCHLIGHT.getDefaultState(), Direction.UP,
+                aimAt(Layouts.Sensor.LIGHT, Direction.UP, face(Layouts.Sensor.SENSOR, Direction.WEST)));
+        all.add(sensor);
+
         Schematic floodlight = new Schematic("floodlight", Layouts.Floodlight.SIZE, Layouts.Floodlight.HEIGHT);
         floodlight.fill(Layouts.Floodlight.PILLAR_FROM, Layouts.Floodlight.PILLAR_TO, Blocks.STONE_BRICKS.defaultBlockState());
         floodlight.fill(Layouts.Floodlight.ARM_FROM, Layouts.Floodlight.ARM_TO, Blocks.STONE_BRICKS.defaultBlockState());
