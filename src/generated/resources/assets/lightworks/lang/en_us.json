@@ -106,6 +106,7 @@
   "lightworks.configuration.invertRedstone": "Invert redstone",
   "lightworks.configuration.lensGlow": "Lens glow",
   "lightworks.configuration.maxBeamRange": "Longest beam",
+  "lightworks.configuration.movingLampLight": "Light from moving lamps",
   "lightworks.configuration.serverLightBlocks": "Server light blocks",
   "lightworks.configuration.shaderHint": "Shader tip",
   "lightworks.configuration.shaderPacksWithBeaconBeams": "Shader packs with beacon-style beams",

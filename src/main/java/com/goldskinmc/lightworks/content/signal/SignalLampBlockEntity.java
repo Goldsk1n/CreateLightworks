@@ -7,8 +7,10 @@ import com.goldskinmc.lightworks.content.LightClipboard;
 import com.goldskinmc.lightworks.content.LightGoggles;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
+import com.goldskinmc.lightworks.host.BeamPose;
 import com.goldskinmc.lightworks.host.SableHost;
 import com.goldskinmc.lightworks.light.ClientBeams;
+import com.goldskinmc.lightworks.light.LampLights;
 import com.goldskinmc.lightworks.light.ProjectedTint;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.content.equipment.clipboard.ClipboardCloneable;
@@ -172,6 +174,7 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
         if (level != null && level.isClientSide) {
             previewTicks++;
             updateGlow();
+            offerLight();
         }
         if (level != null && level.isClientSide && lightType().kind() == LightType.Kind.TAIL) {
             // Null when not on a Sable vehicle: a fixed tail light never starts braking, but a brake
@@ -210,6 +213,22 @@ public class SignalLampBlockEntity extends SmartBlockEntity implements IHaveGogg
             glow.glow(level, at, glowRadius(lightType()), rgb, intensity(0));
         } else {
             glow.setBrightness(intensity(0));
+        }
+    }
+
+    /**
+     * On a Sable vehicle the lamp's block light stays in Sable's plot and lights nothing round the vehicle: a steady
+     * dynamic light stands in for it where the vehicle shows the lamp, while it is on ({@link LampLights}).
+     */
+    private void offerLight() {
+        if (!ClientBeams.isRealWorld(level) || (lightState().nightOnly() && !isDark(level))) {
+            return;
+        }
+        Vec3 out = Vec3.atLowerCornerOf(getBlockState().getValue(SignalLampBlock.FACING).getNormal());
+        BeamPose pose = SableHost.toWorld(level, worldPosition, Vec3.atCenterOf(worldPosition), out);
+        if (pose.moving()) {
+            LampLights.offer(this, pose.origin(), pose.direction().normalize(), lightType().placedLight(),
+                    lightState().brightness());
         }
     }
 

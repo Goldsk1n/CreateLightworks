@@ -93,4 +93,20 @@ class BeamSpotTest {
         BeamSpot turned = new BeamSpot(9.5, 64.5, 0.5, 10, 64.5, 0.5, c, s, 0, 15);
         assertTrue(turned.differsFrom(spot, 0.25, 0.5, 0.99985));
     }
+
+    // A Warning Light standing on a vehicle's deck at (0.5, 65.5, 0.5), facing up, as bright as placed (12)
+    private final BeamSpot lamp = BeamSpot.lamp(0.5, 65.5, 0.5, 0, 1, 0, 12);
+
+    @Test
+    void lampIsBrightestHalfABlockOutFromItsMount() {
+        assertEquals(12, lamp.lightAt(0.5, 66, 0.5, LDL_RATIO), EPS);
+    }
+
+    @Test
+    void lampLightsRoundItsDeckAndBelowIt() {
+        // Two blocks aside and two below the deck's top: block light reaches there round the deck's edge
+        double d = Math.sqrt(2 * 2 + 2.5 * 2.5);
+        assertEquals(12 - d * LDL_RATIO, lamp.lightAt(2.5, 63.5, 0.5, LDL_RATIO), EPS);
+        assertTrue(lamp.lightAt(0.5, 63.5, 0.5, LDL_RATIO) > 0);
+    }
 }

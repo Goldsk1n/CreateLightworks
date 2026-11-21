@@ -10,6 +10,11 @@
   to fit it; the headgear keeps its enchantments, damage and name, and does all it did before. The lamp sits on the
   forehead and throws a wide, short beam where you look, its dye included. Press H (Controls, under Create:
   Lightworks) to switch it on or off. The headgear alone in a crafting grid gives the Flashlight back.
+- Warning, Tail and Brake Lights on moving contraptions, trains and Sable vehicles light the blocks round them again:
+  the 16 nearest you get a steady dynamic light as strong as a placed lamp's (with LambDynamicLights or Sodium Dynamic
+  Lights, or a light block in your own world without one). It does not blink with a pattern, which would rebuild the
+  world's lighting up to 10 times a second; the lens still does. Lamps close together share one light. Client config
+  `movingLampLight` turns it off.
 - A Pan-Tilt Head can be aimed: the light's Pan box, hidden on a head until now, turns the head to face that way, where
   it stays, and a sweep swings either way of it. Before, a new head always started facing north (on a Sable vehicle,
   its north before assembly), and the only way to move a sweep's centre was to set the sweep while the shaft turned

@@ -4,6 +4,7 @@ import com.goldskinmc.lightworks.LightworksClientConfig;
 import com.goldskinmc.lightworks.content.LightState;
 import com.goldskinmc.lightworks.content.LightType;
 import com.goldskinmc.lightworks.light.ClientBeams;
+import com.goldskinmc.lightworks.light.LampLights;
 import com.goldskinmc.lightworks.light.ProjectedTint;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
@@ -21,9 +22,9 @@ import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * A signal lamp carried by a contraption: its lens shows, and it colours the blocks round it like a placed
- * lamp ({@link ProjectedTint}, found again whenever it has moved half a block; no dynamic light, which would
- * rebuild chunks). Warning patterns run off game time; a Tail and Brake Light watches the contraption's
+ * A signal lamp carried by a contraption: its lens shows, it colours the blocks round it like a placed
+ * lamp ({@link ProjectedTint}, found again whenever it has moved a block), and the nearest ones light them with a steady
+ * dynamic light ({@link LampLights}; its block light stays behind). Warning patterns run off game time; a Tail and Brake Light watches the contraption's
  * motion and brightens for a second when it slows or stops. Contraption Controls switch the lamp off.
  */
 public class SignalLampMovement implements MovementBehaviour {
@@ -79,7 +80,18 @@ public class SignalLampMovement implements MovementBehaviour {
             Moving moving = moving(context);
             moving.brake.tick(context.motion);
             updateGlow(context, moving);
+            offerLight(context, moving);
         }
+    }
+
+    /** Client: asks for a steady dynamic light at the lamp while it is on, whatever its pattern (see LampLights). */
+    private void offerLight(MovementContext context, Moving moving) {
+        if (context.position == null || context.disabled || !shining(context, moving)) {
+            return;
+        }
+        Vec3 facing = context.rotation.apply(Vec3.atLowerCornerOf(
+                context.state.getValue(SignalLampBlock.FACING).getNormal())).normalize();
+        LampLights.offer(context, context.position, facing, type.placedLight(), moving.state.brightness());
     }
 
     /** Client: colours the blocks round the lamp where the contraption has it this tick. */

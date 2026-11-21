@@ -91,6 +91,7 @@ public final class LightworksLang {
         add("lightworks.configuration.boardsOnlyWithWrench", "Boards only with a Wrench");
         add("lightworks.configuration.shaderHint", "Shader tip");
         add("lightworks.configuration.clientLightBlocks", "Client light blocks");
+        add("lightworks.configuration.movingLampLight", "Light from moving lamps");
         add("lightworks.hint.moving_lights_shaders", "Lightworks: under a shader pack, lights on vehicles, contraptions and "
                 + "turning heads light the world only with LambDynamicLights or Sodium Dynamic Lights installed. This tip "
                 + "shows once; turn it off in Lightworks' client config.");

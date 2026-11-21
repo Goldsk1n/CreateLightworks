@@ -34,6 +34,23 @@ public record BeamSpot(double spotX, double spotY, double spotZ,
         this(spotX, spotY, spotZ, surfaceX, surfaceY, surfaceZ, dirX, dirY, dirZ, peak, 0, 0, 0);
     }
 
+    /**
+     * The light of a lamp at (x, y, z) facing (nx, ny, nz), a unit vector out of its mount: round, centred half a block
+     * out from the lamp, cut by nothing, as a held torch's dynamic light is. A cut at the mount's face was tried: on a
+     * lamp standing on a vehicle's deck it was an endless plane, and the ground round the deck got no light at all, where
+     * block light reaches round the deck's edge (lamps-moving, Nov 21). The surface lies far behind the spot, so
+     * {@link #lightAt} never darkens a block for being beyond it.
+     */
+    public static BeamSpot lamp(double x, double y, double z, double nx, double ny, double nz, double peak) {
+        double sx = x + nx * 0.5;
+        double sy = y + ny * 0.5;
+        double sz = z + nz * 0.5;
+        return new BeamSpot(sx, sy, sz, sx + nx * FAR, sy + ny * FAR, sz + nz * FAR, nx, ny, nz, peak);
+    }
+
+    /** How far a lamp's surface lies past its spot: further than any light reaches. */
+    private static final double FAR = 1000;
+
     /** Light at block centre (x, y, z), never negative. */
     public double lightAt(double x, double y, double z, double falloffRatio) {
         if (normalX == 0 && normalY == 0 && normalZ == 0) {

@@ -30,6 +30,7 @@ public final class LightworksClientConfig {
     private static final ModConfigSpec.BooleanValue BOARDS_ONLY_WITH_WRENCH;
     private static final ModConfigSpec.BooleanValue SHADER_HINT;
     private static final ModConfigSpec.BooleanValue CLIENT_LIGHT_BLOCKS;
+    private static final ModConfigSpec.BooleanValue MOVING_LAMP_LIGHT;
     private static final ModConfigSpec.BooleanValue DEBUG_OVERLAY;
 
     static {
@@ -96,6 +97,11 @@ public final class LightworksClientConfig {
                         "light blocks placed in your own world only, which shader packs light up too.")
                 .translation("lightworks.configuration.clientLightBlocks")
                 .define("clientLightBlocks", true);
+        MOVING_LAMP_LIGHT = builder
+                .comment("Warning, Tail and Brake Lights on vehicles and contraptions light the blocks round them, the 16",
+                        "nearest you, with a steady dynamic light (or a client light block with no dynamic lights mod).")
+                .translation("lightworks.configuration.movingLampLight")
+                .define("movingLampLight", true);
         DEBUG_OVERLAY = builder
                 .comment("With the F3 screen open, draw every beam from lens to hit and show details of the light",
                         "under the crosshair.")
@@ -172,6 +178,10 @@ public final class LightworksClientConfig {
 
     public static boolean clientLightBlocks() {
         return !SPEC.isLoaded() || CLIENT_LIGHT_BLOCKS.get();
+    }
+
+    public static boolean movingLampLight() {
+        return !SPEC.isLoaded() || MOVING_LAMP_LIGHT.get();
     }
 
     public static boolean shaderHint() {
