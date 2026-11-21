@@ -29,6 +29,17 @@ public final class ClientBeam {
      * only moved once it is this far (in blocks) from where it was last published.
      */
     private static final double MIN_SPOT_MOVE = 0.25;
+    /** How long a moved light also stays at its old place, in ticks ({@link #handoff}). */
+    private static final int HANDOFF_TICKS = 1;
+    /**
+     * Handoffs only for lights this near the camera, and at most this many a tick: each is a second change for the
+     * dynamic lights mod to mesh, and with one for every light 50 flying Searchlights cost LambDynamicLights 6 s of its
+     * threads a second against 1.8, frames 14 ms against 10 (load, Nov 21). A dip far off or among many lights is not seen.
+     */
+    private static final double HANDOFF_DISTANCE = 32;
+    private static final int HANDOFFS_PER_TICK = 2;
+    private static long handoffTick = Long.MIN_VALUE;
+    private static int handoffsThisTick;
     private static final double MIN_PEAK_CHANGE = 0.5;
     /** About 1 degree. */
     private static final double MIN_DIRECTION_DOT = 0.99985;
@@ -120,6 +131,33 @@ public final class ClientBeam {
     /** Whether each rim ray stopped on a block, rather than running out of range. */
     private final boolean[] rimHits = new boolean[BeamFrame.RIM];
     private int ticksToCorners;
+    /**
+     * Each corner and edge ray's last trace, by {@link BeamFrame#corner} index: how far it reached, whether it landed
+     * usefully, and the normal of the face it struck. Between traces a moving light carries them with its beam (the same
+     * distance along the same ray of the beam as it is now), so its light and its painted square come from every ray on
+     * every tick, not from the centre alone on seven ticks in eight.
+     */
+    private final double[] cornerDistances = new double[CORNERS];
+    private final boolean[] cornerLanded = new boolean[CORNERS];
+    private final Vec3[] cornerNormals = new Vec3[CORNERS];
+    /** Where the corner and edge rays landed this tick, traced or carried, for the light's weighted middle. */
+    private final List<BeamTrace.Landing> edgeLandings = new ArrayList<>();
+    /**
+     * For a light that follows its beam each frame: how far the tick's weighted middle lay from its centre landing, kept
+     * the same for the frames until the next tick.
+     */
+    private Vec3 middleOffset = Vec3.ZERO;
+    /**
+     * A moving light's handoff: when its light moves, a second light stays where it was for {@value #HANDOFF_TICKS} tick.
+     * Minecraft re-meshes the chunk sections round a moved light one by one, and the sections under the old and the new
+     * place came up a frame apart: for that frame a lit patch spanning them had neither light, and dipped (the ship
+     * clip's one-frame dips, the same frames whatever the dynamic lights mod). With both lights there for a tick, every
+     * section meshed in between has one of them. Only with a dynamic lights mod: two of our client light blocks for a
+     * tick, then one, made the lit patch pulse.
+     */
+    @Nullable
+    private DynamicSpot handoff;
+    private int handoffTicks;
     /** Nearest place a corner or edge ray landed at the last corner trace, for when the centre ray misses. */
     @Nullable
     private BeamTrace.Landing landing;
@@ -252,6 +290,9 @@ public final class ClientBeam {
             return;
         }
         BeamSpot next = BeamTrace.spotFor(hit, at.direction(), shape.onAxis(hit.distance()) * brightness / 15.0);
+        if (next != null && middleOffset != Vec3.ZERO) {
+            next = next.shifted(middleOffset.x, middleOffset.y, middleOffset.z);
+        }
         if (worthPublishing(lastSpot, next)) {
             lastSpot = next;
             setSpot(next);
@@ -284,6 +325,9 @@ public final class ClientBeam {
      */
     public void update(Level level, BeamPose beam, BeamPose drawn, int brightness, int tintRgb) {
         refindsThisTick = 0;
+        if (handoffTicks > 0 && --handoffTicks == 0 && handoff != null) {
+            setHandoff(null);
+        }
         if (!ClientBeams.enabled() || brightness <= 0) {
             off();
             return;
@@ -305,6 +349,28 @@ public final class ClientBeam {
                 ? new BeamTrace.Landing(hit, at.direction(), shape.onAxis(hit.distance()))
                 : landing;
         BeamSpot next = lit == null ? null : BeamTrace.spotFor(lit.hit(), lit.direction(), lit.light() * brightness / 15.0);
+        middleOffset = Vec3.ZERO;
+        // Not for our client light block: a whole block at a whole level, it only stepped more often from a middle that
+        // drifts, and the ship clip's patch blinked more with it than without (Nov 21)
+        if (moving && next != null && hit.hitBlock() && !edgeLandings.isEmpty() && !(spot instanceof ClientLightSpot)) {
+            // On terraced ground the centre ray jumps from step to step as the light moves, and its light jumped with it
+            // (the ship clip's dip, since 1.0.0): the light goes to the middle of every ray's landing, weighted by its light
+            // Its strength too: from the centre's distance alone, a tick where the centre ray slipped past a step and
+            // landed further back weakened the whole light, and the lit patch dipped for that tick (ship clip, Nov 21)
+            double weight = lit.light();
+            double distance = lit.light() * lit.hit().distance();
+            for (BeamTrace.Landing edge : edgeLandings) {
+                weight += edge.light();
+                distance += edge.light() * edge.hit().distance();
+            }
+            double peak = weight > 0 ? shape.onAxis(distance / weight) : lit.light();
+            BeamSpot middle = BeamTrace.middleSpot(lit, edgeLandings, peak * brightness / 15.0);
+            if (middle != null) {
+                middleOffset = new Vec3(middle.spotX() - next.spotX(), middle.spotY() - next.spotY(),
+                        middle.spotZ() - next.spotZ());
+                next = middle;
+            }
+        }
         this.brightness = brightness;
         this.tintRgb = tintRgb;
         preview = !ClientBeams.isRealWorld(level);
@@ -329,6 +395,11 @@ public final class ClientBeam {
         } else {
             moved = worthPublishing(lastSpot, next);
             if (moved) {
+                if (moving && lastSpot != null && next != null && !(spot instanceof ClientLightSpot)
+                        && cameraDistanceSqr(at) < HANDOFF_DISTANCE * HANDOFF_DISTANCE && takeHandoff(level)) {
+                    setHandoff(lastSpot);
+                    handoffTicks = HANDOFF_TICKS;
+                }
                 lastSpot = next;
                 setSpot(next);
             }
@@ -465,6 +536,34 @@ public final class ClientBeam {
         }
         pool = null;
         poolLevel = null;
+    }
+
+    /** True while this tick's handoffs last; counts this one. */
+    private static boolean takeHandoff(Level level) {
+        long now = level.getGameTime();
+        if (now != handoffTick) {
+            handoffTick = now;
+            handoffsThisTick = 0;
+        }
+        return handoffsThisTick++ < HANDOFFS_PER_TICK;
+    }
+
+    /** The handoff light at {@code to}, or off; made when first needed, only in the real world. */
+    private void setHandoff(@Nullable BeamSpot to) {
+        if (!ClientSafety.works(ClientSafety.DYNAMIC_LIGHT) || spot == null || spot == DynamicSpot.NONE) {
+            return;
+        }
+        try {
+            if (handoff == null) {
+                if (to == null) {
+                    return;
+                }
+                handoff = DynamicLights.createSpot();
+            }
+            handoff.set(to);
+        } catch (RuntimeException e) {
+            ClientSafety.failed(ClientSafety.DYNAMIC_LIGHT, e);
+        }
     }
 
     private void setSpot(@Nullable BeamSpot to) {
@@ -703,6 +802,7 @@ public final class ClientBeam {
         List<Vec3> ends = new ArrayList<>(CORNERS);
         vehicleEnds.clear();
         vehicleSky = null;
+        edgeLandings.clear();
         if (centre.hitBlock()) {
             addEnd(ends, centre);
         }
@@ -713,6 +813,7 @@ public final class ClientBeam {
             for (int k = 0; k < BeamFrame.RIM; k++) {
                 rimLengths[k] = (float) Math.min(range, rimRatios[k] * centre.distance());
             }
+            carryCorners(at, ends);
             return ends;
         }
         // Lights on one vehicle start their turns on different ticks
@@ -728,6 +829,7 @@ public final class ClientBeam {
                 cornerRatios[i] = 1;
                 cornerLengths[i] = (float) centre.distance();
                 cornerHits[i] = centre.hitBlock();
+                cornerLanded[i] = false;
                 continue;
             }
             Vec3[] ray = BeamTrace.cornerRay(i, at.origin(), a, u, v, spread, lensHalf);
@@ -735,6 +837,13 @@ public final class ClientBeam {
             cornerRatios[i] = (float) (hit.distance() / Math.max(0.01, centre.distance()));
             cornerLengths[i] = (float) hit.distance();
             cornerHits[i] = hit.hitBlock();
+            cornerDistances[i] = hit.distance();
+            cornerNormals[i] = hit.normal();
+            // Landings on a Sable vehicle ride with it, not with the beam: not carried
+            cornerLanded[i] = BeamTrace.landsUsefully(hit) && hit.onVehicle() == null;
+            if (cornerLanded[i]) {
+                edgeLandings.add(new BeamTrace.Landing(hit, ray[1], BeamTrace.edgeLight(shape, hit.distance())));
+            }
             if (hit.hitBlock()) {
                 addEnd(ends, hit);
                 if (BeamTrace.landsUsefully(hit) && (landing == null || hit.distance() < landing.hit().distance())) {
@@ -751,6 +860,30 @@ public final class ClientBeam {
         }
         traceRim(level, at, centre, range, u, v, spread, cornerLengths, cornerHits);
         return ends;
+    }
+
+    /**
+     * Between corner traces: each corner and edge ray that landed at the last trace is taken the same distance along the
+     * same ray of the beam as it is this tick, its end added to where the painted square is looked for and its landing
+     * to the light's weighted middle. On ground the beam moves over slowly this is close to a trace; the next trace, at
+     * most {@value #MOVING_CORNER_INTERVAL} ticks on, puts it right.
+     */
+    private void carryCorners(BeamPose at, List<Vec3> ends) {
+        Vec3 a = at.direction();
+        double[] u = BeamFrame.side(a.x, a.y, a.z);
+        double[] v = BeamFrame.up(a.x, a.y, a.z, u);
+        double spread = Math.tan(BeamTrace.visibleHalfAngle(shape));
+        for (int i = 0; i < CORNERS; i++) {
+            if (i == CENTRE || !cornerLanded[i]) {
+                continue;
+            }
+            Vec3[] ray = BeamTrace.cornerRay(i, at.origin(), a, u, v, spread, lensHalf);
+            Vec3 end = ray[0].add(ray[1].scale(cornerDistances[i]));
+            ends.add(end);
+            BeamTrace.Hit carried = new BeamTrace.Hit(end, BlockPos.containing(end.add(ray[1].scale(0.01))),
+                    cornerDistances[i], cornerNormals[i]);
+            edgeLandings.add(new BeamTrace.Landing(carried, ray[1], BeamTrace.edgeLight(shape, cornerDistances[i])));
+        }
     }
 
     /**
@@ -812,6 +945,8 @@ public final class ClientBeam {
         if (spot != null) {
             setSpot(null);
         }
+        handoffTicks = 0;
+        setHandoff(null);
         clearLayers();
     }
 
@@ -822,6 +957,11 @@ public final class ClientBeam {
             spot.remove();
             spot = null;
         }
+        if (handoff != null) {
+            handoff.remove();
+            handoff = null;
+        }
+        handoffTicks = 0;
         clearLayers();
         tint = null;
         spotLayer = null;

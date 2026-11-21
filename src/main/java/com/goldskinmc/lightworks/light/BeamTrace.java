@@ -73,6 +73,65 @@ public final class BeamTrace {
                 dir.x, dir.y, dir.z, peak, normal.x, normal.y, normal.z);
     }
 
+    /**
+     * A moving light's spot at the middle of where its rays landed, each weighted by its light: the centre's landing and
+     * its corner and edge rays'. It drifts across terraced ground as the light moves, where the centre's landing alone
+     * jumped from step to step. The struck faces' normals are averaged the same way (any unknown, and the spot is cut by
+     * a plane square to the beam, as {@link #spotFor} does without one), and the cut lies at the deepest landing. Null when nothing has any light.
+     */
+    public static @Nullable BeamSpot middleSpot(Landing centre, List<Landing> edges, double peak) {
+        if (peak <= 0) {
+            return null;
+        }
+        double total = 0;
+        double sx = 0, sy = 0, sz = 0, dx = 0, dy = 0, dz = 0, nx = 0, ny = 0, nz = 0;
+        boolean normals = true;
+        List<Landing> all = new java.util.ArrayList<>(edges.size() + 1);
+        all.add(centre);
+        all.addAll(edges);
+        for (Landing landing : all) {
+            double w = landing.light();
+            if (w <= 0 || !landing.hit().hitBlock()) {
+                continue;
+            }
+            Vec3 dir = landing.direction().normalize();
+            Vec3 end = landing.hit().end();
+            total += w;
+            sx += w * (end.x - dir.x * 0.5);
+            sy += w * (end.y - dir.y * 0.5);
+            sz += w * (end.z - dir.z * 0.5);
+            dx += w * dir.x;
+            dy += w * dir.y;
+            dz += w * dir.z;
+            Vec3 normal = landing.hit().normal();
+            if (normal == null) {
+                normals = false;
+            } else {
+                nx += w * normal.x;
+                ny += w * normal.y;
+                nz += w * normal.z;
+            }
+        }
+        if (total <= 0) {
+            return null;
+        }
+        Vec3 dir = new Vec3(dx, dy, dz).normalize();
+        Vec3 normal = normals ? new Vec3(nx, ny, nz) : Vec3.ZERO;
+        normal = normal.lengthSqr() < 1e-6 ? Vec3.ZERO : normal.normalize();
+        // The light is cut at the deepest landing, not the middle one: on terraced ground the steps lying more than a
+        // block behind the middle went dark, and the lit patch dipped for a tick whenever the middle moved (ship clip)
+        Vec3 cut = normal == Vec3.ZERO ? dir.scale(-1) : normal;
+        Vec3 deepest = null;
+        for (Landing landing : all) {
+            if (landing.light() > 0 && landing.hit().hitBlock()
+                    && (deepest == null || landing.hit().end().dot(cut) < deepest.dot(cut))) {
+                deepest = landing.hit().end();
+            }
+        }
+        return new BeamSpot(sx / total, sy / total, sz / total, deepest.x, deepest.y, deepest.z,
+                dir.x, dir.y, dir.z, peak, normal.x, normal.y, normal.z);
+    }
+
     /** How far a beam of this shape reaches: its own range, capped by the server's {@code maxBeamRange}. */
     public static double range(ConeFalloff shape) {
         return Math.min(shape.range(), LightworksConfig.maxBeamRange());

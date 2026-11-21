@@ -53,6 +53,12 @@ public final class LampLights {
     }
 
     private static final List<Offer> OFFERS = new ArrayList<>();
+    /**
+     * The game time at the last update. Lamps offer themselves as the world ticks, and under {@code /tick rate} or
+     * {@code /tick freeze} the client ticks without it: those ticks bring no offers and change nothing, where before
+     * every light went out on them and came back on the next (the ship clip at tick rate 5, Nov 21).
+     */
+    private static long lastGameTime = Long.MIN_VALUE;
     private static final Map<Object, Shown> SHOWN = new IdentityHashMap<>();
 
     private LampLights() {
@@ -85,6 +91,12 @@ public final class LampLights {
             clear();
             return;
         }
+        long time = mc.level.getGameTime();
+        if (time == lastGameTime) {
+            OFFERS.clear();
+            return;
+        }
+        lastGameTime = time;
         if (ClientSafety.works(ClientSafety.DYNAMIC_LIGHT)) {
             try {
                 update(mc.gameRenderer.getMainCamera().getPosition());
@@ -137,6 +149,7 @@ public final class LampLights {
     }
 
     private static void clear() {
+        lastGameTime = Long.MIN_VALUE;
         SHOWN.values().forEach(shown -> shown.spot.remove());
         SHOWN.clear();
     }

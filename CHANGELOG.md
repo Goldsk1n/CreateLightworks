@@ -15,6 +15,10 @@
   Lights, or a light block in your own world without one). It does not blink with a pattern, which would rebuild the
   world's lighting up to 10 times a second; the lens still does. Lamps close together share one light. Client config
   `movingLampLight` turns it off.
+- Lights on moving vehicles, contraptions and heads light the ground more steadily with LambDynamicLights or Sodium
+  Dynamic Lights: their light sits in the middle of the whole beam rather than where its centre lands, so it no longer
+  jumps from step to step on terraced ground, and near you a moved light stays where it was for one more tick, so the
+  lit patch no longer goes dim for a frame while the game redraws it.
 - A Pan-Tilt Head can be aimed: the light's Pan box, hidden on a head until now, turns the head to face that way, where
   it stays, and a sweep swings either way of it. Before, a new head always started facing north (on a Sable vehicle,
   its north before assembly), and the only way to move a sweep's centre was to set the sweep while the shaft turned

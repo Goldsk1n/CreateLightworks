@@ -51,6 +51,12 @@ public record BeamSpot(double spotX, double spotY, double spotZ,
     /** How far a lamp's surface lies past its spot: further than any light reaches. */
     private static final double FAR = 1000;
 
+    /** The same spot moved by (dx, dy, dz), its surface with it. */
+    public BeamSpot shifted(double dx, double dy, double dz) {
+        return new BeamSpot(spotX + dx, spotY + dy, spotZ + dz, surfaceX + dx, surfaceY + dy, surfaceZ + dz,
+                dirX, dirY, dirZ, peak, normalX, normalY, normalZ);
+    }
+
     /** Light at block centre (x, y, z), never negative. */
     public double lightAt(double x, double y, double z, double falloffRatio) {
         if (normalX == 0 && normalY == 0 && normalZ == 0) {
