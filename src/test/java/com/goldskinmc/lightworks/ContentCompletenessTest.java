@@ -57,6 +57,73 @@ class ContentCompletenessTest {
         assertTrue(missing.isEmpty(), "missing: " + missing);
     }
 
+    /**
+     * The headlamp is no item of its own but data on Create's headgear, so the item check above does not see it: its
+     * fitting and removing recipes, the headgear it fits (the item tag), its tooltip lines and key name, and the lamp's
+     * part models, which the head layer draws.
+     */
+    @Test
+    void theHeadlampHasItsRecipesTagTextAndModels() throws IOException {
+        String lang = Files.readString(ASSETS.resolve("lang/en_us.json"));
+        List<String> missing = new ArrayList<>();
+        for (String recipe : List.of("headlamp_fitting", "headlamp_removing", "flashlight_dyeing")) {
+            requireFile(DATA.resolve("recipe/" + recipe + ".json"), missing);
+        }
+        Path tag = DATA.resolve("tags/item/headlamp_mounts.json");
+        requireFile(tag, missing);
+        if (Files.isRegularFile(tag)) {
+            String mounts = Files.readString(tag);
+            for (String headgear : List.of("create:goggles", "create:copper_diving_helmet", "create:netherite_diving_helmet")) {
+                if (!mounts.contains("\"" + headgear + "\"")) {
+                    missing.add(headgear + " in " + tag);
+                }
+            }
+        }
+        for (String key : List.of("lightworks.headlamp.fitted", "lightworks.headlamp.on", "lightworks.headlamp.off",
+                "lightworks.headlamp.key_hint", "key.lightworks.headlamp", "key.categories.lightworks")) {
+            requireKey(lang, key, missing);
+        }
+        for (String part : List.of("body", "lens", "lens_core")) {
+            requireFile(Path.of("src/main/resources/assets/lightworks/models/block/headlamp/" + part + ".json"), missing);
+        }
+        assertTrue(missing.isEmpty(), "missing: " + missing);
+    }
+
+    /**
+     * Every Engineer's Goggles line and hint named in the code has its text: a label and a value for each line, a text for
+     * each hint (keys named as string literals, ternaries included).
+     */
+    @Test
+    void everyGoggleLineAndHintHasText() throws IOException {
+        String lang = Files.readString(ASSETS.resolve("lang/en_us.json"));
+        Pattern line = Pattern.compile("\\bline\\(tooltip, \"([a-z_]+)\"");
+        Pattern hint = Pattern.compile("\\bhint\\(tooltip, ([^;]*)");
+        Pattern literal = Pattern.compile("\"([a-z_]+)\"");
+        List<String> missing = new ArrayList<>();
+        int found = 0;
+        try (Stream<Path> files = Files.walk(Path.of("src/main/java"))) {
+            for (Path file : files.filter(f -> f.toString().endsWith(".java")).toList()) {
+                String source = Files.readString(file);
+                var lines = line.matcher(source);
+                while (lines.find()) {
+                    found++;
+                    requireKey(lang, "lightworks.goggles." + lines.group(1) + ".label", missing);
+                    requireKey(lang, "lightworks.goggles." + lines.group(1), missing);
+                }
+                var hints = hint.matcher(source);
+                while (hints.find()) {
+                    var names = literal.matcher(hints.group(1));
+                    while (names.find()) {
+                        found++;
+                        requireKey(lang, "lightworks.goggles.hint." + names.group(1), missing);
+                    }
+                }
+            }
+        }
+        assertTrue(found >= 10, "expected goggle lines and hints in the code, found " + found);
+        assertTrue(missing.isEmpty(), "missing: " + missing);
+    }
+
     private static List<String> blocks() throws IOException {
         try (Stream<Path> files = Files.list(ASSETS.resolve("blockstates"))) {
             return files.map(file -> file.getFileName().toString().replace(".json", ""))
