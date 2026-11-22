@@ -7,6 +7,8 @@ import com.goldskinmc.lightworks.content.directional.DirectionalLightBlock;
 import com.goldskinmc.lightworks.content.directional.DirectionalLightBlockEntity;
 import com.goldskinmc.lightworks.content.sensor.BeamSensorBlock;
 import com.goldskinmc.lightworks.content.sensor.BeamSensorBlockEntity;
+import com.goldskinmc.lightworks.host.BeamPose;
+import com.goldskinmc.lightworks.light.BeamSensors;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -133,6 +135,33 @@ public final class BeamSensorGameTests {
         helper.succeedWhen(() -> {
             CarriedSensing.shine(player, LightType.FLASHLIGHT, null);
             helper.assertTrue(power(helper) > 0, "no signal from a Flashlight pointed at the lens");
+        });
+    }
+
+    /**
+     * A beam turning fast sweeps past the sensor between two ticks, pointing 15 degrees to one side of it, then 15 to the
+     * other: the arc between is checked, so the sensor lights (a beacon at 128 RPM was caught half the time, Nov 22).
+     */
+    @GameTest(template = EMPTY, timeoutTicks = 100)
+    public static void aBeamSweepingPastBetweenTicksIsSensed(GameTestHelper helper) {
+        sensor(helper, Direction.WEST, null);
+        Object light = new Object();
+        Vec3 origin = Vec3.atCenterOf(helper.absolutePos(LIGHT));
+        long[] start = new long[1];
+        helper.runAfterDelay(5, () -> start[0] = helper.getLevel().getGameTime());
+        helper.onEachTick(() -> {
+            long tick = helper.getLevel().getGameTime() - start[0];
+            if (start[0] == 0 || tick < 1 || tick > 2) {
+                return;
+            }
+            double yaw = Math.toRadians(tick == 1 ? 15 : -15);
+            Vec3 direction = new Vec3(Math.cos(yaw), 0, Math.sin(yaw));
+            BeamSensors.shine(helper.getLevel(), light, new BeamPose(origin, direction, true),
+                    LightType.SEARCHLIGHT.beam(), LightType.SEARCHLIGHT.lensHalf(), 15, null);
+        });
+        helper.runAfterDelay(9, () -> {
+            helper.assertTrue(power(helper) > 0, "a beam sweeping past between two ticks was not sensed");
+            helper.succeed();
         });
     }
 }

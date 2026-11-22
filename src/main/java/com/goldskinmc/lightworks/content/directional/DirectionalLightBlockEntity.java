@@ -342,7 +342,7 @@ public class DirectionalLightBlockEntity extends SmartBlockEntity
                 || beam.moving() != tracedMoving || tint != tracedTint;
         // Beam Sensors in reach are told every tick, still or moving (one check each, and none without a sensor)
         if (!level.isClientSide && brightness > 0 && BeamSensors.anyWithin(level, beam.origin(), BeamTrace.range(shape))) {
-            BeamSensors.shine(level, beam, shape, type.lensHalf(), brightness, lightState().colour());
+            BeamSensors.shine(level, this, beam, shape, type.lensHalf(), brightness, lightState().colour());
         }
         // On a vehicle the beam moves every tick; a fixed one is re-traced when it changes or periodically
         if (!beam.moving() && !retraceDue && !changed) {

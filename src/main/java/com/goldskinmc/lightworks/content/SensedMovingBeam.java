@@ -47,6 +47,6 @@ public final class SensedMovingBeam {
                 || !BeamSensors.anyWithin(context.world, pose.origin(), BeamTrace.range(shape))) {
             return;
         }
-        BeamSensors.shine(context.world, pose, shape, type.lensHalf(), state.brightness(), state.colour());
+        BeamSensors.shine(context.world, this, pose, shape, type.lensHalf(), state.brightness(), state.colour());
     }
 }

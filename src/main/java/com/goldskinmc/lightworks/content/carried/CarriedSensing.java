@@ -49,6 +49,14 @@ public final class CarriedSensing {
         }
     }
 
+    /** One key per player and lamp (a Flashlight and a headlamp sweep apart), kept while the player is. */
+    private static final java.util.Map<Player, Object[]> KEYS = new java.util.WeakHashMap<>();
+
+    private static Object key(Player player, LightType type) {
+        Object[] keys = KEYS.computeIfAbsent(player, p -> new Object[] {new Object(), new Object()});
+        return keys[type == LightType.HEADLAMP ? 1 : 0];
+    }
+
     /** Tells sensors in reach of a lamp carried by {@code player} where its beam is. */
     public static void shine(Player player, LightType type, @Nullable DyeColor colour) {
         ConeFalloff shape = Objects.requireNonNull(type.beam());
@@ -57,6 +65,7 @@ public final class CarriedSensing {
         if (!BeamSensors.anyWithin(player.level(), origin, BeamTrace.range(shape))) {
             return;
         }
-        BeamSensors.shine(player.level(), new BeamPose(origin, look, true), shape, type.lensHalf(), 15, colour);
+        BeamSensors.shine(player.level(), key(player, type), new BeamPose(origin, look, true), shape, type.lensHalf(), 15,
+                colour);
     }
 }

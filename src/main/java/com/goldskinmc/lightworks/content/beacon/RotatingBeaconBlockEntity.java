@@ -305,7 +305,7 @@ public class RotatingBeaconBlockEntity extends KineticBlockEntity implements Bea
                     || beam.moving() != tracedMoving || tint != tracedTint;
             if (!level.isClientSide && brightness > 0
                     && BeamSensors.anyWithin(level, beam.origin(), BeamTrace.range(shape))) {
-                BeamSensors.shine(level, beam, shape, type.lensHalf(), brightness, state.colour());
+                BeamSensors.shine(level, this, beam, shape, type.lensHalf(), brightness, state.colour());
             }
             if (!beam.moving() && !retraceDue && !changed) {
                 return;

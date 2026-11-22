@@ -107,21 +107,56 @@ public final class BeamSensors {
         return false;
     }
 
+    /** Where each light pointed the tick before, to sweep the arc between (server thread only). */
+    private record Last(Vec3 direction, long tick) {
+    }
+
+    private static final Map<Object, Last> LAST = new WeakHashMap<>();
+    /** A sweep is checked in at most this many directions a tick. */
+    private static final int MAX_SWEEP_STEPS = 12;
+
     /**
      * A beam shining this tick (server): every sensor in its reach whose lens it lights, turned towards it, with nothing
-     * between, of the sensor's colour, keeps its signal if it is the strongest so far.
+     * between, of the sensor's colour, keeps its signal if it is the strongest so far. A light that turned since the last
+     * tick is checked along the whole arc it swept, in steps no wider than its beam: a beacon turning fast swept past a
+     * sensor between two ticks and was never seen (at 0.3 degrees a tick per RPM, 38 degrees a tick at 128 RPM).
      *
+     * @param source     the light, the same object every tick (its block entity, its moving beam, the player carrying it),
+     *                   so the sweep since its last tick is known; null to check only where it points now
      * @param brightness the light's brightness, 0 to 15
      * @param colour     the light's dye, or null for an undyed (white) light
      */
-    public static void shine(Level level, BeamPose beam, ConeFalloff shape, double lensHalf, int brightness,
-            @Nullable DyeColor colour) {
+    public static void shine(Level level, @Nullable Object source, BeamPose beam, ConeFalloff shape, double lensHalf,
+            int brightness, @Nullable DyeColor colour) {
+        Vec3 axis = beam.direction().normalize();
+        Vec3 from = null;
+        if (source != null) {
+            long now = level.getGameTime();
+            Last last = LAST.get(source);
+            if (last != null && last.tick() == now - 1) {
+                from = last.direction();
+            }
+            LAST.put(source, new Last(axis, now));
+        }
+        int steps = 1;
+        if (from != null) {
+            double angle = Math.acos(Math.max(-1, Math.min(1, from.dot(axis))));
+            steps = (int) Math.max(1, Math.min(MAX_SWEEP_STEPS, Math.ceil(angle / BeamTrace.visibleHalfAngle(shape))));
+        }
+        for (int k = 0; k < steps; k++) {
+            // k = 0 is where it points now, then back along the arc towards where it pointed a tick ago
+            double back = k / (double) steps;
+            Vec3 direction = k == 0 ? axis : axis.scale(1 - back).add(from.scale(back)).normalize();
+            shineAlong(level, beam.origin(), direction, shape, lensHalf, brightness, colour);
+        }
+    }
+
+    private static void shineAlong(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf,
+            int brightness, @Nullable DyeColor colour) {
         Map<BlockPos, Sensor> sensors = SENSORS.get(level);
         if (sensors == null || sensors.isEmpty() || brightness <= 0) {
             return;
         }
-        Vec3 origin = beam.origin();
-        Vec3 axis = beam.direction().normalize();
         double range = BeamTrace.range(shape);
         for (Sensor sensor : sensors.values()) {
             // Undyed, any beam; dyed, only beams of its dye (an undyed beam is white, no dye's colour)
