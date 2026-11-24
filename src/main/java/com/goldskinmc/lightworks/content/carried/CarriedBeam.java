@@ -102,6 +102,7 @@ public final class CarriedBeam implements BeamSource {
         }
         this.colour = colour;
         lastPose = pose(1);
+        beam.setOwn(player == Minecraft.getInstance().player);
         beam.update(player.level(), lastPose, lastPose, 15, colour == null ? -1 : rgb());
     }
 

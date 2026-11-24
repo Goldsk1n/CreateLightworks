@@ -112,6 +112,9 @@ public final class ClientBeam {
     private int layersRgb = -1;
     private int layersBrightness;
     private boolean layersShown;
+    /** The local player's own carried lamp: finds its faces every tick, outside the turns other moving lights take. */
+    private boolean own;
+
     /** A beam found too big for the limit tries again at this game time. */
     private long retryAt;
     /** Moved since its lit faces were last found, waiting for its turn. */
@@ -603,7 +606,13 @@ public final class ClientBeam {
         }
         long tick = level.getGameTime();
         boolean sample = false;
-        if (at.moving()) {
+        if (at.moving() && own) {
+            // The player's own lamp takes no turns: it is what they look at, and beside busy moving lights its colour
+            // came on late or not at all (owner, Nov 24; headlamp-busy)
+            if (tick < retryAt) {
+                return;
+            }
+        } else if (at.moving()) {
             // Found again between ticks: outside the turns lights take, which are counted once a tick
             boolean turn = refinding || layersTurn(tick);
             if (layersOff) {
@@ -996,6 +1005,11 @@ public final class ClientBeam {
     }
 
     /** A dyed light's colour at the last update, 0xRRGGBB; -1 for an undyed light. */
+    /** Marks this the local player's own carried lamp ({@link #own}). */
+    public void setOwn(boolean own) {
+        this.own = own;
+    }
+
     public int tintRgb() {
         return tintRgb;
     }
