@@ -355,13 +355,15 @@ public final class ClientBeam {
         if (moving && next != null && hit.hitBlock() && !edgeLandings.isEmpty() && !(spot instanceof ClientLightSpot)) {
             // On terraced ground the centre ray jumps from step to step as the light moves, and its light jumped with it
             // (the ship clip's dip, since 1.0.0): the light goes to the middle of every ray's landing, weighted by its light
+            // and by how near it lands to the centre's depth: down a hall, the lower rays' floor pulled it off the wall
             // Its strength too: from the centre's distance alone, a tick where the centre ray slipped past a step and
             // landed further back weakened the whole light, and the lit patch dipped for that tick (ship clip, Nov 21)
             double weight = lit.light();
             double distance = lit.light() * lit.hit().distance();
             for (BeamTrace.Landing edge : edgeLandings) {
-                weight += edge.light();
-                distance += edge.light() * edge.hit().distance();
+                double w = BeamTrace.weight(lit, edge);
+                weight += w;
+                distance += w * edge.hit().distance();
             }
             double peak = weight > 0 ? shape.onAxis(distance / weight) : lit.light();
             BeamSpot middle = BeamTrace.middleSpot(lit, edgeLandings, peak * brightness / 15.0);

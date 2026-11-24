@@ -28,6 +28,25 @@ public record BeamSpot(double spotX, double spotY, double spotZ,
      */
     public static final double BEHIND_FACE = 1.0;
 
+    /** A landing this close in depth to the centre ray's counts fully towards a moving light's middle... */
+    public static final double NEAR_DEPTH = 2.0;
+    /** ...and this far off not at all. */
+    public static final double FAR_DEPTH = 4.0;
+
+    /**
+     * How much a ray's landing counts towards a moving light's middle, by how far its depth along the beam lies from the
+     * centre ray's: fully within {@link #NEAR_DEPTH}, fading to nothing at {@link #FAR_DEPTH}. Neighbouring steps of
+     * terraced ground stay in; a floor the lower rays meet well before a wall does not, or it pulled the light off the
+     * wall the beam points at (a Flashlight down a hall, QC Nov 24). Faded, not cut, so no landing jumps in or out.
+     */
+    public static double depthWeight(double centreDepth, double depth) {
+        double off = Math.abs(depth - centreDepth);
+        if (off <= NEAR_DEPTH) {
+            return 1;
+        }
+        return off >= FAR_DEPTH ? 0 : (FAR_DEPTH - off) / (FAR_DEPTH - NEAR_DEPTH);
+    }
+
     /** A spot whose struck face is not known: dark beyond a plane square to the beam. */
     public BeamSpot(double spotX, double spotY, double spotZ, double surfaceX, double surfaceY, double surfaceZ,
             double dirX, double dirY, double dirZ, double peak) {

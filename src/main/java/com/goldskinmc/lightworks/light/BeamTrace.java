@@ -77,7 +77,8 @@ public final class BeamTrace {
      * A moving light's spot at the middle of where its rays landed, each weighted by its light: the centre's landing and
      * its corner and edge rays'. It drifts across terraced ground as the light moves, where the centre's landing alone
      * jumped from step to step. The struck faces' normals are averaged the same way (any unknown, and the spot is cut by
-     * a plane square to the beam, as {@link #spotFor} does without one), and the cut lies at the deepest landing. Null when nothing has any light.
+     * a plane square to the beam, as {@link #spotFor} does without one), and the cut lies at the deepest landing. Each
+     * landing counts by its light and by how near its depth is to the centre's ({@link #weight}). Null when nothing has any light.
      */
     public static @Nullable BeamSpot middleSpot(Landing centre, List<Landing> edges, double peak) {
         if (peak <= 0) {
@@ -90,7 +91,7 @@ public final class BeamTrace {
         all.add(centre);
         all.addAll(edges);
         for (Landing landing : all) {
-            double w = landing.light();
+            double w = weight(centre, landing);
             if (w <= 0 || !landing.hit().hitBlock()) {
                 continue;
             }
@@ -123,13 +124,27 @@ public final class BeamTrace {
         Vec3 cut = normal == Vec3.ZERO ? dir.scale(-1) : normal;
         Vec3 deepest = null;
         for (Landing landing : all) {
-            if (landing.light() > 0 && landing.hit().hitBlock()
+            if (weight(centre, landing) > 0 && landing.hit().hitBlock()
                     && (deepest == null || landing.hit().end().dot(cut) < deepest.dot(cut))) {
                 deepest = landing.hit().end();
             }
         }
         return new BeamSpot(sx / total, sy / total, sz / total, deepest.x, deepest.y, deepest.z,
                 dir.x, dir.y, dir.z, peak, normal.x, normal.y, normal.z);
+    }
+
+    /**
+     * How much a landing counts towards a moving light's middle: its light, faded by how far its depth along the beam lies
+     * from the centre landing's ({@link BeamSpot#depthWeight}). The centre's own counts by its light alone. From the
+     * centre's depth, not the landings' weighted middle depth: that left the hall's floor in, and the ship clip's patch
+     * dipped more often (Nov 24).
+     */
+    public static double weight(Landing centre, Landing landing) {
+        if (landing == centre) {
+            return landing.light();
+        }
+        double depth = landing.hit().distance() * landing.direction().normalize().dot(centre.direction().normalize());
+        return landing.light() * BeamSpot.depthWeight(centre.hit().distance(), depth);
     }
 
     /** How far a beam of this shape reaches: its own range, capped by the server's {@code maxBeamRange}. */

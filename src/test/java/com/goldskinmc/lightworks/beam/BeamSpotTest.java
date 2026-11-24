@@ -16,6 +16,18 @@ class BeamSpotTest {
     private final BeamSpot spot = new BeamSpot(9.5, 64.5, 0.5, 10, 64.5, 0.5, 1, 0, 0, 15);
 
     @Test
+    void landingsNearTheCentresDepthCountFullyAndFarOnesNot() {
+        assertEquals(1, BeamSpot.depthWeight(12, 12), EPS);
+        assertEquals(1, BeamSpot.depthWeight(12, 10), EPS);
+        assertEquals(1, BeamSpot.depthWeight(12, 14), EPS);
+        assertEquals(0.5, BeamSpot.depthWeight(12, 9), EPS);
+        assertEquals(0.5, BeamSpot.depthWeight(12, 15), EPS);
+        assertEquals(0, BeamSpot.depthWeight(12, 8), EPS);
+        // A floor the lower rays meet well before the wall
+        assertEquals(0, BeamSpot.depthWeight(14, 6), EPS);
+    }
+
+    @Test
     void brightestAtTheSpotCentre() {
         assertEquals(15, spot.lightAt(9.5, 64.5, 0.5, LDL_RATIO), EPS);
     }
