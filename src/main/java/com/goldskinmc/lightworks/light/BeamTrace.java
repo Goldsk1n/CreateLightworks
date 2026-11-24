@@ -124,7 +124,9 @@ public final class BeamTrace {
         Vec3 cut = normal == Vec3.ZERO ? dir.scale(-1) : normal;
         Vec3 deepest = null;
         for (Landing landing : all) {
-            if (weight(centre, landing) > 0 && landing.hit().hitBlock()
+            // Every lit landing, not only those near the centre's depth: cut at the centre's, the wall behind a block the
+            // beam pointed at went dark round it (owner, Nov 24)
+            if (landing.light() > 0 && landing.hit().hitBlock()
                     && (deepest == null || landing.hit().end().dot(cut) < deepest.dot(cut))) {
                 deepest = landing.hit().end();
             }
