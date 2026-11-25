@@ -151,6 +151,14 @@ public final class ClientBeam {
      */
     private Vec3 middleOffset = Vec3.ZERO;
     /**
+     * With {@link #middleOffset}: how far the tick's middle cut its light (at its deepest landing) lay from the centre
+     * landing, and the middle's struck-face normal. The frames keep them: moved with the middle, the cut came forward
+     * with it, and a headlamp aimed low down a tunnel left the wall it pointed at dark, the floor having pulled the
+     * middle 1.6 blocks back from it (owner, Nov 25; handheld-seam).
+     */
+    private Vec3 cutOffset = Vec3.ZERO;
+    private Vec3 middleNormal = Vec3.ZERO;
+    /**
      * A moving light's handoff: when its light moves, a second light stays where it was for {@value #HANDOFF_TICKS} tick.
      * Minecraft re-meshes the chunk sections round a moved light one by one, and the sections under the old and the new
      * place came up a frame apart: for that frame a lit patch spanning them had neither light, and dipped (the ship
@@ -341,7 +349,10 @@ public final class ClientBeam {
         }
         BeamSpot next = BeamTrace.spotFor(hit, at.direction(), shape.onAxis(hit.distance()) * brightness / 15.0);
         if (next != null && middleOffset != Vec3.ZERO) {
-            next = next.shifted(middleOffset.x, middleOffset.y, middleOffset.z);
+            // The light where the tick's middle put it, cut where the tick's middle cut it, both carried with the beam
+            next = new BeamSpot(next.spotX() + middleOffset.x, next.spotY() + middleOffset.y, next.spotZ() + middleOffset.z,
+                    next.surfaceX() + cutOffset.x, next.surfaceY() + cutOffset.y, next.surfaceZ() + cutOffset.z,
+                    next.dirX(), next.dirY(), next.dirZ(), next.peak(), middleNormal.x, middleNormal.y, middleNormal.z);
         }
         if (worthPublishing(lastSpot, next)) {
             lastSpot = next;
@@ -421,6 +432,9 @@ public final class ClientBeam {
             if (middle != null) {
                 middleOffset = new Vec3(middle.spotX() - next.spotX(), middle.spotY() - next.spotY(),
                         middle.spotZ() - next.spotZ());
+                cutOffset = new Vec3(middle.surfaceX() - next.surfaceX(), middle.surfaceY() - next.surfaceY(),
+                        middle.surfaceZ() - next.surfaceZ());
+                middleNormal = new Vec3(middle.normalX(), middle.normalY(), middle.normalZ());
                 next = middle;
             }
         }
