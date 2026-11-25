@@ -81,6 +81,11 @@ public final class BeamTrace {
      * landing counts by its light and by how near its depth is to the centre's ({@link #weight}). Null when nothing has any light.
      */
     public static @Nullable BeamSpot middleSpot(Landing centre, List<Landing> edges, double peak) {
+        return middleSpot(centre, edges, peak, 0);
+    }
+
+    /** As above, each landing counting at least {@code relax} of its light whatever its depth ({@link #weight}). */
+    public static @Nullable BeamSpot middleSpot(Landing centre, List<Landing> edges, double peak, double relax) {
         if (peak <= 0) {
             return null;
         }
@@ -91,7 +96,7 @@ public final class BeamTrace {
         all.add(centre);
         all.addAll(edges);
         for (Landing landing : all) {
-            double w = weight(centre, landing);
+            double w = weight(centre, landing, relax);
             if (w <= 0 || !landing.hit().hitBlock()) {
                 continue;
             }
@@ -142,11 +147,22 @@ public final class BeamTrace {
      * dipped more often (Nov 24).
      */
     public static double weight(Landing centre, Landing landing) {
+        return weight(centre, landing, 0);
+    }
+
+    /**
+     * As above, a landing counting at least {@code relax} (0 to 1) of its light whatever its depth: a carried lamp's, as
+     * its centre's own landing dims with distance, so the light slides toward the nearer, brighter landings rather than
+     * leaping to them once the centre lands nowhere (owner, Nov 25; handheld-tilt).
+     */
+    public static double weight(Landing centre, Landing landing, double relax) {
         if (landing == centre) {
-            return landing.light();
+            // The centre itself counts for less as it dims: at a grazing tilt its landing leaves the beam's reach in one
+            // tick, and all it still counted for went with it (6 blocks, handheld-tilt)
+            return landing.light() * (1 - relax);
         }
         double depth = landing.hit().distance() * landing.direction().normalize().dot(centre.direction().normalize());
-        return landing.light() * BeamSpot.depthWeight(centre.hit().distance(), depth);
+        return landing.light() * Math.max(relax, BeamSpot.depthWeight(centre.hit().distance(), depth));
     }
 
     /** How far a beam of this shape reaches: its own range, capped by the server's {@code maxBeamRange}. */

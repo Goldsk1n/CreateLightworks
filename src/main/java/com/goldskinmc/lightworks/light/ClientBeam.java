@@ -158,6 +158,8 @@ public final class ClientBeam {
      */
     private Vec3 cutOffset = Vec3.ZERO;
     private Vec3 middleNormal = Vec3.ZERO;
+    /** The tick's middle's strength, kept for the frames as its place and cut are. */
+    private double middlePeak;
     /**
      * A moving light's handoff: when its light moves, a second light stays where it was for {@value #HANDOFF_TICKS} tick.
      * Minecraft re-meshes the chunk sections round a moved light one by one, and the sections under the old and the new
@@ -352,7 +354,7 @@ public final class ClientBeam {
             // The light where the tick's middle put it, cut where the tick's middle cut it, both carried with the beam
             next = new BeamSpot(next.spotX() + middleOffset.x, next.spotY() + middleOffset.y, next.spotZ() + middleOffset.z,
                     next.surfaceX() + cutOffset.x, next.surfaceY() + cutOffset.y, next.surfaceZ() + cutOffset.z,
-                    next.dirX(), next.dirY(), next.dirZ(), next.peak(), middleNormal.x, middleNormal.y, middleNormal.z);
+                    next.dirX(), next.dirY(), next.dirZ(), middlePeak, middleNormal.x, middleNormal.y, middleNormal.z);
         }
         if (worthPublishing(lastSpot, next)) {
             lastSpot = next;
@@ -420,22 +422,46 @@ public final class ClientBeam {
             // and by how near it lands to the centre's depth: down a hall, the lower rays' floor pulled it off the wall
             // Its strength too: from the centre's distance alone, a tick where the centre ray slipped past a step and
             // landed further back weakened the whole light, and the lit patch dipped for that tick (ship clip, Nov 21)
-            double weight = lit.light();
-            double distance = lit.light() * lit.hit().distance();
+            // A carried lamp's centre dims toward the end of its reach, and the nearer rays, landing in full light, count
+            // more and more: at a grazing tilt the light jumped from the dim far end back to them once the centre landed
+            // nowhere (owner, Nov 25; handheld-tilt). Placed and vehicle lights as before
+            double relax = spotEveryFrame ? Math.max(0, Math.min(1, 1 - lit.light() / 15.0)) : 0;
+            double weight = BeamTrace.weight(lit, lit, relax);
+            double distance = weight * lit.hit().distance();
             for (BeamTrace.Landing edge : edgeLandings) {
-                double w = BeamTrace.weight(lit, edge);
+                double w = BeamTrace.weight(lit, edge, relax);
                 weight += w;
                 distance += w * edge.hit().distance();
             }
             double peak = weight > 0 ? shape.onAxis(distance / weight) : lit.light();
-            BeamSpot middle = BeamTrace.middleSpot(lit, edgeLandings, peak * brightness / 15.0);
+            BeamSpot middle = BeamTrace.middleSpot(lit, edgeLandings, peak * brightness / 15.0, relax);
             if (middle != null) {
                 middleOffset = new Vec3(middle.spotX() - next.spotX(), middle.spotY() - next.spotY(),
                         middle.spotZ() - next.spotZ());
                 cutOffset = new Vec3(middle.surfaceX() - next.surfaceX(), middle.surfaceY() - next.surfaceY(),
                         middle.surfaceZ() - next.surfaceZ());
                 middleNormal = new Vec3(middle.normalX(), middle.normalY(), middle.normalZ());
+                middlePeak = middle.peak();
                 next = middle;
+            }
+        } else if (spotEveryFrame && moving && !hit.hitBlock() && !edgeLandings.isEmpty()
+                && !(spot instanceof ClientLightSpot)) {
+            // A carried lamp whose centre lands nowhere: the middle of its landed rays by their light, as the centre's
+            // own light left it, not one ray picked from them; a ray nearing the end of its reach counts for little, so
+            // none drops out with a jump
+            BeamTrace.Landing first = edgeLandings.get(0);
+            double weight = 0;
+            double distance = 0;
+            for (BeamTrace.Landing edge : edgeLandings) {
+                weight += edge.light();
+                distance += edge.light() * edge.hit().distance();
+            }
+            if (weight > 0) {
+                BeamSpot middle = BeamTrace.middleSpot(first, edgeLandings.subList(1, edgeLandings.size()),
+                        shape.onAxis(distance / weight) * brightness / 15.0, 1);
+                if (middle != null) {
+                    next = middle;
+                }
             }
         }
         this.brightness = brightness;
