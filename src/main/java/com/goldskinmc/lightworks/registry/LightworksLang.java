@@ -57,7 +57,9 @@ public final class LightworksLang {
         add("lightworks.headlamp.fitted", "Headlamp fitted, %s");
         add("lightworks.headlamp.on", "on");
         add("lightworks.headlamp.off", "off");
-        add("lightworks.headlamp.key_hint", "Press %s to switch it on or off");
+        // Hints: dark grey with the word to act on in light grey, as Create's "Hold [Shift]" (owner, Nov 25)
+        add("lightworks.headlamp.key_hint", "Press [%s] to switch it on or off");
+        add("lightworks.headlamp.fit_hint", "Craft with a %s to fit a headlamp");
         add("key.lightworks.headlamp", "Switch headlamp on or off");
         add("key.categories.lightworks", "Create: Lightworks");
         add("lightworks.clipboard.needs_dye", "Needs %s to paste the colour");

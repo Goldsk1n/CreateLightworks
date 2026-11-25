@@ -11,7 +11,10 @@ import com.goldskinmc.lightworks.content.sensor.BeamSensorBlockEntity;
 import com.goldskinmc.lightworks.content.signal.EdgeLightBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
 import com.goldskinmc.lightworks.content.signal.WarningPattern;
+import com.goldskinmc.lightworks.content.carried.Headlamps;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
+import com.goldskinmc.lightworks.registry.LightworksComponents;
+import com.goldskinmc.lightworks.registry.LightworksItems;
 import com.simibubi.create.AllItems;
 import com.simibubi.create.content.redstone.analogLever.AnalogLeverBlockEntity;
 import com.simibubi.create.foundation.ponder.CreateSceneBuilder;
@@ -37,6 +40,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.RedstoneLampBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -66,6 +71,7 @@ final class LightworksScenes {
                 .addStoryBoard("edge_light", LightworksScenes::edgeLight, LIGHTS);
         scenes.forComponents(LightworksBlocks.BEAM_SENSOR)
                 .addStoryBoard("beam_sensor", LightworksScenes::beamSensor, LIGHTS);
+        scenes.forComponents(LightworksItems.FLASHLIGHT).addStoryBoard("flashlight", LightworksScenes::flashlight, LIGHTS);
     }
 
     static void registerTags(PonderTagRegistrationHelper<ResourceLocation> helper) {
@@ -85,7 +91,8 @@ final class LightworksScenes {
                 .add(LightworksBlocks.HEADLIGHT)
                 .add(LightworksBlocks.TAIL_LIGHT)
                 .add(LightworksBlocks.EDGE_LIGHT)
-                .add(LightworksBlocks.BEAM_SENSOR);
+                .add(LightworksBlocks.BEAM_SENSOR)
+                .add(LightworksItems.FLASHLIGHT);
         tags.addToTag(AllCreatePonderTags.KINETIC_APPLIANCES)
                 .add(LightworksBlocks.PAN_TILT_HEAD)
                 .add(LightworksBlocks.ROTATING_BEACON);
@@ -548,6 +555,66 @@ final class LightworksScenes {
      * The Beam Sensor: a Searchlight on its lens gives a signal, a dye makes it sense only that colour. Ponder worlds have
      * no redstone and no server to sense with, so the scene sets the sensor's signal and the lamp's light itself.
      */
+    /**
+     * The Flashlight and the headlamp it becomes (owner, Nov 25: players learned of the headlamp from the Flashlight's
+     * tooltip alone). Ponder has no player to hold it, so the items lie on the plate and the controls show what to do.
+     */
+    static void flashlight(SceneBuilder builder, SceneBuildingUtil util) {
+        CreateSceneBuilder scene = new CreateSceneBuilder(builder);
+        scene.title("flashlight", "Carrying light with the Flashlight");
+        scene.configureBasePlate(0, 0, Layouts.Flashlight.SIZE);
+        // A small plate seen close: the items are what this scene shows
+        scene.scaleSceneView(1.6f);
+        scene.showBasePlate();
+        scene.idle(10);
+        Vec3 spot = util.vector().topOf(Layouts.Flashlight.ITEM.below()).add(0, 0.1, 0);
+        Vec3 above = spot.add(0, 0.6, 0);
+        ItemStack lamp = LightworksItems.FLASHLIGHT.asStack();
+        scene.world().createItemEntity(spot, Vec3.ZERO, lamp);
+        scene.idle(15);
+
+        scene.overlay().showText(60).attachKeyFrame().text("The Flashlight is a lamp you carry")
+                .placeNearTarget().pointAt(above);
+        scene.idle(70);
+        scene.overlay().showControls(above, Pointing.DOWN, 60).rightClick().withItem(lamp);
+        scene.overlay().showText(70).text("Right-click to switch it on or off, in either hand")
+                .placeNearTarget().pointAt(above);
+        scene.idle(80);
+
+        scene.overlay().showControls(above, Pointing.DOWN, 50).withItem(new ItemStack(Items.LIME_DYE));
+        scene.overlay().showText(60).attachKeyFrame().text("Crafted with a dye, its beam takes that colour")
+                .placeNearTarget().pointAt(above);
+        scene.idle(70);
+        scene.overlay().showControls(above, Pointing.DOWN, 50).withItem(new ItemStack(Items.WATER_BUCKET));
+        scene.overlay().showText(70).text("A water cauldron or a fan through water washes it off")
+                .placeNearTarget().pointAt(above);
+        scene.idle(80);
+
+        scene.world().modifyEntities(ItemEntity.class, Entity::discard);
+        ItemStack goggles = AllItems.GOGGLES.asStack();
+        scene.world().createItemEntity(spot, Vec3.ZERO, goggles);
+        scene.idle(15);
+        scene.overlay().showControls(above, Pointing.DOWN, 60).withItem(lamp);
+        scene.overlay().showText(70).attachKeyFrame()
+                .text("Crafted with Engineer's Goggles or a Diving Helmet, it becomes a headlamp")
+                .placeNearTarget().pointAt(above);
+        scene.idle(80);
+        scene.world().modifyEntities(ItemEntity.class, Entity::discard);
+        ItemStack worn = Headlamps.fit(goggles, lamp);
+        worn.set(LightworksComponents.LAMP_ON.get(), true);
+        scene.world().createItemEntity(spot, Vec3.ZERO, worn);
+        scene.idle(10);
+        scene.overlay().showText(60).text("Worn, it lights where you look, hands free")
+                .placeNearTarget().pointAt(above);
+        scene.idle(70);
+        scene.overlay().showText(60).text("Press H to switch the headlamp on or off")
+                .placeNearTarget().pointAt(above);
+        scene.idle(70);
+        scene.overlay().showText(60).attachKeyFrame().text("Craft the headgear alone to take the Flashlight back")
+                .placeNearTarget().pointAt(above);
+        scene.idle(70);
+    }
+
     static void beamSensor(SceneBuilder builder, SceneBuildingUtil util) {
         CreateSceneBuilder scene = new CreateSceneBuilder(builder);
         scene.title("beam_sensor", "Sensing beams with the Beam Sensor");

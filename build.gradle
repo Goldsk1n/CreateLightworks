@@ -176,6 +176,9 @@ dependencies {
         attributes { attribute(mappingsAttribute, 'mojmap') }
     }
     compileOnly("maven.modrinth:sodium-dynamic-lights:${sodium_dynamic_lights_version}") { transitive = false }
+    // JEI (optional): its plugin API for compat/jei, which shows the headlamp and dye recipes; the same pinned jar
+    // -Pdev_tools runs load
+    compileOnly("maven.modrinth:jei:${jei_version}") { transitive = false }
 
     // Sable Companion: bundled with an open range; returns safe defaults when Sable is absent
     jarJar("dev.ryanhcode.sable-companion:sable-companion-common-${minecraft_version}") {

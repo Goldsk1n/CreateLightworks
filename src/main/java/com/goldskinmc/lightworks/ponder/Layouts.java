@@ -85,6 +85,12 @@ final class Layouts {
         static final BlockPos WALL_TO = new BlockPos(6, 3, 4);
     }
 
+    /** The Flashlight's scene: items on a bare plate. */
+    static final class Flashlight {
+        static final int SIZE = 3;
+        static final BlockPos ITEM = new BlockPos(1, 1, 1);
+    }
+
     private Layouts() {
     }
 }
