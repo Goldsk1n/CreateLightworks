@@ -21,6 +21,14 @@ public final class BeamSensing {
     public static double light(double lensX, double lensY, double lensZ, double faceX, double faceY, double faceZ,
             double originX, double originY, double originZ, double axisX, double axisY, double axisZ,
             ConeFalloff shape, double lensHalf, double range) {
+        return light(lensX, lensY, lensZ, faceX, faceY, faceZ, originX, originY, originZ, axisX, axisY, axisZ, null,
+                shape, lensHalf, range);
+    }
+
+    /** As above, the square's side kept to {@code sideHint} ({@link BeamFrame#side(double, double, double, double[])}). */
+    public static double light(double lensX, double lensY, double lensZ, double faceX, double faceY, double faceZ,
+            double originX, double originY, double originZ, double axisX, double axisY, double axisZ, double[] sideHint,
+            ConeFalloff shape, double lensHalf, double range) {
         double dx = lensX - originX;
         double dy = lensY - originY;
         double dz = lensZ - originZ;
@@ -32,7 +40,7 @@ public final class BeamSensing {
         if ((dx * faceX + dy * faceY + dz * faceZ) / distance >= 0) {
             return 0;
         }
-        double[] u = BeamFrame.side(axisX, axisY, axisZ);
+        double[] u = BeamFrame.side(axisX, axisY, axisZ, sideHint);
         double[] v = BeamFrame.up(axisX, axisY, axisZ, u);
         return Math.max(0, shape.lightInBeam(dx, dy, dz, axisX, axisY, axisZ, u[0], u[1], u[2], v[0], v[1], v[2], lensHalf));
     }

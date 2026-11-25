@@ -65,7 +65,10 @@ public final class CarriedSensing {
         if (!BeamSensors.anyWithin(player.level(), origin, BeamTrace.range(shape))) {
             return;
         }
-        BeamSensors.shine(player.level(), key(player, type), new BeamPose(origin, look, true), shape, type.lensHalf(), 15,
-                colour);
+        // Its square keeps to the player's right, as the client's does (CarriedBeam)
+        double yaw = Math.toRadians(player.getViewYRot(1));
+        Vec3 right = new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw));
+        BeamSensors.shine(player.level(), key(player, type), new BeamPose(origin, look, true, right), shape,
+                type.lensHalf(), 15, colour);
     }
 }

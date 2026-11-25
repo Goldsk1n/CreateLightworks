@@ -266,7 +266,13 @@ public final class BeamTrace {
      */
     public static @Nullable Landing halfLanding(BlockGetter level, Vec3 origin, Vec3 axis, ConeFalloff shape,
             double lensHalf, double range) {
-        double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
+        return halfLanding(level, origin, axis, null, shape, lensHalf, range);
+    }
+
+    /** As above, the square's side kept to {@code sideHint} ({@link BeamFrame#side(double, double, double, double[])}). */
+    public static @Nullable Landing halfLanding(BlockGetter level, Vec3 origin, Vec3 axis, double @Nullable [] sideHint,
+            ConeFalloff shape, double lensHalf, double range) {
+        double[] u = BeamFrame.side(axis.x, axis.y, axis.z, sideHint);
         double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
         double spread = Math.tan(visibleHalfAngle(shape)) / 2;
         Landing furthest = null;

@@ -281,12 +281,13 @@ public final class ProjectedTint {
      * @param brightness 0 to 1
      * @param moving     a moving light, which finds its faces all the time and keeps to the smaller limits
      */
-    public void beam(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf, List<Vec3> ends,
-            Vec3 glowCentre, double glowRadius, int rgb, float brightness, boolean moving) {
+    public void beam(Level level, Vec3 origin, Vec3 axis, double @Nullable [] sideHint, ConeFalloff shape,
+            double lensHalf, List<Vec3> ends, Vec3 glowCentre, double glowRadius, int rgb, float brightness,
+            boolean moving) {
         int maxFaces = moving ? MAX_FACES_MOVING : MAX_FACES_FIXED;
         List<Region> regions = new ArrayList<>(1);
         List<Source> sources = new ArrayList<>(2);
-        Source beam = beamSource(origin, axis, shape, lensHalf + searchMargin(), moving);
+        Source beam = beamSource(origin, axis, sideHint, shape, lensHalf + searchMargin(), moving);
         sources.add(beam);
         if (glowRadius > 0.5) {
             double radius = Math.min(MAX_RADIUS, glowRadius);
@@ -296,7 +297,7 @@ public final class ProjectedTint {
         if (!project(level, litBlocks(level, ends, beam, maxFaces), regions, sources, maxFaces)) {
             faces = 0;
         }
-        relight(origin, axis, false);
+        relight(origin, axis, sideHint, false);
         show(level, inFrontOf(ends.get(0), origin), rgb, brightness * limitFade(maxFaces));
     }
 
@@ -334,12 +335,13 @@ public final class ProjectedTint {
      * @param glowCentre where that light would sit, just in front of the spot
      * @param glowRadius how far it would reach, in blocks
      */
-    public void spot(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf, List<Vec3> ends, int rgb,
-            float brightness, boolean moving, boolean standIn, Vec3 glowCentre, double glowRadius) {
+    public void spot(Level level, Vec3 origin, Vec3 axis, double @Nullable [] sideHint, ConeFalloff shape,
+            double lensHalf, List<Vec3> ends, int rgb, float brightness, boolean moving, boolean standIn, Vec3 glowCentre,
+            double glowRadius) {
         brightens = true;
         standsIn = standIn && (standsIn && ACTIVE.contains(this) || standIns() < MAX_STAND_INS);
         int maxFaces = moving ? MAX_FACES_MOVING : MAX_FACES_FIXED;
-        Source beam = beamSource(origin, axis, shape, lensHalf + searchMargin(), moving);
+        Source beam = beamSource(origin, axis, sideHint, shape, lensHalf + searchMargin(), moving);
         List<Region> regions = new ArrayList<>(1);
         List<Source> sources = new ArrayList<>(2);
         sources.add(beam);
@@ -351,7 +353,7 @@ public final class ProjectedTint {
         if (!project(level, litBlocks(level, ends, beam, maxFaces), regions, sources, maxFaces)) {
             faces = 0;
         }
-        relight(origin, axis, false);
+        relight(origin, axis, sideHint, false);
         show(level, inFrontOf(ends.get(0), origin), rgb, brightness * limitFade(maxFaces));
     }
 
@@ -375,12 +377,12 @@ public final class ProjectedTint {
      * and the glow kept from the tick; {@code thisFrame}, only the faces the camera sees. Gives the number of faces lit, 0
      * for a fixed light.
      */
-    int relight(Vec3 origin, Vec3 axis, boolean thisFrame) {
+    int relight(Vec3 origin, Vec3 axis, double @Nullable [] sideHint, boolean thisFrame) {
         ConeFalloff shape = liveShape;
         if (shape == null || faces == 0) {
             return 0;
         }
-        double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
+        double[] u = BeamFrame.side(axis.x, axis.y, axis.z, sideHint);
         double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
         double ox = origin.x - originX;
         double oy = origin.y - originY;
@@ -541,8 +543,9 @@ public final class ProjectedTint {
         return p;
     }
 
-    private static Source beamSource(Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf, boolean moving) {
-        double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
+    private static Source beamSource(Vec3 origin, Vec3 axis, double @Nullable [] sideHint, ConeFalloff shape,
+            double lensHalf, boolean moving) {
+        double[] u = BeamFrame.side(axis.x, axis.y, axis.z, sideHint);
         double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
         return new Source(origin, (x, y, z) -> (float) (shape.lightInBeam(x - origin.x, y - origin.y,
                 z - origin.z, axis.x, axis.y, axis.z, u[0], u[1], u[2], v[0], v[1], v[2], lensHalf) / 15),

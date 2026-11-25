@@ -88,6 +88,8 @@ public final class CarriedBeam implements BeamSource {
         this.beam = new ClientBeam(Objects.requireNonNull(type.beam()), (float) type.lensHalf());
         // Turned with the mouse: LambDynamicLights' light follows the beam each frame
         this.beam.followSpotEveryFrame();
+        // Aimed from the hand at the crosshair: its sides end near where it lands, not on into the sky
+        this.beam.endSidesNearLanding();
         this.lastPose = pose(1);
     }
 
@@ -148,7 +150,8 @@ public final class CarriedBeam implements BeamSource {
             reach = Math.max(MIN_CONVERGE, eye.distanceTo(ahead.getLocation()));
         }
         Vec3 direction = eye.add(look.scale(reach)).subtract(origin).normalize();
-        return new BeamPose(origin, direction, true);
+        // Its square keeps to the player's right, so it stays square to the view looking straight up or down
+        return new BeamPose(origin, direction, true, right);
     }
 
     /**

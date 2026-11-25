@@ -25,6 +25,28 @@ public final class BeamFrame {
         return new double[] {-az / length, 0, ax / length};
     }
 
+    /**
+     * U for a beam along the unit vector (ax, ay, az) whose square keeps to a side of its own: {@code hint} (any length)
+     * brought square to the beam. A carried lamp's square follows the player's right this way: from the beam alone it
+     * turned against the view looking steeply up or down, where a beam has no level side to speak of and the gap between
+     * the hand and the eyes decided it (owner, Nov 24). Null, or a hint along the beam, gives {@link #side(double,
+     * double, double)}.
+     */
+    public static double[] side(double ax, double ay, double az, double[] hint) {
+        if (hint == null) {
+            return side(ax, ay, az);
+        }
+        double along = hint[0] * ax + hint[1] * ay + hint[2] * az;
+        double ux = hint[0] - along * ax;
+        double uy = hint[1] - along * ay;
+        double uz = hint[2] - along * az;
+        double length = Math.sqrt(ux * ux + uy * uy + uz * uz);
+        if (length < 1e-4) {
+            return side(ax, ay, az);
+        }
+        return new double[] {ux / length, uy / length, uz / length};
+    }
+
     /** V = A x U. */
     public static double[] up(double ax, double ay, double az, double[] side) {
         return new double[] {

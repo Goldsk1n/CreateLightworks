@@ -51,6 +51,10 @@ public final class BeamVisual {
      * beam stopped by one shows no more than a sliver behind it.
      */
     private static final float INTO_BLOCK = 0.8f;
+    /** How far (blocks) a carried lamp's sides fade out past {@link ClientBeam#sideReach}. */
+    private static final float SIDE_FADE = 2.5f;
+    /** A carried lamp's ray that runs on past {@link ClientBeam#sideReach} as far again plus this (blocks) has no haze. */
+    private static final float OVERSHOOT_PAST = 2f;
     /** Neighbouring rays whose lengths differ by more than this (blocks) are drawn as a torn side. */
     private static final float TORN_LENGTH = 1.5f;
     /** Distance in front of the lens where the beam is at full strength, to compare its falloff against. */
@@ -156,7 +160,7 @@ public final class BeamVisual {
         float green = mix((rgb >> 8 & 0xFF) / 255f);
         float blue = mix((rgb & 0xFF) / 255f);
         ConeFalloff shape = beam.shape();
-        double[] su = BeamFrame.side(axis.x, axis.y, axis.z);
+        double[] su = BeamFrame.side(axis.x, axis.y, axis.z, beam.sideHint());
         double[] sv = BeamFrame.up(axis.x, axis.y, axis.z, su);
         Vector3f u = new Vector3f((float) su[0], (float) su[1], (float) su[2]);
         Vector3f v = new Vector3f((float) sv[0], (float) sv[1], (float) sv[2]);
@@ -181,8 +185,35 @@ public final class BeamVisual {
             near[k] = new Vector3f(offset).mul(beam.lensHalf()).add(lens);
             directions[k] = new Vector3f(offset).mul(spread).add(axis).normalize();
             lengths[k] = beam.rimLength(k) + (beam.rimHit(k) ? INTO_BLOCK : 0);
+        }
+        // A carried lamp's rays that land on nothing end a little past where its centre lands (sideReach): aimed from the
+        // hand at a block close by, its beam is nearly level, and its upper rays went on into the sky as a sheet bending
+        // away from the view (owner, Nov 24; handheld-strip). Full strength up to fadeFrom, then a fringe fading out by
+        // fadeTo. Rays that land keep their length, so the haze still reaches the ground behind a block the crosshair is on;
+        // every ray far past the centre's landing also fades from the lens on (overshoot)
+        float fadeFrom = Float.MAX_VALUE;
+        float fadeTo = Float.MAX_VALUE;
+        float[] outer = null;
+        boolean cut = false;
+        float reach = beam.sideReach();
+        if (reach > 0) {
+            fadeFrom = reach;
+            fadeTo = reach + SIDE_FADE;
+            outer = lengths.clone();
+            for (int k = 0; k < rays; k++) {
+                if (lengths[k] > fadeFrom && !beam.rimHit(k)) {
+                    lengths[k] = fadeFrom;
+                    cut = true;
+                }
+            }
+        }
+        // A ray that ran on far past it keeps less haze from the lens on, not only toward its end: see overshoot
+        float[] nearAlpha = new float[rays];
+        for (int k = 0; k < rays; k++) {
             far[k] = new Vector3f(directions[k]).mul(lengths[k]).add(near[k]);
-            farAlpha[k] = alphaAt(alpha, shape, lengths[k]);
+            float kept = overshoot(outer, k, reach);
+            nearAlpha[k] = alpha * kept;
+            farAlpha[k] = alphaAt(alpha, shape, lengths[k]) * kept;
         }
 
         Matrix4f pose = poseStack.last().pose();
@@ -200,7 +231,8 @@ public final class BeamVisual {
             int b = (k + 1) % rays;
             float shorter = Math.min(lengths[a], lengths[b]);
             if (Math.max(lengths[a], lengths[b]) - shorter < TORN_LENGTH) {
-                twoSided(out, pose, near[a], near[b], far[b], far[a], alpha, farAlpha[b], farAlpha[a], red, green, blue);
+                twoSided(out, pose, near[a], near[b], far[b], far[a], nearAlpha[a], farAlpha[b], farAlpha[a], red, green,
+                        blue, nearAlpha[b]);
                 continue;
             }
             // One ray stopped on something and its neighbour went on: the face runs to where the first
@@ -209,13 +241,17 @@ public final class BeamVisual {
             int stop = lengths[a] < lengths[b] ? a : b;
             int go = stop == a ? b : a;
             Vector3f level = new Vector3f(directions[go]).mul(shorter).add(near[go]);
-            float levelAlpha = alphaAt(alpha, shape, shorter);
+            float levelAlpha = alphaAt(alpha, shape, shorter) * overshoot(outer, go, reach);
             Vector3f farA = a == go ? level : far[a];
             Vector3f farB = b == go ? level : far[b];
-            twoSided(out, pose, near[a], near[b], farB, farA, alpha, b == go ? levelAlpha : farAlpha[b],
-                    a == go ? levelAlpha : farAlpha[a], red, green, blue);
+            twoSided(out, pose, near[a], near[b], farB, farA, nearAlpha[a], b == go ? levelAlpha : farAlpha[b],
+                    a == go ? levelAlpha : farAlpha[a], red, green, blue, nearAlpha[b]);
             twoSided(out, pose, far[stop], level, far[go], far[stop], 0, farAlpha[go], 0, red, green, blue,
                     levelAlpha);
+        }
+        if (cut) {
+            fringe(out, pose, near, far, directions, lengths, farAlpha, outer, fadeFrom, fadeTo, alpha, shape, red, green,
+                    blue);
         }
         // The lens end, closed so the beam has no dark hole where it starts
         Vector3f c0 = near[0];
@@ -245,7 +281,7 @@ public final class BeamVisual {
             return;
         }
         ConeFalloff shape = beam.shape();
-        double[] su = BeamFrame.side(axis.x, axis.y, axis.z);
+        double[] su = BeamFrame.side(axis.x, axis.y, axis.z, beam.sideHint());
         double[] sv = BeamFrame.up(axis.x, axis.y, axis.z, su);
         double inBeam = shape.lightInBeam(toEye.x, toEye.y, toEye.z, axis.x, axis.y, axis.z,
                 su[0], su[1], su[2], sv[0], sv[1], sv[2], beam.lensHalf()) / 15;
@@ -318,6 +354,56 @@ public final class BeamVisual {
     }
 
     /** The light's own falloff, and a little haze, so the far end never outshines the lens. */
+    /**
+     * The part of a carried lamp's sides past {@code fadeFrom}, fading out by {@code fadeTo}: from each ray's end at
+     * {@code fadeFrom} on along it, to where it stopped or {@code fadeTo}. A ray that stopped before {@code fadeFrom} has
+     * none, and the fringe beside it fades in from nothing, as a torn side does.
+     */
+    private static void fringe(VertexConsumer out, Matrix4f pose, Vector3f[] near, Vector3f[] far, Vector3f[] directions,
+            float[] lengths, float[] farAlpha, float[] outer, float fadeFrom, float fadeTo, float alpha, ConeFalloff shape,
+            float red, float green, float blue) {
+        int rays = lengths.length;
+        Vector3f[] end = new Vector3f[rays];
+        float[] innerAlpha = new float[rays];
+        float[] endAlpha = new float[rays];
+        boolean[] goesOn = new boolean[rays];
+        for (int k = 0; k < rays; k++) {
+            goesOn[k] = outer[k] > lengths[k];
+            if (goesOn[k]) {
+                float length = Math.min(outer[k], fadeTo);
+                end[k] = new Vector3f(directions[k]).mul(length).add(near[k]);
+                innerAlpha[k] = farAlpha[k];
+                endAlpha[k] = alphaAt(alpha, shape, length) * (fadeTo - length) / (fadeTo - fadeFrom)
+                        * overshoot(outer, k, fadeFrom);
+            } else {
+                end[k] = far[k];
+            }
+        }
+        for (int k = 0; k < rays; k++) {
+            int a = k;
+            int b = (k + 1) % rays;
+            if (goesOn[a] || goesOn[b]) {
+                twoSided(out, pose, far[a], far[b], end[b], end[a], innerAlpha[a], endAlpha[b], endAlpha[a], red, green,
+                        blue, innerAlpha[b]);
+            }
+        }
+    }
+
+    /**
+     * How much of its haze a carried lamp's ray keeps along its whole length, by how far it ran on past {@code reach}
+     * ({@code outer}: its full length, landed or not): all of it within, none once it ran on as far again plus
+     * {@link #OVERSHOOT_PAST}. Aimed nearly level at a block close by, the beam's upper half rises well above the
+     * crosshair over the first few blocks and its sides run on to ground far behind, which no cut past the landing
+     * removes; faded from the lens on, they thin out and the beam goes to the spot it lights (owner, Nov 24). A block a
+     * few steps before the ground keeps the haze round it: its sides land not far past it.
+     */
+    private static float overshoot(float[] outer, int k, float reach) {
+        if (outer == null || outer[k] <= reach) {
+            return 1;
+        }
+        return Math.max(0, 1 - (outer[k] - reach) / (reach + OVERSHOOT_PAST));
+    }
+
     private static float alphaAt(float alpha, ConeFalloff shape, float length) {
         // onAxis is 0 at the origin itself, so compare against just in front of it
         double atLens = shape.onAxis(LENS_SAMPLE);

@@ -147,12 +147,12 @@ public final class BeamSensors {
             // k = 0 is where it points now, then back along the arc towards where it pointed a tick ago
             double back = k / (double) steps;
             Vec3 direction = k == 0 ? axis : axis.scale(1 - back).add(from.scale(back)).normalize();
-            shineAlong(level, beam.origin(), direction, shape, lensHalf, brightness, colour);
+            shineAlong(level, beam.origin(), direction, beam.sideHint(), shape, lensHalf, brightness, colour);
         }
     }
 
-    private static void shineAlong(Level level, Vec3 origin, Vec3 axis, ConeFalloff shape, double lensHalf,
-            int brightness, @Nullable DyeColor colour) {
+    private static void shineAlong(Level level, Vec3 origin, Vec3 axis, double @Nullable [] sideHint, ConeFalloff shape,
+            double lensHalf, int brightness, @Nullable DyeColor colour) {
         Map<BlockPos, Sensor> sensors = SENSORS.get(level);
         if (sensors == null || sensors.isEmpty() || brightness <= 0) {
             return;
@@ -165,7 +165,7 @@ public final class BeamSensors {
             }
             place(level, sensor);
             double light = BeamSensing.light(sensor.lens.x, sensor.lens.y, sensor.lens.z, sensor.face.x, sensor.face.y,
-                    sensor.face.z, origin.x, origin.y, origin.z, axis.x, axis.y, axis.z, shape, lensHalf, range);
+                    sensor.face.z, origin.x, origin.y, origin.z, axis.x, axis.y, axis.z, sideHint, shape, lensHalf, range);
             int signal = BeamSensing.signal(light, brightness);
             if (signal <= sensor.best) {
                 continue;

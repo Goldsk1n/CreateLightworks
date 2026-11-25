@@ -115,7 +115,7 @@ public final class InsideHaze {
             return 0;
         }
         ConeFalloff shape = beam.shape();
-        double[] u = BeamFrame.side(a.x, a.y, a.z);
+        double[] u = BeamFrame.side(a.x, a.y, a.z, pose.sideHint());
         double[] v = BeamFrame.up(a.x, a.y, a.z, u);
         double spread = Math.tan(BeamTrace.visibleHalfAngle(shape));
         double half = beam.lensHalf() + along * spread;

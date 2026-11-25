@@ -185,6 +185,18 @@ public final class ClientBeam {
      * block"); under LambDynamicLights the turning clips of self-test handheld-motion blinked about half as often.
      */
     private boolean spotEveryFrame;
+    /** Which way the side of the beam's square faces, from its pose ({@link BeamPose#side}); null for the usual. */
+    private double @Nullable [] sideHint;
+    /** A carried lamp: see {@link #endSidesNearLanding}. */
+    private boolean shortSides;
+    /** The eased {@link #sideReach}, -1 before the first frame, and the time it was last eased. */
+    private float sideReach = -1;
+    private long sideReachAt;
+    /** A carried lamp's sides run at full strength to this share of the centre's landing distance plus this many blocks... */
+    private static final double SIDE_REACH_SCALE = 1.15;
+    private static final double SIDE_REACH_PAST = 1;
+    /** ...eased with this time constant, in seconds. */
+    private static final float SIDE_REACH_EASE = 0.08f;
     /** A carried lamp's grid of client light blocks, in {@link #poolMode}. */
     @Nullable
     private ClientLightPool pool;
@@ -212,6 +224,41 @@ public final class ClientBeam {
     public ClientBeam(ConeFalloff shape, float lensHalf) {
         this.shape = shape;
         this.lensHalf = lensHalf;
+    }
+
+    /**
+     * Marks a carried lamp, whose visible sides end a little past where its centre lands ({@link #sideReach}). Aimed from
+     * the hand at the crosshair, its beam is nearly level at a block close by, and its upper rays ran on into the sky.
+     */
+    public void endSidesNearLanding() {
+        this.shortSides = true;
+    }
+
+    /**
+     * How far a carried lamp's visible sides run at full strength, eased over a few frames as the centre's landing comes
+     * nearer or goes further, so the beam does not jump in length when the crosshair crosses an edge; 0 for every other
+     * light, and while the sides would reach past the beam's range anyway.
+     */
+    public float sideReach() {
+        if (!shortSides || length <= 0) {
+            sideReach = -1;
+            return 0;
+        }
+        float target = (float) (length * SIDE_REACH_SCALE + SIDE_REACH_PAST);
+        long now = System.nanoTime();
+        if (sideReach < 0) {
+            sideReach = target;
+        } else {
+            float seconds = Math.min(0.25f, (now - sideReachAt) / 1e9f);
+            sideReach += (target - sideReach) * (1 - (float) Math.exp(-seconds / SIDE_REACH_EASE));
+        }
+        sideReachAt = now;
+        return sideReach >= shape.range() ? 0 : sideReach;
+    }
+
+    /** Which way the side of the beam's square faces, from its last pose ({@link BeamPose#side}); null for the usual. */
+    public double @Nullable [] sideHint() {
+        return sideHint;
     }
 
     /** The dynamic light follows the beam every frame (carried lamps); see {@link #spotEveryFrame}. */
@@ -341,6 +388,7 @@ public final class ClientBeam {
         }
         BeamPose at = beam.moving() ? drawn : beam;
         moving = at.moving();
+        sideHint = at.sideHint();
         double range = BeamTrace.range(shape);
         BeamTrace.Hit hit = BeamTrace.trace(level, at.origin(), at.direction(),
                 ClientBeams.isRealWorld(level) ? range : Math.min(range, PREVIEW_RANGE));
@@ -479,7 +527,7 @@ public final class ClientBeam {
      * apart, block light fell a level or two between them, and the lit area had dark bands across it (owner, Nov 20).
      */
     private List<BeamTrace.Landing> poolLandings(Level level, Vec3 origin, Vec3 axis) {
-        double[] u = BeamFrame.side(axis.x, axis.y, axis.z);
+        double[] u = BeamFrame.side(axis.x, axis.y, axis.z, sideHint);
         double[] v = BeamFrame.up(axis.x, axis.y, axis.z, u);
         double spread = Math.tan(BeamTrace.visibleHalfAngle(shape)) / 2;
         double range = BeamTrace.range(shape);
@@ -651,7 +699,7 @@ public final class ClientBeam {
             }
             tint.live(at.moving() ? shape : null, lensHalf, margin);
             // That light is tinted too
-            tint.beam(level, at.origin(), at.direction(), shape, lensHalf, ends, glowCentre, glowRadius, tintRgb, strength,
+            tint.beam(level, at.origin(), at.direction(), at.sideHint(), shape, lensHalf, ends, glowCentre, glowRadius, tintRgb, strength,
                     at.moving());
         }
         if (spotLayer == null) {
@@ -661,7 +709,7 @@ public final class ClientBeam {
             spotLayer.clear();
         } else {
             spotLayer.live(at.moving() ? shape : null, lensHalf, margin);
-            spotLayer.spot(level, at.origin(), at.direction(), shape, lensHalf, ends, tintRgb < 0 ? WHITE_SPOT : tintRgb,
+            spotLayer.spot(level, at.origin(), at.direction(), at.sideHint(), shape, lensHalf, ends, tintRgb < 0 ? WHITE_SPOT : tintRgb,
                     strength, at.moving(), at.moving() && !DynamicLights.present(), glowCentre, glowRadius);
         }
         paintVehicle(level, at, tintRgb, strength, glowCentre, glowRadius);
@@ -708,7 +756,7 @@ public final class ClientBeam {
                 vehicleTint = new ProjectedTint();
             }
             vehicleTint.onVehicle(block);
-            vehicleTint.beam(level, origin, direction, shape, lensHalf, vehicleEnds, glow, glowRadius, tintRgb, strength,
+            vehicleTint.beam(level, origin, direction, null, shape, lensHalf, vehicleEnds, glow, glowRadius, tintRgb, strength,
                     at.moving());
             vehicleTint.skyAt(level, vehicleSky);
         }
@@ -716,7 +764,7 @@ public final class ClientBeam {
             vehicleSpot = new ProjectedTint();
         }
         vehicleSpot.onVehicle(block);
-        vehicleSpot.spot(level, origin, direction, shape, lensHalf, vehicleEnds, tintRgb < 0 ? WHITE_SPOT : tintRgb, strength,
+        vehicleSpot.spot(level, origin, direction, null, shape, lensHalf, vehicleEnds, tintRgb < 0 ? WHITE_SPOT : tintRgb, strength,
                 at.moving(), false, glow, glowRadius);
         vehicleSpot.skyAt(level, vehicleSky);
     }
@@ -762,10 +810,10 @@ public final class ClientBeam {
             }
             BeamPose pose = source.renderBeam(partialTick);
             if (beam.spotLayer != null) {
-                budget -= beam.spotLayer.relight(pose.origin(), pose.direction(), true);
+                budget -= beam.spotLayer.relight(pose.origin(), pose.direction(), pose.sideHint(), true);
             }
             if (beam.tint != null) {
-                budget -= beam.tint.relight(pose.origin(), pose.direction(), true);
+                budget -= beam.tint.relight(pose.origin(), pose.direction(), pose.sideHint(), true);
             }
         }
     }
@@ -829,7 +877,7 @@ public final class ClientBeam {
         }
         // Lights on one vehicle start their turns on different ticks
         ticksToCorners = MOVING_CORNER_INTERVAL + (ticksToCorners < 0 ? (System.identityHashCode(this) & 7) : 0);
-        double[] u = BeamFrame.side(a.x, a.y, a.z);
+        double[] u = BeamFrame.side(a.x, a.y, a.z, at.sideHint());
         double[] v = BeamFrame.up(a.x, a.y, a.z, u);
         double spread = Math.tan(BeamTrace.visibleHalfAngle(shape));
         landing = null;
@@ -864,7 +912,7 @@ public final class ClientBeam {
         }
         if (!centre.hitBlock() && !far) {
             // Through a gap: the full-strength inner rays come before the weaker edge
-            BeamTrace.Landing inner = BeamTrace.halfLanding(level, at.origin(), a, shape, lensHalf, range);
+            BeamTrace.Landing inner = BeamTrace.halfLanding(level, at.origin(), a, at.sideHint(), shape, lensHalf, range);
             if (inner != null) {
                 landing = inner;
             }
@@ -881,7 +929,7 @@ public final class ClientBeam {
      */
     private void carryCorners(BeamPose at, List<Vec3> ends) {
         Vec3 a = at.direction();
-        double[] u = BeamFrame.side(a.x, a.y, a.z);
+        double[] u = BeamFrame.side(a.x, a.y, a.z, at.sideHint());
         double[] v = BeamFrame.up(a.x, a.y, a.z, u);
         double spread = Math.tan(BeamTrace.visibleHalfAngle(shape));
         for (int i = 0; i < CORNERS; i++) {

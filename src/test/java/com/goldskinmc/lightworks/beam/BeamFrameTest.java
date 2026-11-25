@@ -17,6 +17,35 @@ class BeamFrameTest {
     }
 
     @Test
+    void aHintKeepsTheSquareToItsSideLookingStraightDown() {
+        // Looking straight down, facing east: the player's right is south, and the square keeps to it whatever little
+        // sideways part the beam has (from the hand beside the eyes)
+        double[] right = {0, 0, 1};
+        double ax = 0.05;
+        double az = -0.04;
+        double ay = -Math.sqrt(1 - ax * ax - az * az);
+        double[] u = BeamFrame.side(ax, ay, az, right);
+        assertEquals(0, u[0] * ax + u[1] * ay + u[2] * az, EPS);
+        assertEquals(1, Math.sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]), EPS);
+        assertEquals(1, u[2], 0.01);
+        // Without the hint it follows the beam's sideways part instead, at 50 degrees to the right
+        double[] plain = BeamFrame.side(ax, ay, az);
+        assertEquals(Math.cos(Math.atan2(4, 5)), Math.abs(plain[2]), 1e-6);
+    }
+
+    @Test
+    void aLevelBeamGetsTheSameSideWithItsOwnRightAsAHint() {
+        double[] plain = BeamFrame.side(0.6, 0, 0.8);
+        double[] hinted = BeamFrame.side(0.6, 0, 0.8, new double[] {-0.8, 0, 0.6});
+        for (int i = 0; i < 3; i++) {
+            assertEquals(plain[i], hinted[i], EPS);
+        }
+        // No hint, or one along the beam, is the plain side
+        assertEquals(plain[0], BeamFrame.side(0.6, 0, 0.8, null)[0], EPS);
+        assertEquals(plain[2], BeamFrame.side(0.6, 0, 0.8, new double[] {0.6, 0, 0.8})[2], EPS);
+    }
+
+    @Test
     void axesAreOrthonormal() {
         double ax = 0.3;
         double ay = 0.5;
