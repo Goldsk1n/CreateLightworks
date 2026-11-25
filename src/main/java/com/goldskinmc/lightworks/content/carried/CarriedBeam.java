@@ -56,14 +56,14 @@ public final class CarriedBeam implements BeamSource {
 
     /**
      * Where a headlamp's lens is: up from the neck and ahead of it in the head's own frame, as {@code HeadlampLayer}
-     * draws it ({@code headlamp/lens} centred 7.1 pixels up and 2.4 ahead of the head's front on goggles, 1.2 higher on
+     * draws it ({@code headlamp/lens} centred 7 pixels up and 3.2 ahead of the head's front on goggles, 1.2 higher on
      * a helmet, times the model's 0.9375). Ahead of the eye, as a Flashlight's start is, so its wearer gets no inside
      * haze or lens glow from it.
      */
     private Vec3 headLens(Vec3 eye, Vec3 look, Vec3 up) {
         boolean goggles = Headlamps.onGoggles(player.getItemBySlot(EquipmentSlot.HEAD));
-        double lensUp = (goggles ? 7.1 : 8.3) / 16 * 0.9375;
-        double lensAhead = 6.4 / 16 * 0.9375;
+        double lensUp = (goggles ? 7.0 : 8.2) / 16 * 0.9375;
+        double lensAhead = 7.2 / 16 * 0.9375;
         Vec3 neck = eye.subtract(0, player.isCrouching() ? NECK_BELOW_EYE_CROUCHING : NECK_BELOW_EYE, 0);
         return neck.add(up.scale(lensUp)).add(look.scale(lensAhead));
     }
