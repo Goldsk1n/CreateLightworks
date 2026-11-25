@@ -39,6 +39,8 @@
   lights beyond it follows the block's outline, rather than steps two blocks wide.
 - The `colouredLight` client config's description no longer says coloured light is off under shader packs: since
   1.0.1 it is drawn after the pack.
+- The Rotating Beacon's recipe now starts from its drive: a Shaft at the bottom, Brass Casing above it and the Electron
+  Tube on top, with four glass beside them (it took five glass and no Shaft).
 
 ## 1.0.1 (2026-11-11)
 

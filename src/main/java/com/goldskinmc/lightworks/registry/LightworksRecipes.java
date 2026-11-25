@@ -50,8 +50,10 @@ public final class LightworksRecipes {
                 .define('P', BRASS_PLATES).define('W', AllBlocks.COGWHEEL).define('C', AllBlocks.BRASS_CASING)
                 .define('S', AllBlocks.SHAFT)
                 .save(out);
-        shaped(LightworksBlocks.ROTATING_BEACON, 1, "GGG", "GTG", " C ")
+        // Built up from its drive: shaft, casing, then the lamp in glass (owner, Nov 25)
+        shaped(LightworksBlocks.ROTATING_BEACON, 1, "GTG", "GCG", " S ")
                 .define('G', GLASS).define('T', AllItems.ELECTRON_TUBE).define('C', AllBlocks.BRASS_CASING)
+                .define('S', AllBlocks.SHAFT)
                 .save(out);
         shaped(LightworksItems.FLASHLIGHT, 1, " G ", "PTP", " P ")
                 .define('G', GLASS).define('P', BRASS_PLATES).define('T', AllItems.ELECTRON_TUBE)

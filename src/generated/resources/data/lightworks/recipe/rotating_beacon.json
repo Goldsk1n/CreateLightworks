@@ -8,14 +8,17 @@
     "G": {
       "tag": "c:glass_blocks/colorless"
     },
+    "S": {
+      "item": "create:shaft"
+    },
     "T": {
       "item": "create:electron_tube"
     }
   },
   "pattern": [
-    "GGG",
     "GTG",
-    " C "
+    "GCG",
+    " S "
   ],
   "result": {
     "count": 1,
