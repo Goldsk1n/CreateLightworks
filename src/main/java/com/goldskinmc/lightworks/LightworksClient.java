@@ -6,6 +6,7 @@ import net.neoforged.api.distmarker.Dist;
 import com.goldskinmc.lightworks.render.EdgeLightColours;
 import com.goldskinmc.lightworks.content.carried.HeadlampClient;
 import com.goldskinmc.lightworks.render.FlashlightHand;
+import com.goldskinmc.lightworks.render.HeadlampBadge;
 import com.goldskinmc.lightworks.render.HeadlampLayer;
 import com.goldskinmc.lightworks.render.LampItemColours;
 import com.goldskinmc.lightworks.registry.LightworksItems;
@@ -28,6 +29,7 @@ public final class LightworksClient {
         modBus.addListener(LampItemColours::registerProperties);
         HeadlampClient.register(modBus);
         modBus.addListener(HeadlampLayer::register);
+        modBus.addListener(HeadlampBadge::register);
         modBus.addListener(RegisterClientExtensionsEvent.class,
                 event -> event.registerItem(new FlashlightHand(), LightworksItems.FLASHLIGHT.get()));
         modBus.addListener(FMLClientSetupEvent.class, event -> LightworksPonder.registerPlugin());
