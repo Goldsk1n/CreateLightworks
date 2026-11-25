@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1 (unreleased)
+## 1.1.0 (2026-11-26)
 
 - New: the Flashlight, a brass hand lamp. Right-click switches it on or off, in either hand; it throws a narrow beam
   where you look, and other players see it from your hand. With LambDynamicLights its light keeps up with the view
