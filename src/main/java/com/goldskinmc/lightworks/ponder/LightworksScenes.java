@@ -11,12 +11,12 @@ import com.goldskinmc.lightworks.content.sensor.BeamSensorBlockEntity;
 import com.goldskinmc.lightworks.content.signal.EdgeLightBlock;
 import com.goldskinmc.lightworks.content.signal.SignalLampBlockEntity;
 import com.goldskinmc.lightworks.content.signal.WarningPattern;
-import com.goldskinmc.lightworks.content.carried.Headlamps;
 import com.goldskinmc.lightworks.registry.LightworksBlocks;
 import com.goldskinmc.lightworks.registry.LightworksComponents;
 import com.goldskinmc.lightworks.registry.LightworksItems;
 import com.simibubi.create.AllItems;
 import com.simibubi.create.content.redstone.analogLever.AnalogLeverBlockEntity;
+import com.simibubi.create.content.redstone.nixieTube.NixieTubeBlockEntity;
 import com.simibubi.create.foundation.ponder.CreateSceneBuilder;
 import com.simibubi.create.infrastructure.ponder.AllCreatePonderTags;
 import com.tterrag.registrate.util.entry.ItemProviderEntry;
@@ -32,13 +32,13 @@ import net.createmod.ponder.api.scene.SceneBuilder;
 import net.createmod.ponder.api.scene.SceneBuildingUtil;
 import net.createmod.ponder.api.scene.Selection;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.RedstoneLampBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -557,7 +557,8 @@ final class LightworksScenes {
      */
     /**
      * The Flashlight and the headlamp it becomes (owner, Nov 25: players learned of the headlamp from the Flashlight's
-     * tooltip alone). Ponder has no player to hold it, so the items lie on the plate and the controls show what to do.
+     * tooltip alone). Ponder has no player to hold it, so the items lie on the plate and the controls show what to do;
+     * a water cauldron comes up to wash a dyed one.
      */
     static void flashlight(SceneBuilder builder, SceneBuildingUtil util) {
         CreateSceneBuilder scene = new CreateSceneBuilder(builder);
@@ -568,27 +569,53 @@ final class LightworksScenes {
         scene.showBasePlate();
         scene.idle(10);
         Vec3 spot = util.vector().topOf(Layouts.Flashlight.ITEM.below()).add(0, 0.1, 0);
+        // Bubbles above the item, texts pointing at the item itself as it lies there
         Vec3 above = spot.add(0, 0.6, 0);
+        Vec3 item = spot.add(0, 0.15, 0);
         ItemStack lamp = LightworksItems.FLASHLIGHT.asStack();
+        ItemStack lime = lamp.copy();
+        lime.set(LightworksComponents.LAMP_COLOUR.get(), DyeColor.LIME);
         scene.world().createItemEntity(spot, Vec3.ZERO, lamp);
         scene.idle(15);
 
         scene.overlay().showText(60).attachKeyFrame().text("The Flashlight is a lamp you carry")
-                .placeNearTarget().pointAt(above);
+                .placeNearTarget().pointAt(item);
         scene.idle(70);
         scene.overlay().showControls(above, Pointing.DOWN, 60).rightClick().withItem(lamp);
         scene.overlay().showText(70).text("Right-click to switch it on or off, in either hand")
-                .placeNearTarget().pointAt(above);
+                .placeNearTarget().pointAt(item);
         scene.idle(80);
 
         scene.overlay().showControls(above, Pointing.DOWN, 50).withItem(new ItemStack(Items.LIME_DYE));
+        scene.idle(10);
+        scene.world().modifyEntities(ItemEntity.class, Entity::discard);
+        scene.world().createItemEntity(spot, Vec3.ZERO, lime);
         scene.overlay().showText(60).attachKeyFrame().text("Crafted with a dye, its beam takes that colour")
-                .placeNearTarget().pointAt(above);
+                .placeNearTarget().pointAt(item);
         scene.idle(70);
-        scene.overlay().showControls(above, Pointing.DOWN, 50).withItem(new ItemStack(Items.WATER_BUCKET));
+
+        // Washing: a water cauldron comes up, the dyed one goes in and comes out plain
+        BlockPos cauldronPos = Layouts.Flashlight.CAULDRON;
+        Vec3 cauldron = util.vector().topOf(cauldronPos);
+        scene.world().showSection(util.select().position(cauldronPos), Direction.DOWN);
+        scene.idle(15);
+        scene.world().modifyEntities(ItemEntity.class, Entity::discard);
+        scene.world().createItemEntity(cauldron.add(0, 1.5, 0), Vec3.ZERO, lime);
         scene.overlay().showText(70).text("A water cauldron or a fan through water washes it off")
-                .placeNearTarget().pointAt(above);
-        scene.idle(80);
+                .placeNearTarget().pointAt(cauldron);
+        scene.idle(20);
+        scene.world().modifyEntities(ItemEntity.class, Entity::discard);
+        scene.effects().emitParticles(cauldron, scene.effects().simpleParticleEmitter(ParticleTypes.SPLASH, Vec3.ZERO), 6, 3);
+        // Washed, it is thrown out to the plate's far corner: thrown to the middle, half a block from the cauldron's corner,
+        // it always came down against the rim. At an item's gravity, drag and ground friction this throw comes to rest two
+        // blocks over and two along, and never nears the rim
+        Vec3 washed = util.vector().topOf(Layouts.Flashlight.WASHED.below());
+        Vec3 away = washed.subtract(cauldron);
+        scene.world().createItemEntity(cauldron.add(0, 0.3, 0),
+                new Vec3(Math.signum(away.x) * 0.111, 0.25, Math.signum(away.z) * 0.111), lamp);
+        scene.idle(60);
+        scene.world().hideSection(util.select().position(cauldronPos), Direction.UP);
+        scene.idle(15);
 
         scene.world().modifyEntities(ItemEntity.class, Entity::discard);
         ItemStack goggles = AllItems.GOGGLES.asStack();
@@ -597,94 +624,110 @@ final class LightworksScenes {
         scene.overlay().showControls(above, Pointing.DOWN, 60).withItem(lamp);
         scene.overlay().showText(70).attachKeyFrame()
                 .text("Crafted with Engineer's Goggles or a Diving Helmet, it becomes a headlamp")
-                .placeNearTarget().pointAt(above);
+                .placeNearTarget().pointAt(item);
+        // The goggles stay where they lie: fitted, they look the same as a dropped item (the lamp's badge shows in slots)
         scene.idle(80);
-        scene.world().modifyEntities(ItemEntity.class, Entity::discard);
-        ItemStack worn = Headlamps.fit(goggles, lamp);
-        worn.set(LightworksComponents.LAMP_ON.get(), true);
-        scene.world().createItemEntity(spot, Vec3.ZERO, worn);
-        scene.idle(10);
         scene.overlay().showText(60).text("Worn, it lights where you look, hands free")
-                .placeNearTarget().pointAt(above);
+                .placeNearTarget().pointAt(item);
         scene.idle(70);
         scene.overlay().showText(60).text("Press H to switch the headlamp on or off")
-                .placeNearTarget().pointAt(above);
+                .placeNearTarget().pointAt(item);
         scene.idle(70);
         scene.overlay().showText(60).attachKeyFrame().text("Craft the headgear alone to take the Flashlight back")
-                .placeNearTarget().pointAt(above);
+                .placeNearTarget().pointAt(item);
         scene.idle(70);
     }
 
     static void beamSensor(SceneBuilder builder, SceneBuildingUtil util) {
         CreateSceneBuilder scene = new CreateSceneBuilder(builder);
-        scene.title("beam_sensor", "Sensing beams with the Beam Sensor");
+        scene.title("beam_sensor", "Sensing beams");
         scene.configureBasePlate(0, 0, Layouts.Sensor.SIZE);
+        scene.scaleSceneView(1.15f);
         scene.showBasePlate();
         scene.idle(10);
         BlockPos light = Layouts.Sensor.LIGHT;
         BlockPos sensor = Layouts.Sensor.SENSOR;
-        BlockPos lamp = Layouts.Sensor.LAMP;
+        BlockPos nixie = Layouts.Sensor.NIXIE;
         brightness(scene, util, light, 0);
+        signal(scene, sensor, nixie, 0);
         scene.world().showSection(util.select().fromTo(Layouts.Sensor.WALL_FROM, Layouts.Sensor.WALL_TO), Direction.DOWN);
         scene.idle(10);
         scene.world().showSection(util.select().position(sensor), Direction.WEST);
-        scene.world().showSection(util.select().position(lamp), Direction.DOWN);
+        scene.world().showSection(util.select().position(nixie), Direction.DOWN);
         scene.idle(20);
 
-        Vec3 lens = util.vector().blockSurface(sensor, Direction.WEST);
-        scene.overlay().showText(70)
+        // The lens itself, on the plate against the wall, not the air in front of the sensor's block
+        Vec3 lens = util.vector().centerOf(sensor).add(0.25, 0, 0);
+        Vec3 digits = util.vector().centerOf(nixie);
+        scene.overlay().showText(60)
                 .attachKeyFrame()
                 .text("A Beam Sensor gives a redstone signal")
                 .placeNearTarget()
                 .pointAt(lens);
-        scene.idle(80);
+        scene.idle(70);
 
         scene.world().showSection(util.select().position(light), Direction.DOWN);
         scene.idle(15);
         brightness(scene, util, light, 15);
-        sensed(scene, util, sensor, lamp, 15);
+        signal(scene, sensor, nixie, 15);
         scene.overlay().showText(70)
                 .attachKeyFrame()
-                .text("when a beam lands on its lens")
+                .text("It turns on while a beam lands on its lens")
                 .placeNearTarget()
                 .pointAt(lens);
         scene.idle(80);
-        scene.overlay().showText(80)
-                .text("The brighter the light there, the stronger the signal")
-                .placeNearTarget()
-                .pointAt(util.vector().topOf(lamp));
-        scene.idle(90);
 
-        scene.overlay().showControls(lens, Pointing.LEFT, 40).rightClick().withItem(new ItemStack(Items.RED_DYE));
+        brightness(scene, util, light, 7);
+        signal(scene, sensor, nixie, 7);
+        scene.overlay().showText(60)
+                .attachKeyFrame()
+                .text("The dimmer the beam, the weaker the signal")
+                .placeNearTarget()
+                .pointAt(digits);
+        scene.idle(70);
+        brightness(scene, util, light, 15);
+        signal(scene, sensor, nixie, 15);
+        scene.idle(20);
+
+        // Beside the lens, gone before the text comes up in the same place (above, it covered Ponder's title)
+        scene.overlay().showControls(lens, Pointing.LEFT, 30).rightClick().withItem(new ItemStack(Items.RED_DYE));
         scene.idle(7);
         dye(scene, util, sensor, BeamSensorBlockEntity.class, DyeColor.RED);
-        sensed(scene, util, sensor, lamp, 0);
-        scene.overlay().showText(70)
+        signal(scene, sensor, nixie, 0);
+        scene.idle(33);
+        scene.overlay().showText(60)
                 .attachKeyFrame()
                 .text("Dyed, it senses only beams of that colour")
                 .placeNearTarget()
                 .pointAt(lens);
-        scene.idle(80);
+        scene.idle(70);
         Vec3 top = util.vector().topOf(light);
         scene.overlay().showControls(top, Pointing.DOWN, 40).rightClick().withItem(new ItemStack(Items.RED_DYE));
         scene.idle(7);
         dye(scene, util, light, DyeColor.RED);
-        sensed(scene, util, sensor, lamp, 15);
-        scene.idle(40);
-        scene.overlay().showText(90)
-                .attachKeyFrame()
-                .text("Turning lights, lights on vehicles and Flashlights count too")
+        signal(scene, sensor, nixie, 15);
+        scene.overlay().showText(60)
+                .text("A red beam turns it on again")
                 .placeNearTarget()
                 .pointAt(lens);
-        scene.idle(100);
+        scene.idle(70);
+        scene.overlay().showText(70)
+                .attachKeyFrame()
+                .text("Moving and carried lights count too, but not lamps or torches")
+                .placeNearTarget()
+                .pointAt(lens);
+        scene.idle(80);
         scene.markAsFinished();
     }
 
-    /** What the server would make of it: the sensor's signal and the Redstone Lamp beside it. */
-    private static void sensed(CreateSceneBuilder scene, SceneBuildingUtil util, BlockPos sensor, BlockPos lamp,
-            int signal) {
+    /** The sensor's signal and the Nixie Tube under it showing it: Ponder worlds have no redstone of their own. */
+    private static void signal(CreateSceneBuilder scene, BlockPos sensor, BlockPos nixie, int signal) {
         scene.world().modifyBlock(sensor, state -> state.setValue(BeamSensorBlock.POWER, signal), false);
-        scene.world().modifyBlock(lamp, state -> state.setValue(RedstoneLampBlock.LIT, signal > 0), false);
+        scene.world().modifyBlockEntity(nixie, NixieTubeBlockEntity.class, be -> {
+            be.updateRedstoneStrength(signal);
+            // Its digits follow on its own tick, which a Ponder world does not run for it
+            be.updateDisplayedStrings();
+        });
         if (signal > 0) {
             scene.effects().indicateRedstone(sensor);
         }

@@ -29,6 +29,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LayeredCauldronBlock;
 import net.minecraft.world.level.block.LeverBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.AttachFace;
@@ -64,12 +65,16 @@ public final class PonderSchematics implements DataProvider {
         searchlight.set(Layouts.Searchlight.LEVER, floorLever());
         all.add(searchlight);
 
-        all.add(new Schematic("flashlight", Layouts.Flashlight.SIZE, 3));
+        Schematic flashlight = new Schematic("flashlight", Layouts.Flashlight.SIZE, 3);
+        flashlight.set(Layouts.Flashlight.CAULDRON,
+                Blocks.WATER_CAULDRON.defaultBlockState().setValue(LayeredCauldronBlock.LEVEL, 3));
+        all.add(flashlight);
 
         Schematic sensor = new Schematic("beam_sensor", Layouts.Sensor.SIZE, 5);
         sensor.fill(Layouts.Sensor.WALL_FROM, Layouts.Sensor.WALL_TO, Blocks.STONE_BRICKS.defaultBlockState());
         sensor.light(Layouts.Sensor.SENSOR, LightworksBlocks.BEAM_SENSOR.getDefaultState(), Direction.WEST, null);
-        sensor.set(Layouts.Sensor.LAMP, Blocks.REDSTONE_LAMP.defaultBlockState());
+        sensor.set(Layouts.Sensor.NIXIE, AllBlocks.ORANGE_NIXIE_TUBE.getDefaultState()
+                .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.WEST));
         sensor.light(Layouts.Sensor.LIGHT, LightworksBlocks.SEARCHLIGHT.getDefaultState(), Direction.UP,
                 aimAt(Layouts.Sensor.LIGHT, Direction.UP, face(Layouts.Sensor.SENSOR, Direction.WEST)));
         all.add(sensor);

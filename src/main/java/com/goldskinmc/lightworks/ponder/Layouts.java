@@ -80,15 +80,19 @@ final class Layouts {
         static final int SIZE = 7;
         static final BlockPos LIGHT = new BlockPos(1, 1, 3);
         static final BlockPos SENSOR = new BlockPos(5, 2, 3);
-        static final BlockPos LAMP = new BlockPos(5, 1, 3);
+        /** Under the sensor, which powers it as a neighbour: it shows the signal's strength as a number. */
+        static final BlockPos NIXIE = new BlockPos(5, 1, 3);
         static final BlockPos WALL_FROM = new BlockPos(6, 1, 2);
         static final BlockPos WALL_TO = new BlockPos(6, 3, 4);
     }
 
-    /** The Flashlight's scene: items on a bare plate. */
+    /** The Flashlight's scene: items on a bare plate, and a water cauldron that comes up to wash one. */
     static final class Flashlight {
         static final int SIZE = 3;
         static final BlockPos ITEM = new BlockPos(1, 1, 1);
+        static final BlockPos CAULDRON = new BlockPos(0, 1, 2);
+        /** The plate's far corner from the cauldron, where the washed Flashlight lands: thrown to the middle it grazed the rim. */
+        static final BlockPos WASHED = new BlockPos(2, 1, 0);
     }
 
     private Layouts() {
