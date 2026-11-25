@@ -160,6 +160,8 @@ public final class ClientBeam {
     private Vec3 middleNormal = Vec3.ZERO;
     /** The tick's middle's strength, kept for the frames as its place and cut are. */
     private double middlePeak;
+    /** The tick's centre ray landed: frames move the light only then ({@link #followFrame}). */
+    private boolean tickCentreLanded;
     /**
      * A moving light's handoff: when its light moves, a second light stays where it was for {@value #HANDOFF_TICKS} tick.
      * Minecraft re-meshes the chunk sections round a moved light one by one, and the sections under the old and the new
@@ -345,8 +347,10 @@ public final class ClientBeam {
     }
 
     private void followFrame(BeamPose at, BeamTrace.Hit hit) {
-        if (!hit.hitBlock()) {
-            // Landing nowhere: the tick's edge landing stands
+        if (!hit.hitBlock() || !tickCentreLanded) {
+            // Landing nowhere, this frame or this tick: the tick's light from its landed rays stands. Taken from the
+            // frame's centre while the tick's landed nowhere, the light leapt for a frame to the far wall the turn had just
+            // brought into reach, at the strength of that dim end, and the hall went dark (headlamp-sweep, Nov 25)
             return;
         }
         BeamSpot next = BeamTrace.spotFor(hit, at.direction(), shape.onAxis(hit.distance()) * brightness / 15.0);
@@ -414,6 +418,7 @@ public final class ClientBeam {
                 : landing;
         BeamSpot next = lit == null ? null : BeamTrace.spotFor(lit.hit(), lit.direction(), lit.light() * brightness / 15.0);
         middleOffset = Vec3.ZERO;
+        tickCentreLanded = hit.hitBlock();
         // Not for our client light block: a whole block at a whole level, it only stepped more often from a middle that
         // drifts, and the ship clip's patch blinked more with it than without (Nov 21)
         if (moving && next != null && hit.hitBlock() && !edgeLandings.isEmpty() && !(spot instanceof ClientLightSpot)) {
@@ -449,7 +454,6 @@ public final class ClientBeam {
             // A carried lamp whose centre lands nowhere: the middle of its landed rays by their light, as the centre's
             // own light left it, not one ray picked from them; a ray nearing the end of its reach counts for little, so
             // none drops out with a jump
-            BeamTrace.Landing first = edgeLandings.get(0);
             double weight = 0;
             double distance = 0;
             for (BeamTrace.Landing edge : edgeLandings) {
@@ -457,8 +461,7 @@ public final class ClientBeam {
                 distance += edge.light() * edge.hit().distance();
             }
             if (weight > 0) {
-                BeamSpot middle = BeamTrace.middleSpot(first, edgeLandings.subList(1, edgeLandings.size()),
-                        shape.onAxis(distance / weight) * brightness / 15.0, 1);
+                BeamSpot middle = BeamTrace.middleOf(edgeLandings, shape.onAxis(distance / weight) * brightness / 15.0);
                 if (middle != null) {
                     next = middle;
                 }

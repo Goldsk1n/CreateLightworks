@@ -141,6 +141,19 @@ public final class BeamTrace {
     }
 
     /**
+     * The middle of these landings, each counting by its light alone: a carried lamp's, its centre landing nowhere. The
+     * first is the depth reference only; a copy of it stands as the centre, which counts for nothing at full relax, so
+     * the first landing itself still counts (before, it was left out).
+     */
+    public static @Nullable BeamSpot middleOf(List<Landing> landings, double peak) {
+        if (landings.isEmpty()) {
+            return null;
+        }
+        Landing first = landings.get(0);
+        return middleSpot(new Landing(first.hit(), first.direction(), first.light()), landings, peak, 1);
+    }
+
+    /**
      * How much a landing counts towards a moving light's middle: its light, faded by how far its depth along the beam lies
      * from the centre landing's ({@link BeamSpot#depthWeight}). The centre's own counts by its light alone. From the
      * centre's depth, not the landings' weighted middle depth: that left the hall's floor in, and the ship clip's patch
