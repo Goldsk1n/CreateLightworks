@@ -114,56 +114,58 @@ public final class LightworksLang {
      */
     private static void tooltips() {
         itemTooltips();
-        tooltip("searchlight", "A long, narrow _beam_ that lights the block it points at: full out to _32 blocks_, dark by 48. Keeps landing where it points on contraptions, trains and Sable vehicles.",
-                behaviour("When placed", "Points _level_, away from you. Mount it on a _Pan-Tilt Head_ to sweep it round."),
-                behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
-                action("When R-click is held on Pan or Tilt", "Turns it round, or tilts it up and down."),
-                action("When R-clicked with Dye", "Colours the lens, the beam and the light it casts."));
-        tooltip("floodlight", "A wide _cone_ for lighting an area: bright out to _12 blocks_, dark by 20. Mount it high and aim it down.",
-                behaviour("When placed", "Points _level_: away from you on a floor or ceiling, straight out of a wall."),
-                behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
-                action("When R-click is held on Pan or Tilt", "Turns it round, or tilts it up and down."),
-                action("When R-clicked with Dye", "Colours the lens, the beam and the light it casts."));
-        tooltip("headlight", "A forward _beam_ for vehicles. On a moving contraption, train or Sable vehicle it lights only while _leading_, so Headlights at both ends swap over when it reverses.",
-                behaviour("When powered at assembly", "Stays lit _both ways_, dimmed by the signal."),
-                behaviour("When placed", "Always lit: a Searchlight with a shorter, wider beam, pointing _level_."),
-                action("When R-click is held on Pan or Tilt", "Turns it round, or tilts it up and down."),
-                action("When R-clicked with Dye", "Colours the lens, the beam and the light it casts."));
-        tooltip("pan_tilt_head", "A kinetic mount for a _Searchlight_, _Floodlight_ or _Headlight_ placed on top of it.",
-                behaviour("When rotated", "_Pans_ the light round, as fast as the shaft turns."),
-                behaviour("When powered by Redstone", "_Tilts_ the light up 6° per signal level, straight up at 15."),
-                action("When R-click is held on the box", "Makes it _sweep_ back and forth, this far either way of where it points now."),
-                action("When R-click is held on the light's Pan", "Turns it to face that way, where it stays; a sweep centres there."));
-        tooltip("rotating_beacon", "Two opposite _beams_ that sweep round with the shaft: a rotating warning beacon for towers, airships and trains.",
-                behaviour("When rotated", "The beams turn _as fast as the shaft_."),
-                behaviour("When stopped", "Lights where the beams land, like two fixed Searchlights."),
-                behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
-                action("When R-clicked with Dye", "Colours the lens, the beams and the light they cast."));
-        tooltip("warning_light", "An _amber_ lamp that shines steady, blinks, pulses, flashes or strobes, always or only at night, and lights the world round it in the same rhythm.",
-                behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
-                action("When R-click is held on the box", "Picks the _pattern_, and the lower row runs it _only at night_."),
-                action("When R-clicked with Dye", "Changes its colour."));
-        tooltip("tail_light", "A red lamp for the back of a vehicle. On a moving contraption, train or Sable vehicle it _brightens for a second_ whenever the vehicle slows down.",
-                behaviour("When placed", "Glows dim red and gives a little block light."),
-                behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
-                action("When R-clicked with Dye", "Changes its colour."));
-        tooltip("beam_sensor", "Gives a _redstone signal_ while a beam of light from a Lightworks light lands on its lens, stronger the brighter the light there: a Searchlight's, a Flashlight's, a turning beacon's.",
-                behaviour("When dyed", "Senses only beams of that colour; undyed, it senses any beam."),
-                behaviour("When lit", "Powers the block it is mounted on, like a lever, and its other neighbours."));
-        tooltip("edge_light", "A low _marker_ for runway, taxiway and platform edges, bright enough to read from the air. Vehicles and players pass over it, and hundreds cost next to nothing.",
-                behaviour("When placed", "Glows _white_ and gives a little block light."),
-                behaviour("When powered by Redstone", "Dims as the signal rises; a _full signal_ turns it off."),
-                action("When R-clicked with Dye", "Changes its colour. It does not colour the blocks round it."));
+        // Kept short (owner, Nov 25: long ones go unread)
+        String placed = "Points _level_, away from you or out of a wall.";
+        String dims = "_Dims_; a full signal turns it off.";
+        String aim = "When R-click is held on Pan or Tilt";
+        String dye = "When R-clicked with Dye";
+        tooltip("searchlight", "A long, narrow _beam_, bright to _32 blocks_. Keeps working on contraptions and vehicles.",
+                behaviour("When placed", placed),
+                behaviour("When powered by Redstone", dims),
+                action(aim, "_Aims_ it."),
+                action(dye, "Colours the beam."));
+        tooltip("floodlight", "A wide _cone_ that lights an area, bright to _12 blocks_.",
+                behaviour("When placed", placed),
+                behaviour("When powered by Redstone", dims),
+                action(aim, "_Aims_ it."),
+                action(dye, "Colours the beam."));
+        tooltip("headlight", "A short, wide _beam_ for vehicles. On the move it lights only while _leading_.",
+                behaviour("When placed", placed),
+                behaviour("When powered by Redstone", "_Dims_, and keeps it lit _both ways_ on a vehicle."),
+                action(aim, "_Aims_ it."),
+                action(dye, "Colours the beam."));
+        tooltip("pan_tilt_head", "Turns a _Searchlight_, _Floodlight_ or _Headlight_ placed on top.",
+                behaviour("When rotated", "_Pans_ the light with the shaft."),
+                behaviour("When powered by Redstone", "_Tilts_ it up 6° per signal level."),
+                action("When R-click is held on the box", "Sets a back-and-forth _sweep_."),
+                action("When R-click is held on the light's Pan", "Points the head that way."));
+        tooltip("rotating_beacon", "Two opposite _beams_ that turn with the shaft.",
+                behaviour("When stopped", "Lights where its beams land."),
+                behaviour("When powered by Redstone", dims),
+                action(dye, "Colours the beams."));
+        tooltip("warning_light", "An _amber_ lamp that blinks, pulses, flashes or strobes.",
+                behaviour("When powered by Redstone", dims),
+                action("When R-click is held on the box", "Picks the _pattern_; the lower row runs _only at night_."),
+                action(dye, "Changes its colour."));
+        tooltip("tail_light", "A red lamp that _brightens_ when its vehicle slows.",
+                behaviour("When powered by Redstone", dims),
+                action(dye, "Changes its colour."));
+        tooltip("beam_sensor", "Gives a _redstone signal_ while a Lightworks beam hits its lens.",
+                behaviour("When lit", "_Stronger_ for brighter beams. Powers its mount like a lever."),
+                action(dye, "Senses only that _colour_."));
+        tooltip("edge_light", "A low _marker_ for runway and platform edges, cheap by the hundred.",
+                behaviour("When powered by Redstone", dims),
+                action(dye, "Changes its colour."));
     }
 
     private record Line(boolean action, String condition, String text) {
     }
 
     private static void itemTooltips() {
-        itemTooltip("flashlight", "A brass hand lamp with a narrow _beam_, bright out to _20 blocks_. Lights where you look, in either hand.",
+        itemTooltip("flashlight", "A hand lamp with a narrow _beam_, bright to _20 blocks_.",
                 action("When R-clicked", "Switches it _on_ or _off_."),
-                behaviour("When crafted with a dye", "Its beam takes the _colour_. _Washing_ it with a fan through water, or in a cauldron, takes it off."),
-                behaviour("When crafted with goggles or a diving helmet", "Fits on as a _headlamp_, lighting where you look with both hands free. The helmet alone in a crafting grid gives it _back_."));
+                behaviour("When crafted with a dye", "Colours the beam. _Wash_ it to undo."),
+                behaviour("When crafted with goggles or a diving helmet", "Fits it as a _headlamp_. Craft the headgear alone to take it off."));
     }
 
     private static Line behaviour(String condition, String text) {
