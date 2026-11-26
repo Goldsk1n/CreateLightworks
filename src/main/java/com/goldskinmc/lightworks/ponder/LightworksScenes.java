@@ -21,10 +21,13 @@ import com.simibubi.create.foundation.ponder.CreateSceneBuilder;
 import com.simibubi.create.infrastructure.ponder.AllCreatePonderTags;
 import com.tterrag.registrate.util.entry.ItemProviderEntry;
 import com.tterrag.registrate.util.entry.RegistryEntry;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import net.createmod.catnip.math.Pointing;
 import net.createmod.ponder.api.PonderPalette;
 import net.createmod.ponder.api.element.ElementLink;
+import net.createmod.ponder.api.element.EntityElement;
 import net.createmod.ponder.api.element.WorldSectionElement;
 import net.createmod.ponder.api.registration.PonderSceneRegistrationHelper;
 import net.createmod.ponder.api.registration.PonderTagRegistrationHelper;
@@ -568,14 +571,15 @@ final class LightworksScenes {
         scene.scaleSceneView(1.6f);
         scene.showBasePlate();
         scene.idle(10);
-        Vec3 spot = util.vector().topOf(Layouts.Flashlight.ITEM.below()).add(0, 0.1, 0);
+        // Where items lie: on the plate's top. They float there without gravity (see lying)
+        Vec3 spot = util.vector().topOf(Layouts.Flashlight.ITEM.below());
         // Bubbles above the item, texts pointing at the item itself as it lies there
-        Vec3 above = spot.add(0, 0.6, 0);
-        Vec3 item = spot.add(0, 0.15, 0);
+        Vec3 above = spot.add(0, 0.7, 0);
+        Vec3 item = spot.add(0, 0.25, 0);
         ItemStack lamp = LightworksItems.FLASHLIGHT.asStack();
         ItemStack lime = lamp.copy();
         lime.set(LightworksComponents.LAMP_COLOUR.get(), DyeColor.LIME);
-        scene.world().createItemEntity(spot, Vec3.ZERO, lamp);
+        lying(scene, spot, lamp);
         scene.idle(15);
 
         scene.overlay().showText(60).attachKeyFrame().text("The Flashlight is a lamp you carry")
@@ -589,7 +593,7 @@ final class LightworksScenes {
         scene.overlay().showControls(above, Pointing.DOWN, 50).withItem(new ItemStack(Items.LIME_DYE));
         scene.idle(10);
         scene.world().modifyEntities(ItemEntity.class, Entity::discard);
-        scene.world().createItemEntity(spot, Vec3.ZERO, lime);
+        lying(scene, spot, lime);
         scene.overlay().showText(60).attachKeyFrame().text("Crafted with a dye, its beam takes that colour")
                 .placeNearTarget().pointAt(item);
         scene.idle(70);
@@ -600,10 +604,13 @@ final class LightworksScenes {
         scene.world().showSection(util.select().position(cauldronPos), Direction.DOWN);
         scene.idle(15);
         scene.world().modifyEntities(ItemEntity.class, Entity::discard);
-        scene.world().createItemEntity(cauldron.add(0, 1.5, 0), Vec3.ZERO, lime);
+        ElementLink<EntityElement> dropped = lying(scene, cauldron.add(0, 1.5, 0), lime);
         scene.overlay().showText(70).text("A water cauldron or a fan through water washes it off")
                 .placeNearTarget().pointAt(cauldron);
-        scene.idle(20);
+        // Down into the cauldron, onto its floor a quarter block up its inside
+        List<Vec3> fall = flight(cauldron.add(0, 1.5, 0), Vec3.ZERO, cauldron.y - 0.75, 20);
+        follow(scene, dropped, fall);
+        scene.idle(20 - fall.size());
         scene.world().modifyEntities(ItemEntity.class, Entity::discard);
         scene.effects().emitParticles(cauldron, scene.effects().simpleParticleEmitter(ParticleTypes.SPLASH, Vec3.ZERO), 6, 3);
         // Washed, it is thrown out to the plate's far corner: thrown to the middle, half a block from the cauldron's corner,
@@ -611,15 +618,17 @@ final class LightworksScenes {
         // blocks over and two along, and never nears the rim
         Vec3 washed = util.vector().topOf(Layouts.Flashlight.WASHED.below());
         Vec3 away = washed.subtract(cauldron);
-        scene.world().createItemEntity(cauldron.add(0, 0.3, 0),
-                new Vec3(Math.signum(away.x) * 0.111, 0.25, Math.signum(away.z) * 0.111), lamp);
-        scene.idle(60);
+        Vec3 from = cauldron.add(0, 0.3, 0);
+        ElementLink<EntityElement> thrown = lying(scene, from, lamp);
+        List<Vec3> arc = flight(from, new Vec3(Math.signum(away.x) * 0.111, 0.25, Math.signum(away.z) * 0.111), washed.y, 60);
+        follow(scene, thrown, arc);
+        scene.idle(60 - arc.size());
         scene.world().hideSection(util.select().position(cauldronPos), Direction.UP);
         scene.idle(15);
 
         scene.world().modifyEntities(ItemEntity.class, Entity::discard);
         ItemStack goggles = AllItems.GOGGLES.asStack();
-        scene.world().createItemEntity(spot, Vec3.ZERO, goggles);
+        lying(scene, spot, goggles);
         scene.idle(15);
         scene.overlay().showControls(above, Pointing.DOWN, 60).withItem(lamp);
         scene.overlay().showText(70).attachKeyFrame()
@@ -636,6 +645,59 @@ final class LightworksScenes {
         scene.overlay().showText(60).attachKeyFrame().text("Craft the headgear alone to take the Flashlight back")
                 .placeNearTarget().pointAt(item);
         scene.idle(70);
+    }
+
+    /**
+     * An item lying at {@code at}, held there without gravity. Left to the game's physics, items fell through the plate in
+     * packs with Lithium (All of Create Aeronautics, owner, Nov 26): its collisions read the world's chunks, and a Ponder
+     * scene's world has none, so the plate stopped nothing.
+     */
+    private static ElementLink<EntityElement> lying(CreateSceneBuilder scene, Vec3 at, ItemStack stack) {
+        return scene.world().createEntity(level -> {
+            ItemEntity item = new ItemEntity(level, at.x, at.y, at.z, stack);
+            item.setDeltaMovement(Vec3.ZERO);
+            item.setNoGravity(true);
+            return item;
+        });
+    }
+
+    /** Moves an item along {@code path}, a tick a step. */
+    private static void follow(CreateSceneBuilder scene, ElementLink<EntityElement> item, List<Vec3> path) {
+        for (Vec3 at : path) {
+            scene.world().modifyEntity(item, entity -> {
+                entity.setPos(at);
+                entity.setDeltaMovement(Vec3.ZERO);
+            });
+            scene.idle(1);
+        }
+    }
+
+    /**
+     * Where a thrown item is each tick until it comes to rest on a floor at {@code floor}, at most {@code ticks} of them:
+     * the game's own item motion (0.04 gravity, 0.98 drag, ground friction 0.6 times that), worked out here so it lands
+     * where it did in a plain world whatever a pack does to entity physics ({@link #lying}).
+     */
+    private static List<Vec3> flight(Vec3 from, Vec3 motion, double floor, int ticks) {
+        List<Vec3> path = new ArrayList<>();
+        Vec3 at = from;
+        Vec3 v = motion;
+        boolean grounded = false;
+        for (int i = 0; i < ticks; i++) {
+            v = grounded ? v : v.add(0, -0.04, 0);
+            at = at.add(v);
+            if (at.y <= floor) {
+                at = new Vec3(at.x, floor, at.z);
+                grounded = true;
+                v = new Vec3(v.x, 0, v.z);
+            }
+            double friction = grounded ? 0.6 * 0.98 : 0.98;
+            v = new Vec3(v.x * friction, v.y * 0.98, v.z * friction);
+            path.add(at);
+            if (grounded && v.horizontalDistanceSqr() < 1e-6) {
+                break;
+            }
+        }
+        return path;
     }
 
     static void beamSensor(SceneBuilder builder, SceneBuildingUtil util) {
