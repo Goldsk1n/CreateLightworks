@@ -1,12 +1,15 @@
 package com.goldskinmc.lightworks.registry;
 
 import com.goldskinmc.lightworks.Lightworks;
+import com.goldskinmc.lightworks.content.carried.Headlamps;
+import com.simibubi.create.AllItems;
 import java.util.List;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -23,19 +26,33 @@ public final class LightworksCreativeTab {
                 .title(Component.translatable("itemGroup.lightworks"))
                 .icon(LightworksBlocks.SEARCHLIGHT::asStack)
                 .withTabsBefore(CREATE_PALETTES)
-                .displayItems((parameters, output) -> contents().forEach(output::accept))
+                .displayItems((parameters, output) -> {
+                    contents().forEach(output::accept);
+                    fittedHeadgear().forEach(output::accept);
+                })
                 .build());
     }
 
     private LightworksCreativeTab() {
     }
 
-    /** Beam lights, their mount, the vehicle lamps, then carried lamps. */
+    /** Beam lights, their mount, the vehicle lamps, then carried lamps (fitted headgear follows: {@link #fittedHeadgear}). */
     public static List<ItemLike> contents() {
         return List.of(LightworksBlocks.SEARCHLIGHT, LightworksBlocks.FLOODLIGHT, LightworksBlocks.PAN_TILT_HEAD,
                 LightworksBlocks.ROTATING_BEACON, LightworksBlocks.WARNING_LIGHT, LightworksBlocks.HEADLIGHT,
                 LightworksBlocks.TAIL_LIGHT, LightworksBlocks.EDGE_LIGHT, LightworksItems.FLASHLIGHT,
                 LightworksBlocks.BEAM_SENSOR);
+    }
+
+    /**
+     * Create's goggles and diving helmets with an undyed headlamp fitted, after our blocks: so creative players and pack
+     * makers find the headlamp without crafting one, and JEI lists them (owner, Nov 26). Not each dye: one craft dyes it.
+     */
+    public static List<ItemStack> fittedHeadgear() {
+        ItemStack flashlight = LightworksItems.FLASHLIGHT.asStack();
+        return List.of(Headlamps.fit(AllItems.GOGGLES.asStack(), flashlight),
+                Headlamps.fit(AllItems.COPPER_DIVING_HELMET.asStack(), flashlight),
+                Headlamps.fit(AllItems.NETHERITE_DIVING_HELMET.asStack(), flashlight));
     }
 
     public static void register(IEventBus modBus) {

@@ -15,8 +15,9 @@
   forehead and throws a wide, short beam where you look, its dye included. Press H (Controls, under Create:
   Lightworks) to switch it on or off. The headgear alone in a crafting grid gives the Flashlight back. The Flashlight
   has a Ponder scene that shows all of this, goggles and diving helmets say they take a headlamp, headgear with one
-  fitted shows a small lens in its dye in the corner of its slot, and with JEI the fitting, taking-off and dyeing
-  recipes show up like any other.
+  fitted shows a small lens in its dye in the corner of its slot, with JEI the fitting, taking-off and dyeing
+  recipes show up like any other, and the Lightworks creative tab holds the goggles and both diving helmets with a lamp
+  fitted.
 - Warning, Tail and Brake Lights on moving contraptions, trains and Sable vehicles light the blocks round them again:
   the 16 nearest you get a steady dynamic light as strong as a placed lamp's (with LambDynamicLights or Sodium Dynamic
   Lights, or a light block in your own world without one). It does not blink with a pattern, which would rebuild the

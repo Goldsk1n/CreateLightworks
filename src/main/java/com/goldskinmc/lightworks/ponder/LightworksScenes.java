@@ -634,8 +634,16 @@ final class LightworksScenes {
         scene.overlay().showText(70).attachKeyFrame()
                 .text("Crafted with Engineer's Goggles or a Diving Helmet, it becomes a headlamp")
                 .placeNearTarget().pointAt(item);
-        // The goggles stay where they lie: fitted, they look the same as a dropped item (the lamp's badge shows in slots)
-        scene.idle(80);
+        // While the text shows, the goggles give way to each diving helmet that takes one, so the helmets show too (owner,
+        // Nov 26); the last stays for what follows. They lie as they are: fitted, a dropped item looks the same (the
+        // lamp's badge shows in slots)
+        scene.idle(27);
+        scene.world().modifyEntities(ItemEntity.class, Entity::discard);
+        lying(scene, spot, AllItems.COPPER_DIVING_HELMET.asStack());
+        scene.idle(27);
+        scene.world().modifyEntities(ItemEntity.class, Entity::discard);
+        lying(scene, spot, AllItems.NETHERITE_DIVING_HELMET.asStack());
+        scene.idle(26);
         scene.overlay().showText(60).text("Worn, it lights where you look, hands free")
                 .placeNearTarget().pointAt(item);
         scene.idle(70);
